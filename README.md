@@ -5,16 +5,18 @@
 ---
 
 ## 👥 팀원 소개
-| 이름 | 역할 |
-| :--- | :--- |
-| 이용찬 | 개발 |
-| 김민경 | 디자인 |
+
+| 이름   | 역할        |
+| :----- | :---------- |
+| 이용찬 | 개발        |
+| 김민경 | 디자인      |
 | 정채연 | 기획/데이터 |
-| 전현승 | 데이터 |
+| 전현승 | 데이터      |
 
 ---
 
 ## 📂 폴더 안내
+
 - **docs/**: 회의록, 시장조사 등 모든 문서 자료
 - **assets/**: 발표 자료, 사진, 로고 등 이미지 파일
 - **prototyping/**: 서비스 설계 및 피그마 링크
@@ -48,17 +50,17 @@
 
 ## 기술 스택
 
-| 영역 | 선택 |
-|---|---|
-| 프레임워크 | Next.js 14 (App Router) + TypeScript |
-| 스타일 | Tailwind CSS + shadcn/ui |
-| DB/Storage/Auth | Supabase (Postgres + Storage + Auth) |
-| 참여자 로그인 | Supabase Auth + 카카오 OAuth Provider |
-| 사장님 로그인 | 가게 코드 (bcrypt) + httpOnly 쿠키 |
-| 관리자 로그인 | 환경변수 `ADMIN_PASSWORD` |
-| LLM | Anthropic Claude (Haiku 4.5) |
-| 호스팅 | Vercel |
-| PWA | `public/manifest.json` |
+| 영역            | 선택                                  |
+| --------------- | ------------------------------------- |
+| 프레임워크      | Next.js 14 (App Router) + TypeScript  |
+| 스타일          | Tailwind CSS + shadcn/ui              |
+| DB/Storage/Auth | Supabase (Postgres + Storage + Auth)  |
+| 참여자 로그인   | Supabase Auth + 카카오 OAuth Provider |
+| 사장님 로그인   | 가게 코드 (bcrypt) + httpOnly 쿠키    |
+| 관리자 로그인   | 환경변수 `ADMIN_PASSWORD`             |
+| LLM             | Anthropic Claude (Haiku 4.5)          |
+| 호스팅          | Vercel                                |
+| PWA             | `public/manifest.json`                |
 
 ## 디렉토리 (`src/`)
 
@@ -164,7 +166,7 @@ page_views            (익명 조회 로그)
 
 Phase 별 상세는 `CLAUDE.md` 참고. 각 Phase 끝마다 배포 가능한 상태를 유지한다.
 
-- **Phase 0** — 셋업 (Next.js, Tailwind, Supabase, 카카오, Vercel)  ← 현재
+- **Phase 0** — 셋업 (Next.js, Tailwind, Supabase, 카카오, Vercel) ← 현재
 - **Phase 1** — DB 스키마 + 기본 인증
 - **Phase 2** — 행위 기록 (카드 발급)
 - **Phase 3** — 도감 (참여자 뷰)
