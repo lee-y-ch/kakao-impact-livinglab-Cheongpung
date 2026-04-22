@@ -91,13 +91,13 @@ cp .env.local.example .env.local
 - `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET` — Supabase Auth Provider 등록용
 - `ANTHROPIC_API_KEY` — LLM 편지 보조 (Phase 4~)
 - `ADMIN_PASSWORD` — 청풍 관리자 로그인
-- `NEXT_PUBLIC_SITE_URL` — 로컬 `http://localhost:3000`, 배포 시 실제 도메인
+- `NEXT_PUBLIC_SITE_URL` — 로컬 `http://localhost:3001`, 배포 시 실제 도메인
 
 ## 로컬 개발
 
 ```
 npm install
-npm run dev           # http://localhost:3000
+npm run dev           # http://localhost:3001
 npm run typecheck
 npm run lint
 npm run build
