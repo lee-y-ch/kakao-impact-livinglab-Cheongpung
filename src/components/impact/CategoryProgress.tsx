@@ -10,6 +10,7 @@ export type CategoryProgressItem = {
   summary: string | null;
   result: ProgressResult;
   projectCount: number;
+  scoredProjectCount: number;
   activityCount: number;
 };
 
@@ -62,6 +63,14 @@ export function CategoryProgressGrid({
 
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
             <span>프로젝트 {item.projectCount}</span>
+            {item.scoredProjectCount < item.projectCount ? (
+              <>
+                <span>·</span>
+                <span>
+                  기준 설정 {item.scoredProjectCount}/{item.projectCount}
+                </span>
+              </>
+            ) : null}
             <span>·</span>
             <span>카드 {item.activityCount}</span>
           </div>

@@ -90,7 +90,13 @@ export default async function ImpactPage() {
       .select("id", { count: "exact", head: true })
       .eq("is_public", true),
     admin.from("reactions").select("id", { count: "exact", head: true }),
-    admin.from("users").select("id", { count: "exact", head: true }),
+    // 참여자 수: users 전체 count 가 아닌, 공개 카드를 한 번이라도 남긴 distinct user_id
+    admin
+      .from("activities")
+      .select("user_id")
+      .eq("is_public", true)
+      .is("removed_at", null)
+      .not("user_id", "is", null),
   ]);
 
   const categories = categoriesRes.data ?? [];
@@ -128,31 +134,49 @@ export default async function ImpactPage() {
       allEpisodeIds.push(...bucket.ids);
     }
 
-    const [directRes, viaEpisodeRes, recentPhotoRes] = await Promise.all([
-      admin
-        .from("activities")
-        .select("project_id")
-        .in("project_id", projectIds)
-        .eq("is_public", true)
-        .is("removed_at", null),
-      allEpisodeIds.length > 0
-        ? admin
-            .from("activities")
-            .select("episode_id")
-            .in("episode_id", allEpisodeIds)
-            .eq("is_public", true)
-            .is("removed_at", null)
-        : Promise.resolve({ data: [] as { episode_id: string | null }[] }),
-      admin
-        .from("activities")
-        .select("photo_url, project_id, episode_id, created_at")
-        .in("project_id", projectIds)
-        .eq("is_public", true)
-        .is("removed_at", null)
-        .not("photo_url", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(120),
-    ]);
+    const [directRes, viaEpisodeRes, directPhotoRes, episodePhotoRes] =
+      await Promise.all([
+        admin
+          .from("activities")
+          .select("project_id")
+          .in("project_id", projectIds)
+          .eq("is_public", true)
+          .is("removed_at", null),
+        allEpisodeIds.length > 0
+          ? admin
+              .from("activities")
+              .select("episode_id")
+              .in("episode_id", allEpisodeIds)
+              .eq("is_public", true)
+              .is("removed_at", null)
+          : Promise.resolve({ data: [] as { episode_id: string | null }[] }),
+        admin
+          .from("activities")
+          .select("photo_url, project_id, created_at")
+          .in("project_id", projectIds)
+          .eq("is_public", true)
+          .is("removed_at", null)
+          .not("photo_url", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(120),
+        allEpisodeIds.length > 0
+          ? admin
+              .from("activities")
+              .select("photo_url, episode_id, created_at")
+              .in("episode_id", allEpisodeIds)
+              .eq("is_public", true)
+              .is("removed_at", null)
+              .not("photo_url", "is", null)
+              .order("created_at", { ascending: false })
+              .limit(120)
+          : Promise.resolve({
+              data: [] as {
+                photo_url: string | null;
+                episode_id: string | null;
+                created_at: string;
+              }[],
+            }),
+      ]);
 
     for (const r of directRes.data ?? []) {
       const pid = r.project_id as string;
@@ -174,11 +198,32 @@ export default async function ImpactPage() {
       );
     }
 
-    for (const r of recentPhotoRes.data ?? []) {
+    // 직결 + 에피소드 경유 사진을 created_at desc 로 합쳐, 프로젝트별 첫 사진을 대표 썸네일로
+    const candidatePhotos: { pid: string; url: string; ts: string }[] = [];
+    for (const r of directPhotoRes.data ?? []) {
       const pid = r.project_id as string | null;
-      if (!pid || recentPhotoByProject.has(pid)) continue;
-      if (r.photo_url) {
-        recentPhotoByProject.set(pid, r.photo_url as string);
+      if (pid && r.photo_url) {
+        candidatePhotos.push({
+          pid,
+          url: r.photo_url as string,
+          ts: r.created_at as string,
+        });
+      }
+    }
+    for (const r of episodePhotoRes.data ?? []) {
+      const pid = projectByEpisode.get(r.episode_id as string);
+      if (pid && r.photo_url) {
+        candidatePhotos.push({
+          pid,
+          url: r.photo_url as string,
+          ts: r.created_at as string,
+        });
+      }
+    }
+    candidatePhotos.sort((a, b) => b.ts.localeCompare(a.ts));
+    for (const p of candidatePhotos) {
+      if (!recentPhotoByProject.has(p.pid)) {
+        recentPhotoByProject.set(p.pid, p.url);
       }
     }
   }
@@ -226,6 +271,12 @@ export default async function ImpactPage() {
           )
         : 0;
 
+    const missingCount = members.length - scored.length;
+    const avgLabel =
+      missingCount > 0
+        ? `${scored.length}/${members.length}개 프로젝트 평균 (${missingCount}개 기준 미설정)`
+        : `${members.length}개 프로젝트 평균`;
+
     const result: ProgressResult =
       scored.length === 0
         ? {
@@ -239,7 +290,7 @@ export default async function ImpactPage() {
             percent: avg,
             current: avg,
             target: 100,
-            label: `${members.length}개 프로젝트 평균`,
+            label: avgLabel,
             note: avg >= 100 ? "completed" : undefined,
           };
 
@@ -252,19 +303,19 @@ export default async function ImpactPage() {
       summary: (c.description as string | null) ?? null,
       result,
       projectCount: members.length,
+      scoredProjectCount: scored.length,
       activityCount: activitySum,
     };
   });
 
+  // '지금 굴러가는' = 공개 회차가 진행 중인 프로젝트. 아직 완료되지 않은 대기 프로젝트와 구분.
   const timelineItems: TimelineProjectItem[] = projectResults
-    .filter((p) => p.inProgressEpisodes > 0 || p.result.note !== "completed")
-    .sort((a, b) => {
-      // 진행 중 회차가 있는 쪽 우선, 그 다음 진척도 높은 순
-      if (a.inProgressEpisodes !== b.inProgressEpisodes) {
-        return b.inProgressEpisodes - a.inProgressEpisodes;
-      }
-      return b.result.percent - a.result.percent;
-    })
+    .filter((p) => p.inProgressEpisodes > 0)
+    .sort(
+      (a, b) =>
+        b.inProgressEpisodes - a.inProgressEpisodes ||
+        b.result.percent - a.result.percent
+    )
     .slice(0, TIMELINE_LIMIT)
     .map((p) => ({
       id: p.id,
@@ -301,7 +352,11 @@ export default async function ImpactPage() {
   const totalPublicCards = publicActivityCountRes.count ?? 0;
   const totalShops = shopCountRes.count ?? 0;
   const totalReactions = reactionCountRes.count ?? 0;
-  const totalParticipants = participantCountRes.count ?? 0;
+  const totalParticipants = new Set(
+    (participantCountRes.data ?? [])
+      .map((r) => r.user_id as string | null)
+      .filter((v): v is string => Boolean(v))
+  ).size;
   const totalPublicProjects = projects.length;
 
   return (

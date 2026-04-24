@@ -70,6 +70,7 @@ export default async function ProjectDetailPage({ params }: Params) {
     .from("episodes")
     .select("id, seq, title, summary, session_date, location, status")
     .eq("project_id", project.id as string)
+    .eq("is_public", true)
     .order("seq", { ascending: true, nullsFirst: false })
     .order("session_date", { ascending: true, nullsFirst: false });
 
