@@ -169,6 +169,9 @@
 .nodemap-accent-clay {
   --accent: var(--accent-clay);
 }
+.nodemap-accent-ink {
+  --accent: var(--ink);
+}
 
 .nodemap-node__body {
   flex: 1;

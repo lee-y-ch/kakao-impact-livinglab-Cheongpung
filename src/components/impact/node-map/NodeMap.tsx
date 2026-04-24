@@ -2,8 +2,6 @@
 
 import { useMemo, useState } from "react";
 import ReactFlow, {
-  Background,
-  BackgroundVariant,
   useReactFlow,
   ReactFlowProvider,
   type Node,
@@ -102,9 +100,9 @@ function NodeMapInner({ data }: { data: NodeMapData }) {
             onNodeClick={onNodeClick}
             onPaneClick={() => setSelected(null)}
             fitView
-            fitViewOptions={{ padding: 0.15, maxZoom: 1, minZoom: 0.35 }}
-            minZoom={0.35}
-            maxZoom={1.4}
+            fitViewOptions={{ padding: 0.15, maxZoom: 1.2, minZoom: 0.3 }}
+            minZoom={0.3}
+            maxZoom={2.2}
             defaultEdgeOptions={{ type: "lineage" }}
             proOptions={{ hideAttribution: true }}
             nodesDraggable={false}
@@ -113,14 +111,7 @@ function NodeMapInner({ data }: { data: NodeMapData }) {
             panOnScroll={false}
             zoomOnScroll
             selectionOnDrag={false}
-          >
-            <Background
-              variant={BackgroundVariant.Dots}
-              gap={14}
-              size={0.5}
-              color="rgba(29, 26, 21, 0.0)"
-            />
-          </ReactFlow>
+          />
         )}
 
         <div className="nodemap-controls">

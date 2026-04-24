@@ -15,11 +15,14 @@ import type { CategoryAccent } from "./types";
  * react-flow handle 은 좌(target) / 우(source) 에 숨겨 둔다 — 엣지 부착용.
  */
 
-const ACCENT_CLASS: Record<CategoryAccent, string> = {
+type ShellAccent = CategoryAccent | "ink";
+
+const ACCENT_CLASS: Record<ShellAccent, string> = {
   sage: "nodemap-accent-sage",
   dust: "nodemap-accent-dust",
   ochre: "nodemap-accent-ochre",
   clay: "nodemap-accent-clay",
+  ink: "nodemap-accent-ink",
 };
 
 function Shell({
@@ -29,7 +32,7 @@ function Shell({
   className = "",
 }: {
   children: React.ReactNode;
-  accent: CategoryAccent;
+  accent: ShellAccent;
   selected?: boolean;
   className?: string;
 }) {
@@ -151,7 +154,7 @@ export function EpisodeNode({ data, selected }: NodeProps<EpisodeNodeData>) {
 
 export function ShopNode({ data, selected }: NodeProps<ShopNodeData>) {
   return (
-    <Shell accent={"sage"} selected={selected} className="nodemap-shop">
+    <Shell accent="ink" selected={selected} className="nodemap-shop">
       <div className="nodemap-node__body">
         <div className="nodemap-node__eyebrow">
           <span>IV · 가게</span>
