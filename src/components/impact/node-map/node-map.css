@@ -1,0 +1,470 @@
+/* =====================================================================
+   노드맵 전용 스타일. 전역 스코프를 침범하지 않도록 .nodemap 루트 한정.
+
+   네 카테고리 색 (흙빛 4종 — 저채도, 오래된 도판 느낌):
+     sage  · commons  — 은근한 녹
+     dust  · network  — 먼지 낀 청
+     ochre · world    — 빛바랜 황토
+     clay  · policy   — 붉은 점토
+   ===================================================================== */
+.nodemap {
+  --linen: #f6f1e7;
+  --linen-deep: #ece5d3;
+  --ink: #1d1a15;
+  --ink-soft: #615a4c;
+  --ink-faint: rgba(29, 26, 21, 0.22);
+  --accent-sage: #6e8468;
+  --accent-dust: #5d7488;
+  --accent-ochre: #a17a46;
+  --accent-clay: #8b4c40;
+}
+
+/* 캔버스 — 아마지 (linen) + 도트 그리드 + 좌측 ruler tick */
+.nodemap-canvas {
+  position: relative;
+  background-color: var(--linen);
+  background-image: radial-gradient(
+    rgba(29, 26, 21, 0.08) 1px,
+    transparent 1px
+  );
+  background-size: 14px 14px;
+  background-position: 0 0;
+  border: 1px solid var(--ink-faint);
+  overflow: hidden;
+}
+
+/* 발표 데스크탑 기준 최소 높이 */
+.nodemap-canvas {
+  min-height: 620px;
+}
+
+/* 좌측 눈금자 */
+.nodemap-canvas::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 18px;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 119px,
+    var(--ink-faint) 119px,
+    var(--ink-faint) 120px
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+.nodemap-canvas::after {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--ink-faint);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* 상단 컬럼 헤더 */
+.nodemap-columns {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: grid;
+  grid-template-columns: 360px 400px 420px 1fr;
+  padding: 16px 24px 12px 48px;
+  gap: 24px;
+  z-index: 3;
+  pointer-events: none;
+  color: var(--ink);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--ink-faint);
+  background: linear-gradient(
+    to bottom,
+    rgba(246, 241, 231, 0.96),
+    rgba(246, 241, 231, 0.8) 60%,
+    transparent
+  );
+}
+.nodemap-columns dt {
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.nodemap-columns dt small {
+  font-family: "ui-monospace", "SFMono-Regular", monospace;
+  color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+.nodemap-columns dt em {
+  margin-left: auto;
+  color: var(--ink-soft);
+  font-style: normal;
+  font-weight: 400;
+  font-size: 10px;
+}
+
+/* React Flow 오버라이드 */
+.nodemap .react-flow__pane {
+  cursor: grab;
+}
+.nodemap .react-flow__pane:active {
+  cursor: grabbing;
+}
+.nodemap .react-flow__edges path {
+  transition: stroke-opacity 140ms ease;
+}
+.nodemap .react-flow__node {
+  font-family: inherit;
+}
+.nodemap .react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 공통 노드 프레임 */
+.nodemap-node {
+  --accent: var(--ink);
+  display: flex;
+  align-items: stretch;
+  background: var(--linen);
+  border: 1px solid var(--ink);
+  border-left: 3px solid var(--accent);
+  color: var(--ink);
+  font-family: "Pretendard Variable", sans-serif;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 0 0 0 rgba(29, 26, 21, 0);
+}
+.nodemap-node:hover {
+  transform: translateY(-1px);
+  box-shadow: 3px 3px 0 0 var(--ink);
+  background: var(--linen-deep);
+}
+.nodemap-node.is-selected {
+  box-shadow: 3px 3px 0 0 var(--ink);
+  background: var(--linen-deep);
+}
+
+.nodemap-accent-sage {
+  --accent: var(--accent-sage);
+}
+.nodemap-accent-dust {
+  --accent: var(--accent-dust);
+}
+.nodemap-accent-ochre {
+  --accent: var(--accent-ochre);
+}
+.nodemap-accent-clay {
+  --accent: var(--accent-clay);
+}
+
+.nodemap-node__body {
+  flex: 1;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.nodemap-node__eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.nodemap-node__title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  /* 1줄 — 긴 제목은 말줄임 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nodemap-node__sub {
+  font-size: 11px;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodemap-node__count {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-width: 56px;
+  padding: 0 10px;
+  border-left: 1px solid var(--ink-faint);
+  background: transparent;
+  font-family: "ui-monospace", "SFMono-Regular", monospace;
+}
+.nodemap-node__count strong {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  line-height: 1;
+}
+.nodemap-node__count span {
+  margin-top: 3px;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* 카테고리 노드 — 가장 크고 중요 */
+.nodemap-category .nodemap-node__title {
+  font-size: 17px;
+  white-space: normal;
+}
+.nodemap-category .nodemap-node__sub {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* 프로젝트 노드 — 진척 미니바 */
+.nodemap-project {
+}
+.nodemap-project__progress {
+  margin-top: 2px;
+  height: 3px;
+  background: var(--ink-faint);
+  position: relative;
+  overflow: hidden;
+}
+.nodemap-project__progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+}
+
+/* 에피소드 노드 — 간결 */
+.nodemap-episode .nodemap-node__title {
+  font-size: 13px;
+}
+.nodemap-episode-status {
+  font-family: "ui-monospace", "SFMono-Regular", monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  padding: 1px 6px;
+  border: 1px solid var(--ink-faint);
+  background: var(--linen);
+  text-transform: uppercase;
+}
+.nodemap-episode-status[data-status="in_progress"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.nodemap-episode-status[data-status="completed"] {
+  background: var(--ink);
+  color: var(--linen);
+  border-color: var(--ink);
+}
+
+/* 가게 노드 — 변종 레이아웃: 번지 주소 같은 라벨 */
+.nodemap-shop {
+  border-left-width: 1px;
+  border-left-color: var(--ink);
+  border-top: 1px solid var(--ink);
+  border-right: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  /* 왼쪽 인장 박스 */
+  position: relative;
+}
+.nodemap-shop::before {
+  content: "⊡";
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--linen);
+  border: 1px solid var(--ink);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "ui-monospace", monospace;
+  font-size: 11px;
+  color: var(--ink);
+}
+
+/* 컨트롤 — 커스텀 square button 3종 */
+.nodemap-controls {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  gap: 6px;
+  z-index: 4;
+}
+.nodemap-controls button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--ink);
+  background: var(--linen);
+  color: var(--ink);
+  font-family: "ui-monospace", monospace;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.nodemap-controls button:hover {
+  background: var(--ink);
+  color: var(--linen);
+}
+
+/* 디테일 레일 */
+.nodemap-detail {
+  position: absolute;
+  top: 52px;
+  right: 16px;
+  width: 280px;
+  background: var(--linen);
+  border: 1px solid var(--ink);
+  padding: 16px 18px;
+  z-index: 4;
+  font-family: "Pretendard Variable", sans-serif;
+  color: var(--ink);
+  box-shadow: 4px 4px 0 0 var(--ink);
+  animation: nm-fade-in 220ms ease both;
+}
+.nodemap-detail__eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--ink-faint);
+}
+.nodemap-detail__eyebrow button {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-family: "ui-monospace", monospace;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+.nodemap-detail__eyebrow button:hover {
+  color: var(--ink);
+}
+.nodemap-detail__title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+.nodemap-detail__body {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin-bottom: 12px;
+}
+.nodemap-detail__stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+.nodemap-detail__stat {
+  display: flex;
+  flex-direction: column;
+}
+.nodemap-detail__stat dt {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 2px;
+}
+.nodemap-detail__stat dd {
+  font-family: "ui-monospace", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.nodemap-detail__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid var(--ink-faint);
+  padding-top: 10px;
+  font-size: 12px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.nodemap-detail__link:hover {
+  text-decoration: underline;
+}
+
+/* 컬럼 staggered entry */
+@keyframes nm-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.nodemap .react-flow__node {
+  animation: nm-fade-in 400ms ease both;
+}
+.nodemap .react-flow__node[data-id^="cat-"] {
+  animation-delay: 0ms;
+}
+.nodemap .react-flow__node[data-id^="prj-"] {
+  animation-delay: 90ms;
+}
+.nodemap .react-flow__node[data-id^="epi-"] {
+  animation-delay: 180ms;
+}
+.nodemap .react-flow__node[data-id^="shp-"] {
+  animation-delay: 270ms;
+}
+
+/* empty state */
+.nodemap-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 13px;
+  padding: 40px;
+  z-index: 1;
+  line-height: 1.7;
+}

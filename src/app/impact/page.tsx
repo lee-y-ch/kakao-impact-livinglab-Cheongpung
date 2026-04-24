@@ -11,6 +11,8 @@ import {
   ProjectTimelineCard,
   type TimelineProjectItem,
 } from "@/components/impact/ProjectTimelineCard";
+import { NodeMap } from "@/components/impact/node-map/NodeMap";
+import { loadNodeMapData } from "@/components/impact/node-map/server";
 import {
   calculateProgress,
   type ProgressResult,
@@ -37,6 +39,7 @@ const TIMELINE_LIMIT = 6;
 
 export default async function ImpactPage() {
   const admin = createAdminClient();
+  const nodeMapData = await loadNodeMapData();
 
   const [
     categoriesRes,
@@ -374,6 +377,22 @@ export default async function ImpactPage() {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <div className="flex items-baseline justify-between">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold">환대의 계보도</h2>
+            <p className="text-xs text-muted-foreground">
+              카테고리 — 프로젝트 — 회차 — 가게. 공개 데이터만으로 그린 강화도의
+              관계 지도.
+            </p>
+          </div>
+          <span className="text-[11px] text-muted-foreground">
+            스크롤 · 드래그로 탐색
+          </span>
+        </div>
+        <NodeMap data={nodeMapData} />
       </section>
 
       <section className="flex flex-col gap-4">
