@@ -22,9 +22,10 @@ export default async function AdminHomePage() {
           ready
         />
         <AdminNavLink
-          href="#"
+          href="/admin/shops"
           title="가게 · 사장님 코드"
-          description="Phase 3 에서 곧 오픈합니다."
+          description="가게 등록, QR 발급, 사장님 로그인 코드를 관리합니다."
+          ready
         />
         <AdminNavLink
           href="#"
