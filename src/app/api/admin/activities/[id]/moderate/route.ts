@@ -10,15 +10,16 @@ import { assertSameOrigin, CsrfError } from "@/lib/utils/csrf";
 /**
  * POST /api/admin/activities/[id]/moderate — 관리자 검수/신고 조치.
  *
- *   unpublish : is_public=false (공개 해제, removed_at 는 건드리지 않음)
- *   remove    : is_public=false + removed_at=now (공개 영역 완전 제거, 소프트 삭제)
- *   restore   : removed_at=null (삭제 해제 — is_public 은 그대로 유지)
+ *   unpublish      : is_public=false (공개 해제, removed_at 는 건드리지 않음)
+ *   remove         : is_public=false + removed_at=now (공개 영역 완전 제거, 소프트 삭제)
+ *   restore        : removed_at=null (삭제 해제 — is_public 은 그대로 유지)
+ *   dismiss_report : reported_at=null (신고 사유가 근거 없다고 판단, 공개 유지)
  *
  * 본인 삭제(DELETE /api/activities/[id]) 와 달리 user_id 체크를 우회하고,
  * auth_events 에 action 과 관리자 id 를 기록한다.
  */
 const BodySchema = z.object({
-  action: z.enum(["unpublish", "remove", "restore"]),
+  action: z.enum(["unpublish", "remove", "restore", "dismiss_report"]),
   reason: z.string().trim().max(500).optional(),
 });
 
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   const patch: {
     is_public?: boolean;
     removed_at?: string | null;
+    reported_at?: string | null;
   } = {};
   switch (parsed.data.action) {
     case "unpublish":
@@ -80,6 +82,9 @@ export async function POST(request: NextRequest, { params }: Ctx) {
       break;
     case "restore":
       patch.removed_at = null;
+      break;
+    case "dismiss_report":
+      patch.reported_at = null;
       break;
   }
 

@@ -34,9 +34,10 @@ export default async function AdminHomePage() {
           ready
         />
         <AdminNavLink
-          href="#"
+          href="/admin/reports"
           title="신고 대응"
-          description="신고된 카드·편지를 검토합니다. (준비 중)"
+          description="신고된 카드를 가리거나 신고를 해제합니다."
+          ready
         />
       </nav>
     </main>
