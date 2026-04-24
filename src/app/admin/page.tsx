@@ -28,9 +28,10 @@ export default async function AdminHomePage() {
           ready
         />
         <AdminNavLink
-          href="#"
+          href="/admin/review"
           title="공개 검수 큐"
-          description="is_public=true 요청 카드를 승인/반려합니다. (준비 중)"
+          description="공개 중인 카드를 훑어보고 필요 시 비공개 전환/가리기 조치합니다."
+          ready
         />
         <AdminNavLink
           href="#"
