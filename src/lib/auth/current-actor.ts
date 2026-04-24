@@ -177,3 +177,13 @@ export async function requireAdmin(): Promise<
   }
   return actor;
 }
+
+export async function requireCrew(): Promise<
+  Extract<CurrentActor, { role: "crew" }>
+> {
+  const actor = await getCurrentActor();
+  if (actor.role !== "crew") {
+    throw new Error("unauthorized: crew required");
+  }
+  return actor;
+}

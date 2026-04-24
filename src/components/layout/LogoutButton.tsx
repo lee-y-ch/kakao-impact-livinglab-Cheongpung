@@ -18,6 +18,8 @@ export function LogoutButton({
     try {
       if (actorRole === "owner") {
         await fetch("/api/auth/owner", { method: "DELETE" });
+      } else if (actorRole === "crew") {
+        await fetch("/api/auth/crew", { method: "DELETE" });
       } else {
         await fetch("/api/auth/logout", { method: "POST" });
       }
