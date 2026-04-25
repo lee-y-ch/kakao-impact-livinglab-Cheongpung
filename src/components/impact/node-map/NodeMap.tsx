@@ -67,6 +67,22 @@ function NodeMapInner({ data }: { data: NodeMapData }) {
     setSelected(sel);
   };
 
+  // 키보드: 노드 위에서 Enter/Space 면 onNodeClick 과 동일 동작.
+  // React Flow 가 기본으로 노드를 focusable 로 만들어주지만, 활성화 키 핸들링은
+  // 직접 붙여야 한다.
+  function onCanvasKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const target = e.target as HTMLElement;
+    const nodeEl = target.closest<HTMLElement>(".react-flow__node");
+    if (!nodeEl) return;
+    const id = nodeEl.getAttribute("data-id");
+    if (!id) return;
+    const node = graph.nodes.find((n) => n.id === id);
+    if (!node) return;
+    e.preventDefault();
+    setSelected(toSelected(node as Node, projectSlugById));
+  }
+
   return (
     <div className="nodemap">
       <dl className="nodemap-columns">
@@ -85,7 +101,13 @@ function NodeMapInner({ data }: { data: NodeMapData }) {
       </dl>
 
       <div className="nodemap-layout">
-        <div className="nodemap-canvas" style={{ height: 680 }}>
+        <div
+          className="nodemap-canvas"
+          style={{ height: 680 }}
+          role="region"
+          aria-label="강화도 환대 데이터 계보도 — 카테고리·프로젝트·회차·가게의 연결"
+          onKeyDown={onCanvasKeyDown}
+        >
           {isEmpty ? (
             <div className="nodemap-empty">
               아직 지도를 그릴 공개 데이터가 충분하지 않아요.

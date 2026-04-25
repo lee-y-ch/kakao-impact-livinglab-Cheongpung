@@ -473,7 +473,12 @@
   text-decoration: underline;
 }
 
-/* 컬럼 staggered entry */
+/*
+ * 컬럼 staggered entry.
+ * 컬럼 단위로 4단 stagger — 노드 수가 많아도 같은 data-id prefix 끼리 동시
+ * 애니메이션이라 GPU 압박은 일정하다. 다만 reduced-motion 사용자에게는
+ * 모든 모션을 끈다 (a11y).
+ */
 @keyframes nm-fade-in {
   from {
     opacity: 0;
@@ -498,6 +503,20 @@
 }
 .nodemap .react-flow__node[data-id^="shp-"] {
   animation-delay: 270ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nodemap .react-flow__node,
+  .nodemap-detail {
+    animation: none !important;
+  }
+}
+
+/* React Flow 키보드 포커스 — 기본 outline 이 우리 톤과 안 맞아서 ink 로 통일 */
+.nodemap .react-flow__node:focus,
+.nodemap .react-flow__node:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
 /* empty state */
