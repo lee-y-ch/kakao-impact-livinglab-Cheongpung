@@ -60,9 +60,7 @@ export default async function AdminProjectsPage() {
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">
       <header className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          관리자 · 프로젝트
-        </span>
+        <span className="eyebrow">관리자 · 프로젝트</span>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
           프로젝트 운영
         </h1>

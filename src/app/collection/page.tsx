@@ -72,9 +72,7 @@ export default async function CollectionPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
       <header className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          나의 도감
-        </span>
+        <span className="eyebrow">나의 도감</span>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
           {actor.nickname ?? "강화 여행자"}님의 환대 기록
         </h1>

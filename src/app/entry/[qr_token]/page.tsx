@@ -51,9 +51,7 @@ export default async function EntryPage({ params }: { params: Params }) {
   return (
     <main className="mx-auto flex max-w-lg flex-col gap-6 p-6">
       <header className="flex flex-col gap-1">
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          오늘의 환대
-        </span>
+        <span className="eyebrow">오늘의 환대</span>
         <h1 className="text-2xl font-bold tracking-tight">{shop.name}</h1>
         <p className="text-sm text-muted-foreground">
           사진이든 한 줄 메모든, 오늘의 한 조각을 남겨주세요.

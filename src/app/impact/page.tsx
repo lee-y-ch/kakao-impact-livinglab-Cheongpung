@@ -362,9 +362,7 @@ export default async function ImpactPage() {
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-12 px-6 py-10">
       <header className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          강화유니버스
-        </span>
+        <span className="eyebrow">강화유니버스</span>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           오늘도 강화도가 조금씩 더 강화됩니다.
         </h1>

@@ -1,21 +1,22 @@
 import Link from "next/link";
 
 import type { CurrentActor } from "@/lib/auth/current-actor";
+import { HeaderNav, type HeaderNavItem } from "./HeaderNav";
 import { LogoutButton } from "./LogoutButton";
 
 /**
- * 역할별로 다른 메뉴를 보여주는 공통 헤더.
+ * 역할별 네비를 보여주는 공통 헤더.
  *
- * - 비로그인  : 로그인 / 임팩트 / 프로젝트
- * - 참여자    : 내 도감 / 임팩트 / 로그아웃
- * - 사장님    : 우리 가게 / 설정 / 로그아웃
- * - 관리자    : 운영 홈 / 검수 / 신고 / 로그아웃
- * - 크루      : 크루 홈 / 로그아웃 (Phase 3)
+ * - 비로그인  : 로그인 / 임팩트 / 프로젝트 / 둘러보기
+ * - 참여자    : 내 도감 / 임팩트 / 둘러보기
+ * - 사장님    : 우리 가게 / 설정
+ * - 관리자    : 운영 홈 / 프로젝트 / 가게 / 검수
+ * - 크루      : 크루 (Phase 3)
+ *
+ * 활성 표시는 HeaderNav (client component) 가 usePathname 으로 처리.
  */
 
-type NavItem = { href: string; label: string };
-
-function navForActor(actor: CurrentActor): NavItem[] {
+function navForActor(actor: CurrentActor): HeaderNavItem[] {
   switch (actor.role) {
     case "participant":
       return [
@@ -51,32 +52,24 @@ export function Header({ actor }: { actor: CurrentActor }) {
   const nav = navForActor(actor);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4">
-        <Link
-          href="/"
-          className="text-sm font-bold tracking-tight sm:text-base"
-        >
-          강화유니버스
+    <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
+        <Link href="/" className="flex items-baseline gap-2 text-foreground">
+          <span className="text-base font-bold tracking-tight sm:text-lg">
+            강화유니버스
+          </span>
+          <span className="hidden text-[11px] text-muted-foreground sm:inline">
+            오늘도 강화도가 조금씩 더 강화됩니다
+          </span>
         </Link>
 
-        <nav className="flex flex-1 items-center gap-4 overflow-x-auto pl-2 text-sm text-muted-foreground">
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="whitespace-nowrap transition hover:text-foreground"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <HeaderNav items={nav} />
 
         <div className="flex items-center gap-2 text-sm">
           {actor.role === "anonymous" ? (
             <Link
               href="/login"
-              className="rounded-md bg-foreground px-3 py-1.5 text-background transition hover:opacity-90"
+              className="rounded-md bg-foreground px-3 py-1.5 text-background transition hover:bg-foreground/85"
             >
               로그인
             </Link>

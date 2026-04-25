@@ -33,9 +33,7 @@ export function ProjectTimelineCard({ item }: { item: TimelineProjectItem }) {
         )}
         <div className="flex min-w-0 flex-col gap-0.5">
           {item.categoryName ? (
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              {item.categoryName}
-            </span>
+            <span className="eyebrow">{item.categoryName}</span>
           ) : null}
           <h3 className="truncate text-base font-semibold text-foreground">
             {item.title}

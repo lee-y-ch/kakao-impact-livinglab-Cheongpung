@@ -91,9 +91,7 @@ export default async function ProjectsPage({
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-10 px-6 py-10">
       <header className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          강화유니버스 프로젝트
-        </span>
+        <span className="eyebrow">강화유니버스 프로젝트</span>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           장기 프로젝트 · 환대의 네 갈래
         </h1>

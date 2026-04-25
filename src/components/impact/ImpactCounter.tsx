@@ -26,8 +26,7 @@ export function ImpactCounter({
     >
       <span
         className={
-          "text-xs font-medium uppercase tracking-wider " +
-          (accent ? "text-background/80" : "text-muted-foreground")
+          "eyebrow " + (accent ? "text-background/80" : "text-muted-foreground")
         }
       >
         {label}

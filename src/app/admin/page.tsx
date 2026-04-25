@@ -74,9 +74,7 @@ export default async function AdminHomePage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <header className="flex flex-col gap-1">
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          관리자
-        </span>
+        <span className="eyebrow">관리자</span>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
           청풍 운영 홈
         </h1>

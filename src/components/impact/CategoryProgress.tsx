@@ -42,9 +42,7 @@ export function CategoryProgressGrid({
           className="flex flex-col gap-3 rounded-2xl border border-border bg-background p-5 transition hover:bg-muted/40"
         >
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              카테고리
-            </span>
+            <span className="eyebrow">카테고리</span>
             <h3 className="text-lg font-semibold tracking-tight text-foreground">
               {item.categoryName}
             </h3>

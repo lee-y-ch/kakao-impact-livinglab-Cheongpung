@@ -153,9 +153,7 @@ export default async function HomePage() {
               href={`/projects?category=${c.slug as string}`}
               className="flex flex-col gap-1 rounded-2xl border border-border bg-background p-5 transition hover:bg-muted/40"
             >
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                카테고리
-              </span>
+              <span className="eyebrow">카테고리</span>
               <span className="text-lg font-semibold tracking-tight">
                 {c.name as string}
               </span>
@@ -190,9 +188,7 @@ export default async function HomePage() {
 function SummaryStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </dt>
+      <dt className="eyebrow">{label}</dt>
       <dd className="text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
         {new Intl.NumberFormat("ko-KR").format(value)}
       </dd>

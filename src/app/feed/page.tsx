@@ -97,9 +97,7 @@ export default async function FeedPage({
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          공개 피드
-        </span>
+        <span className="eyebrow">공개 피드</span>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           강화도에서 방금 쌓인 환대
         </h1>
@@ -264,9 +262,7 @@ function EmptyFeed({
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          공개 피드
-        </span>
+        <span className="eyebrow">공개 피드</span>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           {title}
         </h1>
