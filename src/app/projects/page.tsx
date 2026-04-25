@@ -50,6 +50,57 @@ export default async function ProjectsPage({
   const allProjects = projectsRes.data ?? [];
   const episodes = episodesRes.data ?? [];
 
+  // 카드 집계 — goal 타입 프로젝트의 진척 % 가 /projects/[slug] 와 일치하도록
+  // publicActivities·distinctParticipants 까지 같이 채워준다. 직결 + 에피소드
+  // 경유 두 경로 모두 합쳐 프로젝트별로 버킷팅.
+  const projectIds = allProjects.map((p) => p.id as string);
+  const episodeIds = episodes.map((e) => e.id as string);
+
+  const [directActsRes, viaEpisodeActsRes] = await Promise.all([
+    projectIds.length > 0
+      ? admin
+          .from("activities")
+          .select("project_id, user_id")
+          .in("project_id", projectIds)
+          .eq("is_public", true)
+          .is("removed_at", null)
+      : Promise.resolve({
+          data: [] as { project_id: string | null; user_id: string | null }[],
+        }),
+    episodeIds.length > 0
+      ? admin
+          .from("activities")
+          .select("episode_id, user_id")
+          .in("episode_id", episodeIds)
+          .eq("is_public", true)
+          .is("removed_at", null)
+      : Promise.resolve({
+          data: [] as { episode_id: string | null; user_id: string | null }[],
+        }),
+  ]);
+
+  const projectByEpisode = new Map(
+    episodes.map((e) => [e.id as string, e.project_id as string])
+  );
+  const cardCountByProject = new Map<string, number>();
+  const participantSetByProject = new Map<string, Set<string>>();
+
+  function bump(pid: string, uid: string | null) {
+    cardCountByProject.set(pid, (cardCountByProject.get(pid) ?? 0) + 1);
+    if (uid) {
+      const set = participantSetByProject.get(pid) ?? new Set<string>();
+      set.add(uid);
+      participantSetByProject.set(pid, set);
+    }
+  }
+  for (const r of directActsRes.data ?? []) {
+    if (r.project_id) bump(r.project_id, r.user_id ?? null);
+  }
+  for (const r of viaEpisodeActsRes.data ?? []) {
+    const pid = projectByEpisode.get(r.episode_id ?? "");
+    if (pid) bump(pid, r.user_id ?? null);
+  }
+
   const selectedCategory = searchParams.category
     ? categories.find((c) => c.slug === searchParams.category)
     : null;
@@ -155,6 +206,10 @@ export default async function ProjectsPage({
                       (p.progress_target as Record<string, unknown>) ?? {},
                     completedEpisodes: stats.completed,
                     totalEpisodes: stats.total,
+                    publicActivities:
+                      cardCountByProject.get(p.id as string) ?? 0,
+                    distinctParticipants:
+                      participantSetByProject.get(p.id as string)?.size ?? 0,
                   });
                   return (
                     <ProjectListCard

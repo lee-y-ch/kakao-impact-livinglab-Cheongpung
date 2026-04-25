@@ -123,8 +123,10 @@ export default async function ImpactPage() {
     episodesByProject.set(pid, bucket);
   }
 
-  // 프로젝트별 공개 카드 수 — 두 조건(project_id 직접 / episode_id 경유) 각각 집계 후 합산
+  // 프로젝트별 공개 카드 수 + 고유 참여자 — 두 조건(project_id 직접 / episode_id 경유)
+  // 각각 집계 후 합산. distinctParticipants 는 user_id 합집합으로.
   const activityCountByProject = new Map<string, number>();
+  const participantSetByProject = new Map<string, Set<string>>();
   const recentPhotoByProject = new Map<string, string>();
 
   if (projects.length > 0) {
@@ -138,18 +140,23 @@ export default async function ImpactPage() {
       await Promise.all([
         admin
           .from("activities")
-          .select("project_id")
+          .select("project_id, user_id")
           .in("project_id", projectIds)
           .eq("is_public", true)
           .is("removed_at", null),
         allEpisodeIds.length > 0
           ? admin
               .from("activities")
-              .select("episode_id")
+              .select("episode_id, user_id")
               .in("episode_id", allEpisodeIds)
               .eq("is_public", true)
               .is("removed_at", null)
-          : Promise.resolve({ data: [] as { episode_id: string | null }[] }),
+          : Promise.resolve({
+              data: [] as {
+                episode_id: string | null;
+                user_id: string | null;
+              }[],
+            }),
         admin
           .from("activities")
           .select("photo_url, project_id, created_at")
@@ -178,12 +185,21 @@ export default async function ImpactPage() {
             }),
       ]);
 
-    for (const r of directRes.data ?? []) {
-      const pid = r.project_id as string;
+    function bumpProject(pid: string, uid: string | null) {
       activityCountByProject.set(
         pid,
         (activityCountByProject.get(pid) ?? 0) + 1
       );
+      if (uid) {
+        const set = participantSetByProject.get(pid) ?? new Set<string>();
+        set.add(uid);
+        participantSetByProject.set(pid, set);
+      }
+    }
+
+    for (const r of directRes.data ?? []) {
+      const pid = r.project_id as string;
+      bumpProject(pid, (r.user_id as string | null) ?? null);
     }
 
     const projectByEpisode = new Map(
@@ -192,10 +208,7 @@ export default async function ImpactPage() {
     for (const r of viaEpisodeRes.data ?? []) {
       const pid = projectByEpisode.get(r.episode_id as string);
       if (!pid) continue;
-      activityCountByProject.set(
-        pid,
-        (activityCountByProject.get(pid) ?? 0) + 1
-      );
+      bumpProject(pid, (r.user_id as string | null) ?? null);
     }
 
     // 직결 + 에피소드 경유 사진을 created_at desc 로 합쳐, 프로젝트별 첫 사진을 대표 썸네일로
@@ -245,6 +258,8 @@ export default async function ImpactPage() {
       completedEpisodes: bucket.completed,
       totalEpisodes: bucket.total,
       publicActivities: activityCountByProject.get(p.id as string) ?? 0,
+      distinctParticipants:
+        participantSetByProject.get(p.id as string)?.size ?? 0,
     });
     return {
       id: p.id as string,

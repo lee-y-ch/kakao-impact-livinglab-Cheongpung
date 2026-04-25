@@ -15,14 +15,25 @@ const HERO_CARD_LIMIT = 6;
  *
  * 로그인 상태면 역할별 홈으로 분기하고, 비로그인이면 공개 랜딩을 렌더.
  * 공개 랜딩은 참여자 카드 히어로 + 임팩트 숫자 요약 + 카테고리 진입점으로 구성.
+ *
+ * `?present=1` (또는 `?present=true`) 가 붙어 있으면 발표 모드로 보고 분기를
+ * 건너뛴다. 발표 시연 중 같은 계정으로 공개 랜딩을 그대로 보여줘야 할 때 사용.
  */
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: { present?: string };
+}) {
   const actor = await getCurrentActor();
+  const presentMode =
+    searchParams?.present === "1" || searchParams?.present === "true";
 
-  if (actor.role === "participant") redirect("/collection");
-  if (actor.role === "owner") redirect("/owner");
-  if (actor.role === "admin") redirect("/admin");
-  if (actor.role === "crew") redirect("/crew");
+  if (!presentMode) {
+    if (actor.role === "participant") redirect("/collection");
+    if (actor.role === "owner") redirect("/owner");
+    if (actor.role === "admin") redirect("/admin");
+    if (actor.role === "crew") redirect("/crew");
+  }
 
   const admin = createAdminClient();
   const [heroRes, cardCountRes, shopCountRes, reactionCountRes, categoriesRes] =
