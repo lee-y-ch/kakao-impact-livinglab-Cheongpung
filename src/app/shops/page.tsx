@@ -15,7 +15,7 @@ export default async function ShopsPage() {
 
   const { data: shopsRaw } = await admin
     .from("shops")
-    .select("id, name, description, address, slogan, card_background_url")
+    .select("id, name, description, address, slogan")
     .eq("is_public", true)
     .order("updated_at", { ascending: false });
   const shops = shopsRaw ?? [];

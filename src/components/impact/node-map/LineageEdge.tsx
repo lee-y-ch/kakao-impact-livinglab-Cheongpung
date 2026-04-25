@@ -2,11 +2,18 @@ import { BaseEdge, type EdgeProps } from "reactflow";
 
 import { strokeForWeight } from "./build-graph";
 
+const ACCENT_STROKE: Record<string, string> = {
+  sage: "var(--accent-sage)",
+  dust: "var(--accent-dust)",
+  ochre: "var(--accent-ochre)",
+  clay: "var(--accent-clay)",
+};
+
 /**
- * 직각 ink 선 — 부모 오른쪽에서 90도 꺾어 자식 왼쪽으로.
+ * 직각 lineage 선 — 부모 오른쪽에서 90도 꺾어 자식 왼쪽으로.
  *
- * 기본 라이브러리의 bezier 스무스 곡선이 "인포그래픽" 느낌을 죽여서,
- * 수동으로 L-path 를 합성한다. 가중치에 따라 stroke 굵기와 투명도가 올라감.
+ * 카테고리 accent 로 stroke 색을 살짝 입혀, hairline 색 체계를 엣지에서도 학습 가능하게 함.
+ * 선택 시 ink 로 진하게 전환해 강조.
  */
 export function LineageEdge({
   id,
@@ -20,19 +27,20 @@ export function LineageEdge({
   const weight = data?.weight ?? 1;
   const width = strokeForWeight(weight);
 
-  // 중간 분기점 — 수평으로 60% 지점까지 간 뒤 수직, 다시 수평
   const midX = sourceX + (targetX - sourceX) * 0.5;
   const path = `M ${sourceX} ${sourceY} L ${midX} ${sourceY} L ${midX} ${targetY} L ${targetX} ${targetY}`;
 
-  const opacity = selected ? 0.95 : Math.min(0.75, 0.35 + weight * 0.05);
+  const accentStroke = ACCENT_STROKE[data?.accent ?? ""] ?? "var(--ink)";
+  const stroke = selected ? "var(--ink)" : accentStroke;
+  const opacity = selected ? 0.95 : Math.min(0.7, 0.4 + weight * 0.04);
 
   return (
     <BaseEdge
       id={id}
       path={path}
       style={{
-        stroke: "var(--ink)",
-        strokeWidth: width,
+        stroke,
+        strokeWidth: selected ? width + 0.6 : width,
         strokeOpacity: opacity,
         fill: "none",
         pointerEvents: "stroke",

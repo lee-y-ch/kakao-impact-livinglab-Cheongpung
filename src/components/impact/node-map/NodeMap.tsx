@@ -84,51 +84,53 @@ function NodeMapInner({ data }: { data: NodeMapData }) {
         </dt>
       </dl>
 
-      <div className="nodemap-canvas" style={{ height: 680 }}>
-        {isEmpty ? (
-          <div className="nodemap-empty">
-            아직 지도를 그릴 공개 데이터가 충분하지 않아요.
-            <br />첫 공개 카드가 도착하면 카테고리·프로젝트·회차·가게가 이
-            자리에 이어집니다.
-          </div>
-        ) : (
-          <ReactFlow
-            nodes={graph.nodes}
-            edges={graph.edges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            onNodeClick={onNodeClick}
-            onPaneClick={() => setSelected(null)}
-            fitView
-            fitViewOptions={{ padding: 0.15, maxZoom: 1.2, minZoom: 0.3 }}
-            minZoom={0.3}
-            maxZoom={2.2}
-            defaultEdgeOptions={{ type: "lineage" }}
-            proOptions={{ hideAttribution: true }}
-            nodesDraggable={false}
-            nodesConnectable={false}
-            elementsSelectable
-            panOnScroll={false}
-            zoomOnScroll
-            selectionOnDrag={false}
-          />
-        )}
+      <div className="nodemap-layout">
+        <div className="nodemap-canvas" style={{ height: 680 }}>
+          {isEmpty ? (
+            <div className="nodemap-empty">
+              아직 지도를 그릴 공개 데이터가 충분하지 않아요.
+              <br />첫 공개 카드가 도착하면 카테고리·프로젝트·회차·가게가 이
+              자리에 이어집니다.
+            </div>
+          ) : (
+            <ReactFlow
+              nodes={graph.nodes}
+              edges={graph.edges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              onNodeClick={onNodeClick}
+              onPaneClick={() => setSelected(null)}
+              fitView
+              fitViewOptions={{ padding: 0.15, maxZoom: 1.2, minZoom: 0.3 }}
+              minZoom={0.3}
+              maxZoom={2.2}
+              defaultEdgeOptions={{ type: "lineage" }}
+              proOptions={{ hideAttribution: true }}
+              nodesDraggable={false}
+              nodesConnectable={false}
+              elementsSelectable
+              panOnScroll={false}
+              zoomOnScroll
+              selectionOnDrag={false}
+            />
+          )}
 
-        <div className="nodemap-controls">
-          <button type="button" onClick={() => zoomIn()} aria-label="확대">
-            +
-          </button>
-          <button type="button" onClick={() => zoomOut()} aria-label="축소">
-            −
-          </button>
-          <button
-            type="button"
-            onClick={() => fitView({ padding: 0.15, duration: 300 })}
-            aria-label="전체 보기"
-            title="전체 보기"
-          >
-            ⊙
-          </button>
+          <div className="nodemap-controls">
+            <button type="button" onClick={() => zoomIn()} aria-label="확대">
+              +
+            </button>
+            <button type="button" onClick={() => zoomOut()} aria-label="축소">
+              −
+            </button>
+            <button
+              type="button"
+              onClick={() => fitView({ padding: 0.15, duration: 300 })}
+              aria-label="전체 보기"
+              title="전체 보기"
+            >
+              ⊙
+            </button>
+          </div>
         </div>
 
         <DetailRail selected={selected} onClose={() => setSelected(null)} />

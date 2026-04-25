@@ -340,20 +340,63 @@
   color: var(--linen);
 }
 
-/* 디테일 레일 */
+/* 캔버스 + 디테일 레일 레이아웃 */
+.nodemap-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: stretch;
+}
+.nodemap-layout > .nodemap-canvas {
+  min-width: 0;
+}
+
+/* 디테일 레일 — 이제 캔버스 옆 컬럼에 배치 */
 .nodemap-detail {
-  position: absolute;
-  top: 52px;
-  right: 16px;
-  width: 280px;
+  position: relative;
+  align-self: stretch;
   background: var(--linen);
   border: 1px solid var(--ink);
-  padding: 16px 18px;
-  z-index: 4;
+  padding: 18px 20px;
   font-family: "Pretendard Variable", sans-serif;
   color: var(--ink);
   box-shadow: 4px 4px 0 0 var(--ink);
   animation: nm-fade-in 220ms ease both;
+  overflow-y: auto;
+}
+.nodemap-detail--legend {
+  background: var(--linen-deep, var(--linen));
+}
+.nodemap-detail__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ink-faint);
+}
+.nodemap-detail__legend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink);
+}
+.nodemap-detail__legend-row dt {
+  font-weight: 500;
+}
+.nodemap-detail__legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--ink);
+  flex-shrink: 0;
+}
+
+@media (max-width: 960px) {
+  .nodemap-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .nodemap-detail__eyebrow {
   font-size: 10px;

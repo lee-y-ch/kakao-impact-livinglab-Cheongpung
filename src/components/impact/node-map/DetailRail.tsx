@@ -14,7 +14,8 @@ type SelectedNode =
   | { kind: "shop"; data: ShopNodeData };
 
 /**
- * 노드 선택 시 우측에 떠오르는 신문 클리핑 스타일 디테일 카드.
+ * 노드 선택 시 옆에 떠오르는 신문 클리핑 스타일 디테일 카드.
+ * 선택 전에는 지도 읽는 법 legend 를 보여주어 빈 자리를 학습 안내로 채운다.
  * close(x) 는 부모에서 setSelected(null) 로 받아 처리.
  */
 export function DetailRail({
@@ -24,12 +25,55 @@ export function DetailRail({
   selected: SelectedNode | null;
   onClose: () => void;
 }) {
-  if (!selected) return null;
+  if (!selected) {
+    return (
+      <aside className="nodemap-detail nodemap-detail--legend">
+        <div className="nodemap-detail__eyebrow">
+          <span>읽는 법</span>
+        </div>
+        <h3 className="nodemap-detail__title">노드를 눌러 보세요</h3>
+        <p className="nodemap-detail__body">
+          좌측의 카테고리에서 시작해 우측 가게까지 한 줄로 이어지는 환대의
+          계보도예요. 굵은 선은 더 많은 공개 카드가 흘러간 길.
+        </p>
+        <dl className="nodemap-detail__legend">
+          <div className="nodemap-detail__legend-row">
+            <span
+              className="nodemap-detail__legend-swatch"
+              style={{ background: "var(--accent-sage)" }}
+            />
+            <dt>환대의 공유지</dt>
+          </div>
+          <div className="nodemap-detail__legend-row">
+            <span
+              className="nodemap-detail__legend-swatch"
+              style={{ background: "var(--accent-dust)" }}
+            />
+            <dt>환대의 네트워크</dt>
+          </div>
+          <div className="nodemap-detail__legend-row">
+            <span
+              className="nodemap-detail__legend-swatch"
+              style={{ background: "var(--accent-ochre)" }}
+            />
+            <dt>환대의 세계</dt>
+          </div>
+          <div className="nodemap-detail__legend-row">
+            <span
+              className="nodemap-detail__legend-swatch"
+              style={{ background: "var(--accent-clay)" }}
+            />
+            <dt>환대의 정책</dt>
+          </div>
+        </dl>
+      </aside>
+    );
+  }
 
   const content = renderContent(selected);
 
   return (
-    <aside className="nodemap-detail" aria-live="polite">
+    <aside className="nodemap-detail" aria-label="선택한 노드 디테일">
       <div className="nodemap-detail__eyebrow">
         <span>{content.eyebrow}</span>
         <button type="button" onClick={onClose} aria-label="닫기">

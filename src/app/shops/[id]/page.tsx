@@ -26,9 +26,7 @@ export default async function ShopDetailPage({ params }: Params) {
 
   const { data: shop } = await admin
     .from("shops")
-    .select(
-      "id, name, description, address, slogan, is_public, theme_color, accent_color, card_background_url"
-    )
+    .select("id, name, description, address, slogan, is_public")
     .eq("id", params.id)
     .maybeSingle();
 
