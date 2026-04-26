@@ -50,17 +50,17 @@
 
 ## 기술 스택
 
-| 영역            | 선택                                  |
-| --------------- | ------------------------------------- |
-| 프레임워크      | Next.js 14 (App Router) + TypeScript  |
-| 스타일          | Tailwind CSS + shadcn/ui              |
-| DB/Storage/Auth | Supabase (Postgres + Storage + Auth)  |
-| 참여자 로그인   | Supabase Auth + 카카오 OAuth Provider |
-| 사장님 로그인   | 가게 코드 (bcrypt) + httpOnly 쿠키    |
-| 관리자 로그인   | 환경변수 `ADMIN_PASSWORD`             |
-| LLM             | Anthropic Claude (Haiku 4.5)          |
-| 호스팅          | Vercel                                |
-| PWA             | `public/manifest.json`                |
+| 영역            | 선택                                        |
+| --------------- | ------------------------------------------- |
+| 프레임워크      | Next.js 14 (App Router) + TypeScript        |
+| 스타일          | Tailwind CSS + shadcn/ui                    |
+| DB/Storage/Auth | Supabase (Postgres + Storage + Auth)        |
+| 참여자 로그인   | Supabase Auth + 카카오 OAuth Provider       |
+| 사장님 로그인   | 가게 코드 (bcrypt) + httpOnly 쿠키          |
+| 관리자 로그인   | Supabase Auth + `app_metadata.role='admin'` |
+| LLM             | Anthropic Claude (Haiku 4.5)                |
+| 호스팅          | Vercel                                      |
+| PWA             | `public/manifest.json`                      |
 
 ## 디렉토리 (`src/`)
 
@@ -92,8 +92,10 @@ cp .env.local.example .env.local
 - `SUPABASE_SERVICE_ROLE_KEY` — 서버 전용 (RLS 우회, 관리자 API/시드)
 - `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET` — Supabase Auth Provider 등록용
 - `ANTHROPIC_API_KEY` — LLM 편지 보조 (Phase 4~)
-- `ADMIN_PASSWORD` — 청풍 관리자 로그인
+- `CREW_ACCESS_CODE` — 크루 공용 코드 (Phase 3)
 - `NEXT_PUBLIC_SITE_URL` — 로컬 `http://localhost:3001`, 배포 시 실제 도메인
+
+> 관리자 계정은 환경변수가 아니라 Supabase Auth 사용자에 `app_metadata.role='admin'` 을 부여하는 방식입니다. 절차는 `.env.local.example` 의 관리자 섹션 주석 참고.
 
 ## 로컬 개발
 
