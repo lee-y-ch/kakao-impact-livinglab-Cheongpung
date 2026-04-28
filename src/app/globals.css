@@ -1,4 +1,5 @@
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+@import url("https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -45,6 +46,57 @@
     --ring: 36 17% 10%;
 
     --radius: 0.375rem;
+
+    /* ────────────────────────────────────────────────────────
+     * Claude 디자인 토큰 (editorial paper · serif · oklch)
+     *  - Ink-on-Linen 토큰과 공존. 새 페이지·랜딩에서만 사용.
+     *  - 기존 페이지(--background/--foreground 사용)는 그대로 둠.
+     *  - 이름은 Claude artifact 와 동일 → 이식·검증 비용 최소화.
+     * ──────────────────────────────────────────────────────── */
+    --paper: oklch(0.99 0.002 90);
+    --paper-2: oklch(0.965 0.003 90);
+    --paper-3: oklch(0.92 0.004 90);
+    --ink: oklch(0.14 0.008 250);
+    --ink-2: oklch(0.3 0.007 250);
+    --ink-3: oklch(0.52 0.005 250);
+    --rule: oklch(0.85 0.004 90);
+    --rule-2: oklch(0.91 0.004 90);
+
+    /* 톤 다운된 4 accent — editorial */
+    --mud: oklch(0.42 0.075 55);
+    --mud-soft: oklch(0.95 0.018 65);
+    --sea: oklch(0.42 0.095 235);
+    --sea-soft: oklch(0.95 0.016 235);
+    --pine: oklch(0.44 0.07 160);
+    --pine-soft: oklch(0.95 0.014 160);
+    --sunset: oklch(0.58 0.14 38);
+    --sunset-soft: oklch(0.95 0.022 55);
+
+    /* 카테고리 매핑 */
+    --cat-commons: var(--pine);
+    --cat-commons-soft: var(--pine-soft);
+    --cat-network: var(--sea);
+    --cat-network-soft: var(--sea-soft);
+    --cat-world: var(--sunset);
+    --cat-world-soft: var(--sunset-soft);
+    --cat-policy: oklch(0.24 0.012 260);
+    --cat-policy-soft: oklch(0.92 0.006 260);
+
+    /* 폰트 패밀리 — UI / 서사 / 라벨 3종 */
+    --ui-font:
+      "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --serif-font: "Gowun Batang", "Noto Serif KR", serif;
+    --mono-font: "JetBrains Mono", ui-monospace, monospace;
+
+    --r-sm: 4px;
+    --r-md: 6px;
+    --r-lg: 10px;
+    --r-xl: 14px;
+
+    --shadow-card:
+      0 1px 2px rgba(18, 22, 30, 0.05), 0 10px 28px rgba(18, 22, 30, 0.06);
+    --shadow-hover:
+      0 2px 4px rgba(18, 22, 30, 0.07), 0 18px 48px rgba(18, 22, 30, 0.09);
   }
 }
 
@@ -83,5 +135,25 @@
   .eyebrow--latin {
     text-transform: uppercase;
     letter-spacing: 0.14em;
+  }
+
+  /* Claude editorial 유틸 */
+  .serif {
+    font-family: var(--serif-font);
+    letter-spacing: -0.015em;
+  }
+  .mono {
+    font-family: var(--mono-font);
+  }
+  .paper-grain {
+    background-image:
+      radial-gradient(oklch(0.5 0.02 250 / 0.02) 1px, transparent 1px),
+      radial-gradient(oklch(0.5 0.02 250 / 0.012) 1px, transparent 1px);
+    background-size:
+      4px 4px,
+      7px 7px;
+    background-position:
+      0 0,
+      2px 3px;
   }
 }

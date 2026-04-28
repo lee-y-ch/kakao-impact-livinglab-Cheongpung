@@ -1,8 +1,5 @@
 import type { Metadata, Viewport } from "next";
 
-import { Footer } from "@/components/layout/Footer";
-import { Header } from "@/components/layout/Header";
-import { getCurrentActor } from "@/lib/auth/current-actor";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,19 +15,20 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default async function RootLayout({
+/**
+ * Root shell. 의도적으로 가벼움.
+ * - Header/Footer 는 `(default)/layout.tsx` 에서 렌더 — 기존 Ink-on-Linen UI 페이지 전부 그쪽으로 묶음
+ * - 루트 `/page.tsx` (Claude editorial 랜딩) 은 Header/Footer 없이 자체 nav/footer 를 그림
+ */
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const actor = await getCurrentActor();
-
   return (
     <html lang="ko">
       <body className="flex min-h-screen flex-col bg-background font-sans antialiased">
-        <Header actor={actor} />
-        <div className="flex-1">{children}</div>
-        <Footer />
+        {children}
       </body>
     </html>
   );
