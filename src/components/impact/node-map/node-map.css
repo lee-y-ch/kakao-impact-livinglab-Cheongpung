@@ -8,6 +8,7 @@
      clay  · policy   — 붉은 점토
    ===================================================================== */
 .nodemap {
+  position: relative;
   --linen: #f6f1e7;
   --linen-deep: #ece5d3;
   --ink: #1d1a15;
