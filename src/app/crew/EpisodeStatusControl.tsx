@@ -5,14 +5,34 @@ import { useState, useTransition } from "react";
 
 type Status = "planned" | "in_progress" | "completed";
 
-const STATUS_LABEL: Record<Status, string> = {
-  planned: "예정",
-  in_progress: "진행",
-  completed: "완료",
+const STATUS_CONFIG: Record<
+  Status,
+  { label: string; color: string; bg: string }
+> = {
+  planned: {
+    label: "예정",
+    color: "var(--ink-3)",
+    bg: "var(--paper-3)",
+  },
+  in_progress: {
+    label: "진행",
+    color: "var(--pine)",
+    bg: "var(--pine-soft)",
+  },
+  completed: {
+    label: "완료",
+    color: "var(--ink-2)",
+    bg: "var(--paper-3)",
+  },
 };
 
 const ORDER: Status[] = ["planned", "in_progress", "completed"];
 
+/**
+ * 크루 에피소드 상태 stepper (editorial 톤).
+ * 시각만 시안 그대로 (3단계 stepper + 상태 pill), 기존 PATCH /api/episodes/[id]/status
+ * 호출 + 낙관적 업데이트 + 실패 시 롤백 그대로.
+ */
 export function EpisodeStatusControl({
   episodeId,
   initialStatus,
@@ -30,7 +50,7 @@ export function EpisodeStatusControl({
     setError(null);
 
     const previous = status;
-    setStatus(next); // optimistic
+    setStatus(next);
 
     try {
       const res = await fetch(`/api/episodes/${episodeId}/status`, {
@@ -54,29 +74,34 @@ export function EpisodeStatusControl({
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center overflow-hidden rounded-full border border-border text-xs">
-        {ORDER.map((s, idx) => (
+    <div style={{ display: "flex", gap: 4 }}>
+      {ORDER.map((s, i) => {
+        const cfg = STATUS_CONFIG[s];
+        const active = status === s;
+        return (
           <button
             key={s}
             type="button"
-            onClick={() => change(s)}
             disabled={isPending}
-            className={
-              "px-3 py-1.5 transition disabled:opacity-60 " +
-              (status === s
-                ? "bg-foreground text-background"
-                : "bg-background text-muted-foreground hover:bg-muted") +
-              (idx !== 0 ? " border-l border-border" : "")
-            }
+            onClick={() => change(s)}
+            title={error ?? undefined}
+            style={{
+              flex: 1,
+              padding: "8px 10px",
+              background: active ? cfg.color : "var(--paper-2)",
+              color: active ? "#fff" : "var(--ink-3)",
+              border: "none",
+              fontSize: 11.5,
+              fontWeight: 600,
+              fontFamily: "var(--ui-font)",
+              cursor: isPending ? "wait" : "pointer",
+              opacity: isPending ? 0.6 : 1,
+            }}
           >
-            {STATUS_LABEL[s]}
+            {i + 1}. {cfg.label}
           </button>
-        ))}
-      </div>
-      {error ? (
-        <span className="text-[11px] text-destructive">{error}</span>
-      ) : null}
+        );
+      })}
     </div>
   );
 }
