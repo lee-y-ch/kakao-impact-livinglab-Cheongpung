@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 /**
- * 본인 카드 상세에서 쓰는 액션 묶음.
- *   - 공개 토글 (is_public)
- *   - 삭제 요청 (soft — removed_at)
+ * Claude editorial 톤의 카드 액션 묶음.
+ *   - SHARE · 공개 / 비공개 (toggle)
+ *   - 삭제 요청 (soft, removed_at 세팅)
  *
- * 낙관적 업데이트는 안 씀. 서버 응답 받고 router.refresh() 로 RSC 리렌더.
+ * 시각만 시안에 맞추고 로직(API 호출·낙관적 업데이트 없이 router.refresh)은
+ * 기존 그대로.
  */
+
 type Props = {
   activityId: string;
   initialIsPublic: boolean;
@@ -27,8 +29,9 @@ export function CardActions({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  async function togglePublic(next: boolean) {
+  async function togglePublic() {
     if (pending) return;
+    const next = !isPublic;
     if (next && !faceConsentGranted) {
       setError("초상권 동의가 없는 카드는 공개할 수 없어요.");
       return;
@@ -78,39 +81,56 @@ export function CardActions({
     router.refresh();
   }
 
+  const shareLabel = isPublic ? "공개 중" : "비공개";
+  const sharePrimary = isPublic;
+
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-background p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-foreground">공개 상태</span>
-          <span className="text-xs text-muted-foreground">
-            {isPublic
-              ? "공개 피드·가게 페이지에 노출됩니다."
-              : "내 도감에만 남습니다."}
-          </span>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={isPublic}
-          disabled={pending}
-          onClick={() => togglePublic(!isPublic)}
-          className={
-            "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition " +
-            (isPublic ? "bg-emerald-500" : "bg-muted")
-          }
-        >
-          <span
-            className={
-              "inline-block h-5 w-5 transform rounded-full bg-white shadow transition " +
-              (isPublic ? "translate-x-5" : "translate-x-0.5")
-            }
-          />
-        </button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={togglePublic}
+        style={{
+          width: "100%",
+          padding: "14px",
+          fontSize: 12,
+          fontFamily: "var(--mono-font)",
+          letterSpacing: "0.1em",
+          background: sharePrimary ? "var(--ink)" : "var(--paper)",
+          border: "1px solid var(--ink)",
+          color: sharePrimary ? "var(--paper)" : "var(--ink)",
+          cursor: pending ? "wait" : "pointer",
+          opacity: pending ? 0.6 : 1,
+        }}
+      >
+        SHARE · {shareLabel}
+      </button>
+
+      <div
+        style={{
+          fontSize: 11.5,
+          color: "var(--ink-3)",
+          lineHeight: 1.6,
+          fontFamily: "var(--serif-font)",
+        }}
+      >
+        {isPublic
+          ? "지금은 공개 피드·가게 페이지에 노출됩니다."
+          : "지금은 내 도감에만 남습니다."}
       </div>
 
       {!faceConsentGranted ? (
-        <p className="text-[11px] text-muted-foreground">
+        <p
+          style={{
+            fontSize: 11,
+            color: "var(--ink-3)",
+            lineHeight: 1.6,
+            padding: "10px 12px",
+            border: "1px dashed var(--rule)",
+            background: "var(--paper)",
+            fontFamily: "var(--serif-font)",
+          }}
+        >
           이 카드는 초상권 동의 체크 없이 저장돼서 공개할 수 없어요. 새 카드에서
           동의를 체크한 뒤 다시 발급해주세요.
         </p>
@@ -120,13 +140,34 @@ export function CardActions({
         type="button"
         disabled={pending}
         onClick={requestDelete}
-        className="self-start text-xs font-medium text-destructive underline underline-offset-4 hover:opacity-80"
+        style={{
+          alignSelf: "flex-start",
+          background: "none",
+          border: "none",
+          padding: 0,
+          fontSize: 11,
+          fontFamily: "var(--mono-font)",
+          letterSpacing: "0.06em",
+          color: "oklch(0.45 0.13 30)",
+          textDecoration: "underline",
+          textUnderlineOffset: 4,
+          cursor: pending ? "wait" : "pointer",
+          opacity: pending ? 0.6 : 1,
+        }}
       >
         이 카드 삭제 요청
       </button>
 
       {error ? (
-        <p role="alert" className="text-xs text-destructive">
+        <p
+          role="alert"
+          style={{
+            fontSize: 11.5,
+            color: "oklch(0.45 0.13 30)",
+            fontFamily: "var(--serif-font)",
+            lineHeight: 1.6,
+          }}
+        >
           {error}
         </p>
       ) : null}
