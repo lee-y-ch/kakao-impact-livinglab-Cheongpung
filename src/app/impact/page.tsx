@@ -2,9 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { GhButton, GhWordmark } from "@/components/claude/primitives";
+import { PublicTopNav } from "@/components/claude/PublicTopNav";
 import { NodeMap } from "@/components/impact/node-map/NodeMap";
 import { loadNodeMapData } from "@/components/impact/node-map/server";
-import { type CurrentActor, getCurrentActor } from "@/lib/auth/current-actor";
+import { getCurrentActor } from "@/lib/auth/current-actor";
 import {
   calculateProgress,
   type ProgressResult,
@@ -406,10 +407,21 @@ export default async function ImpactPage() {
         minHeight: "100vh",
       }}
     >
-      <ImpactTopNav
+      <PublicTopNav
         actor={actor}
-        todayLabel={todayLabel}
-        issueNumber={issueNumber}
+        active="impact"
+        rightMeta={
+          <span
+            style={{
+              fontSize: 10.5,
+              fontFamily: "var(--mono-font)",
+              color: "var(--ink-3)",
+              letterSpacing: "0.1em",
+            }}
+          >
+            {todayLabel} · ISSUE {String(issueNumber).padStart(2, "0")}
+          </span>
+        }
       />
 
       {/* Hero */}
@@ -1163,111 +1175,6 @@ export default async function ImpactPage() {
 /* ─────────────────────────────────────────────────────────────
  * Sub-components (page-scoped)
  * ───────────────────────────────────────────────────────────── */
-
-function ImpactTopNav({
-  actor,
-  todayLabel,
-  issueNumber,
-}: {
-  actor: CurrentActor;
-  todayLabel: string;
-  issueNumber: number;
-}) {
-  return (
-    <header
-      style={{
-        padding: "20px 56px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        borderBottom: "1px solid var(--ink)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
-        <Link href="/" style={{ textDecoration: "none" }}>
-          <GhWordmark size={17} />
-        </Link>
-        <nav
-          style={{
-            display: "flex",
-            gap: 22,
-            fontSize: 12.5,
-            color: "var(--ink-2)",
-          }}
-        >
-          <Link
-            href="/impact"
-            style={{
-              color: "var(--ink)",
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            임팩트
-          </Link>
-          <Link
-            href="/projects"
-            style={{ color: "var(--ink-2)", textDecoration: "none" }}
-          >
-            프로젝트
-          </Link>
-          <Link
-            href="/feed"
-            style={{ color: "var(--ink-2)", textDecoration: "none" }}
-          >
-            피드
-          </Link>
-          <Link
-            href="/"
-            style={{ color: "var(--ink-2)", textDecoration: "none" }}
-          >
-            소개
-          </Link>
-        </nav>
-      </div>
-      <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-        <span
-          style={{
-            fontSize: 10.5,
-            fontFamily: "var(--mono-font)",
-            color: "var(--ink-3)",
-            letterSpacing: "0.1em",
-          }}
-        >
-          {todayLabel} · ISSUE {String(issueNumber).padStart(2, "0")}
-        </span>
-        {actor.role === "anonymous" ? (
-          <Link href="/login" style={{ textDecoration: "none" }}>
-            <GhButton variant="primary" size="sm">
-              카카오 로그인
-            </GhButton>
-          </Link>
-        ) : actor.role === "participant" ? (
-          <Link href="/collection" style={{ textDecoration: "none" }}>
-            <GhButton variant="secondary" size="sm">
-              내 도감
-            </GhButton>
-          </Link>
-        ) : (
-          <Link
-            href={
-              actor.role === "admin"
-                ? "/admin"
-                : actor.role === "owner"
-                  ? "/owner"
-                  : "/crew"
-            }
-            style={{ textDecoration: "none" }}
-          >
-            <GhButton variant="secondary" size="sm">
-              운영 홈
-            </GhButton>
-          </Link>
-        )}
-      </div>
-    </header>
-  );
-}
 
 function SectionHeader({
   number,
