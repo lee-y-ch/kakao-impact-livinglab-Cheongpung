@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,13 +10,16 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1e3a8a",
+  themeColor: "#f6f1e7",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
+/**
+ * Root shell. 의도적으로 가벼움.
+ * - Header/Footer 는 `(default)/layout.tsx` 에서 렌더 — 기존 Ink-on-Linen UI 페이지 전부 그쪽으로 묶음
+ * - 루트 `/page.tsx` (Claude editorial 랜딩) 은 Header/Footer 없이 자체 nav/footer 를 그림
+ */
 export default function RootLayout({
   children,
 }: {
@@ -23,7 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className="flex min-h-screen flex-col bg-background font-sans antialiased">
         {children}
       </body>
     </html>
