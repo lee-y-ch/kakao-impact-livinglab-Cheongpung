@@ -1,1172 +1,544 @@
+import Image from "next/image";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
-import { type CategorySlug, GH_CAT } from "@/components/claude/primitives";
-import { getCurrentActor } from "@/lib/auth/current-actor";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
+import { CountUp } from "@/components/v2/CountUp";
+import { FaqAccordion } from "@/components/v2/FaqAccordion";
 
-export const dynamic = "force-dynamic";
-
-const POPULAR_LIMIT = 6;
-const FEED_LIMIT = 4;
-const LOG_LIMIT = 8;
-
-/* ─────────────────────────────────────────────────────────────
- * 루트 / — Claude editorial 톤 랜딩.
+/**
+ * v2 redesign — 강화유니버스 메인 (`/`).
+ * 시안: design-v2-reference/index.html.
  *
- * 출처: Claude artifact pages/LandingFigma.jsx (2026-04-29 export).
- * 인라인 oklch 토큰 → globals.css 의 --paper / --ink / 카테고리 매핑으로 치환.
- * mock 데이터 (GH_*) → 실제 Supabase 쿼리로 치환.
+ * 섹션:
+ *  1. Hero — 그라디언트 배경 풀스크린
+ *  2. Intro Strip — 다크 가로 스트립
+ *  3. Element 01: 잠시섬
+ *  4. Element 02: 2026 프로젝트 (4 카드)
+ *  5. Manifesto
+ *  6. Stats — 3 카운터
+ *  7. FAQ — 4 아코디언
+ *  8. CTA
  *
- * 로그인 사용자는 역할별 홈으로 redirect, ?present=1 일 땐 분기 우회.
- * ───────────────────────────────────────────────────────────── */
-
-type CategoryRow = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string | null;
-  sort_order: number;
-};
-
-type ProjectRow = {
-  id: string;
-  slug: string;
-  title: string;
-  summary: string | null;
-  cover_url: string | null;
-  started_at: string | null;
-  ended_at: string | null;
-  category_id: string;
-};
-
-type ActivityRow = {
-  id: string;
-  body: string | null;
-  photo_url: string | null;
-  created_at: string;
-  project: { slug: string; title: string; category_id: string } | null;
-  episode: { title: string } | null;
-};
-
-const cream = "oklch(0.978 0.012 95)";
-const mint = "oklch(0.94 0.025 200)";
-const mintSoft = "oklch(0.97 0.012 195)";
-const ink = "var(--ink)";
-const ink2 = "var(--ink-2)";
-const ink3 = "var(--ink-3)";
-const rule = "var(--rule)";
-const heroPhoto =
-  "linear-gradient(180deg, oklch(0.62 0.08 200) 0%, oklch(0.55 0.10 175) 35%, oklch(0.50 0.11 145) 60%, oklch(0.45 0.09 130) 100%)";
-const heroSky =
-  "radial-gradient(ellipse at 70% 20%, oklch(0.92 0.04 80 / 0.5), transparent 55%)";
-
-const headingStyle = {
-  fontFamily: "var(--ui-font)",
-  fontWeight: 800,
-  color: ink,
-  letterSpacing: "-0.025em",
-} as const;
-
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams?: { present?: string };
-}) {
-  const actor = await getCurrentActor();
-  const presentMode =
-    searchParams?.present === "1" || searchParams?.present === "true";
-
-  if (!presentMode) {
-    if (actor.role === "participant") redirect("/collection");
-    if (actor.role === "owner") redirect("/owner");
-    if (actor.role === "admin") redirect("/admin");
-    if (actor.role === "crew") redirect("/crew");
-  }
-
-  const today = new Date().toISOString().slice(0, 10);
-  const admin = createAdminClient();
-
-  const [
-    categoriesRes,
-    heroProjectRes,
-    popularRes,
-    participantCountRes,
-    cardCountRes,
-    shopCountRes,
-    feedRes,
-    logRes,
-  ] = await Promise.all([
-    admin
-      .from("categories")
-      .select("id, slug, name, description, sort_order")
-      .order("sort_order"),
-    admin
-      .from("projects")
-      .select(
-        "id, slug, title, summary, cover_url, started_at, ended_at, category_id"
-      )
-      .eq("is_public", true)
-      .or(`ended_at.is.null,ended_at.gte.${today}`)
-      .order("started_at", { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle(),
-    admin
-      .from("projects")
-      .select(
-        "id, slug, title, summary, cover_url, started_at, ended_at, category_id"
-      )
-      .eq("is_public", true)
-      .order("started_at", { ascending: false, nullsFirst: false })
-      .limit(POPULAR_LIMIT),
-    admin.from("users").select("id", { count: "exact", head: true }),
-    admin
-      .from("activities")
-      .select("id", { count: "exact", head: true })
-      .eq("is_public", true)
-      .is("removed_at", null),
-    admin
-      .from("shops")
-      .select("id", { count: "exact", head: true })
-      .eq("is_public", true),
-    admin
-      .from("activities")
-      .select(
-        `id, body, photo_url, created_at,
-         project:project_id (slug, title, category_id),
-         episode:episode_id (title)`
-      )
-      .eq("is_public", true)
-      .is("removed_at", null)
-      .order("created_at", { ascending: false })
-      .limit(FEED_LIMIT),
-    admin
-      .from("activities")
-      .select(
-        `id, body, photo_url, created_at,
-         project:project_id (slug, title, category_id),
-         episode:episode_id (title)`
-      )
-      .eq("is_public", true)
-      .is("removed_at", null)
-      .order("created_at", { ascending: false })
-      .range(FEED_LIMIT, FEED_LIMIT + LOG_LIMIT - 1),
-  ]);
-
-  const categories = (categoriesRes.data ?? []) as CategoryRow[];
-  const categoryById = new Map(categories.map((c) => [c.id, c]));
-  const heroProject = (heroProjectRes.data ?? null) as ProjectRow | null;
-  const popular = (popularRes.data ?? []) as ProjectRow[];
-  const participantCount = participantCountRes.count ?? 0;
-  const cardCount = cardCountRes.count ?? 0;
-  const shopCount = shopCountRes.count ?? 0;
-  const feedCards = (feedRes.data ?? []) as unknown as ActivityRow[];
-  const logCards = (logRes.data ?? []) as unknown as ActivityRow[];
-
-  const heroCategorySlug = heroProject
-    ? (categoryById.get(heroProject.category_id)?.slug ?? null)
-    : null;
-  const heroDateText = formatDateRange(
-    heroProject?.started_at ?? null,
-    heroProject?.ended_at ?? null
-  );
-
-  /* category chips — 우리 4개 + 회고/굿즈로 6개 */
-  const chips: Array<{
-    label: string;
-    en: string;
-    icon: string;
-    bg: string;
-    href: string;
-  }> = [
-    {
-      label: "공유지",
-      en: "COMMONS",
-      icon: "◆",
-      bg: "oklch(0.94 0.04 160)",
-      href: "/projects?category=commons",
-    },
-    {
-      label: "네트워크",
-      en: "NETWORK",
-      icon: "◉",
-      bg: "oklch(0.93 0.04 230)",
-      href: "/projects?category=network",
-    },
-    {
-      label: "세계",
-      en: "WORLD",
-      icon: "◐",
-      bg: "oklch(0.95 0.05 60)",
-      href: "/projects?category=world",
-    },
-    {
-      label: "정책",
-      en: "POLICY",
-      icon: "▣",
-      bg: "oklch(0.94 0.04 320)",
-      href: "/projects?category=policy",
-    },
-    {
-      label: "회고",
-      en: "JOURNAL",
-      icon: "◇",
-      bg: "oklch(0.95 0.02 90)",
-      href: "/feed",
-    },
-    {
-      label: "임팩트",
-      en: "IMPACT",
-      icon: "✦",
-      bg: "oklch(0.94 0.03 30)",
-      href: "/impact",
-    },
-  ];
-
+ * 데이터는 시안의 하드코딩 카피. Stats 만 추후 Supabase 집계로 교체 예정.
+ */
+export default function HomePage() {
   return (
-    <div
+    <>
+      <Hero />
+      <IntroStrip />
+      <Jamsiseom />
+      <ProjectsGrid />
+      <Manifesto />
+      <Stats />
+      <Faq />
+      <CtaSection />
+    </>
+  );
+}
+
+/* ─────────────────────────── 1. Hero ─────────────────────────── */
+
+function Hero() {
+  return (
+    <section
+      className="relative flex min-h-[680px] items-center"
       style={{
-        background: cream,
-        fontFamily: "var(--ui-font)",
-        color: ink,
-        minHeight: "100vh",
+        height: "100vh",
+        background:
+          "linear-gradient(160deg, #F9FAFB 0%, #F4F5F7 50%, #EDEEF0 100%)",
       }}
     >
-      {/* Top nav */}
-      <div
-        style={{
-          padding: "22px 56px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          borderBottom: `1px solid ${rule}`,
-          background: cream,
-        }}
-      >
+      <div className="relative z-10 mx-auto w-full max-w-[1200px] px-6 lg:px-[60px]">
+        <p className="mb-7 text-[11px] font-semibold uppercase tracking-[4px] text-v2-brand">
+          Ganghwa Universe &nbsp;·&nbsp; 2026
+        </p>
+        <h1
+          className="mb-6 font-bold leading-[1.1] tracking-[-2px] text-v2-ink"
+          style={{ fontSize: "clamp(44px, 6.5vw, 80px)" }}
+        >
+          환대로
+          <br />
+          만들어가는 <span style={{ color: "#1DB87A" }}>세계</span>
+        </h1>
+        <p
+          className="mb-12 max-w-[420px] font-light leading-[1.75] text-v2-ink3"
+          style={{ fontSize: "clamp(15px, 1.8vw, 19px)" }}
+        >
+          우리가 살고 싶은 세계를
+          <br />
+          강화에서 함께 실험합니다.
+        </p>
         <Link
-          href="/"
-          style={{
-            fontSize: 18,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            display: "flex",
-            alignItems: "baseline",
-            gap: 2,
-            color: ink,
-            textDecoration: "none",
-          }}
+          href="#jamsiseom"
+          className="inline-flex items-center gap-1.5 rounded-full bg-v2-brand px-8 py-3.5 text-[14px] font-medium tracking-[0.2px] text-white transition-all hover:scale-[1.02] hover:bg-v2-brandDeep active:scale-[0.98]"
         >
-          강화유니버스
-          <span style={{ color: "oklch(0.55 0.13 175)", fontSize: 22 }}>.</span>
+          시작하기
         </Link>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 32,
-            fontSize: 13,
-            fontWeight: 600,
-            color: ink2,
-          }}
-        >
-          <Link href="/projects" style={{ color: ink, textDecoration: "none" }}>
-            프로그램
-          </Link>
-          <Link
-            href="/projects"
-            style={{ color: ink2, textDecoration: "none" }}
-          >
-            프로젝트
-          </Link>
-          <Link href="/feed" style={{ color: ink2, textDecoration: "none" }}>
-            로그
-          </Link>
-          <Link href="/shops" style={{ color: ink2, textDecoration: "none" }}>
-            가게
-          </Link>
-          <Link href="/impact" style={{ color: ink2, textDecoration: "none" }}>
-            소개
-          </Link>
-          <Link
-            href="/login"
-            style={{
-              padding: "6px 14px",
-              background: ink,
-              color: cream,
-              borderRadius: 999,
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: "-0.01em",
-              textDecoration: "none",
-            }}
-          >
-            로그인
-          </Link>
-        </div>
       </div>
-
-      {/* HERO — full bleed photo with overlaid card */}
-      <div style={{ padding: "24px 56px 56px" }}>
-        <div
-          style={{
-            position: "relative",
-            height: 340,
-            borderRadius: 18,
-            overflow: "hidden",
-            background: heroPhoto,
-          }}
-        >
-          <div
-            style={{ position: "absolute", inset: 0, background: heroSky }}
-          />
-          <svg
-            width="100%"
-            height="100%"
-            viewBox="0 0 1200 340"
-            preserveAspectRatio="none"
-            style={{ position: "absolute", inset: 0 }}
-            aria-hidden
-          >
-            <path
-              d="M0,210 L180,150 L320,180 L480,120 L640,160 L820,130 L1000,170 L1200,140 L1200,340 L0,340 Z"
-              fill="oklch(0.42 0.07 145)"
-              opacity="0.82"
-            />
-            <path
-              d="M0,260 L160,230 L320,250 L520,210 L720,240 L900,220 L1100,245 L1200,225 L1200,340 L0,340 Z"
-              fill="oklch(0.36 0.08 135)"
-            />
-            <path
-              d="M0,300 L200,290 L420,300 L640,288 L880,295 L1100,288 L1200,292 L1200,340 L0,340 Z"
-              fill="oklch(0.30 0.06 130)"
-            />
-          </svg>
-
-          <div
-            style={{
-              position: "absolute",
-              left: 40,
-              top: 48,
-              width: 320,
-              background: mint,
-              borderRadius: 18,
-              padding: "26px 28px 24px",
-              boxShadow: "0 12px 30px rgba(20,30,40,0.18)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: "oklch(0.45 0.10 175)",
-                letterSpacing: "0.08em",
-                marginBottom: 10,
-                fontFamily: "var(--mono-font)",
-              }}
-            >
-              {heroProject
-                ? "MODOJI · 모이는 중"
-                : "WELCOME · 환대로 잇는 강화"}
-            </div>
-            <div
-              style={{
-                fontSize: 30,
-                fontWeight: 800,
-                lineHeight: 1.18,
-                letterSpacing: "-0.025em",
-                color: ink,
-              }}
-            >
-              {heroProject ? (
-                heroProject.title
-              ) : (
-                <>
-                  오늘도 강화도가
-                  <br />
-                  조금씩 더<br />
-                  강화됩니다
-                </>
-              )}
-            </div>
-            <Link
-              href={heroProject ? `/projects/${heroProject.slug}` : "/impact"}
-              style={{
-                marginTop: 18,
-                padding: "12px 22px",
-                borderRadius: 999,
-                background: ink,
-                color: "#fff",
-                fontSize: 13,
-                fontWeight: 700,
-                letterSpacing: "-0.01em",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 10,
-                textDecoration: "none",
-              }}
-            >
-              <span
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 999,
-                  background: "oklch(0.85 0.18 80)",
-                }}
-              />
-              {heroProject ? "자세히 보기" : "강화의 진척 보기"} →
-            </Link>
-          </div>
-
-          <div
-            style={{
-              position: "absolute",
-              right: 24,
-              bottom: 18,
-              fontSize: 11,
-              color: "rgba(255,255,255,0.7)",
-              letterSpacing: "0.05em",
-              fontFamily: "var(--mono-font)",
-            }}
-          >
-            {heroDateText ? `${heroDateText} · 강화도` : "동막해변 · 강화도"}
-          </div>
-        </div>
-      </div>
-
-      {/* CATEGORY CHIPS */}
-      <div style={{ padding: "8px 56px 56px" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "space-between",
-            marginBottom: 24,
-          }}
-        >
-          <h2 style={{ ...headingStyle, fontSize: 28, margin: 0 }}>
-            강화유니버스 프로그램
-          </h2>
-          <Link
-            href="/projects"
-            style={{
-              fontSize: 11.5,
-              fontWeight: 700,
-              color: ink2,
-              padding: "7px 14px",
-              background: cream,
-              border: `1px solid ${rule}`,
-              borderRadius: 999,
-              textDecoration: "none",
-            }}
-          >
-            모든 프로그램 보기 →
-          </Link>
-        </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(6, 1fr)",
-            gap: 14,
-          }}
-        >
-          {chips.map((c, i) => (
-            <Link
-              key={i}
-              href={c.href}
-              style={{ textAlign: "center", textDecoration: "none" }}
-            >
-              <div
-                style={{
-                  width: 84,
-                  height: 84,
-                  borderRadius: 999,
-                  background: c.bg,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 10px",
-                  fontSize: 30,
-                  color: ink,
-                  border: `1px solid ${rule}`,
-                }}
-                aria-hidden
-              >
-                {c.icon}
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: ink }}>
-                {c.label}
-              </div>
-              <div
-                style={{
-                  fontSize: 9.5,
-                  fontFamily: "var(--mono-font)",
-                  color: ink3,
-                  letterSpacing: "0.1em",
-                  marginTop: 2,
-                }}
-              >
-                {c.en}
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* POPULAR PROJECTS */}
-      {popular.length > 0 ? (
-        <div style={{ padding: "24px 56px 64px" }}>
-          <h2
-            style={{
-              ...headingStyle,
-              fontSize: 28,
-              textAlign: "center",
-              margin: "0 0 28px",
-            }}
-          >
-            지금 진행 중인 프로젝트
-          </h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 16,
-            }}
-          >
-            {popular.map((p) => {
-              const cat = categoryById.get(p.category_id);
-              const slug = (cat?.slug ?? null) as CategorySlug | null;
-              const visual = slug
-                ? GH_CAT[slug]
-                : { color: "var(--ink-2)", soft: "var(--paper-2)", en: "—" };
-              const dateText = formatDateRange(p.started_at, p.ended_at);
-              return (
-                <Link
-                  key={p.id}
-                  href={`/projects/${p.slug}`}
-                  style={{
-                    background: mintSoft,
-                    borderRadius: 14,
-                    padding: 14,
-                    border: `1px solid ${rule}`,
-                    textDecoration: "none",
-                    color: ink,
-                    display: "block",
-                  }}
-                >
-                  <div
-                    style={{
-                      position: "relative",
-                      height: 140,
-                      borderRadius: 10,
-                      overflow: "hidden",
-                      background: `linear-gradient(135deg, ${visual.soft}, oklch(0.85 0.02 200))`,
-                      marginBottom: 14,
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        background: `radial-gradient(circle at 70% 30%, ${visual.color} 0%, transparent 35%), radial-gradient(circle at 20% 80%, ${visual.color} 0%, transparent 30%)`,
-                        opacity: 0.18,
-                      }}
-                    />
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 10,
-                        right: 10,
-                        width: 24,
-                        height: 24,
-                        borderRadius: 999,
-                        background: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 11,
-                        color: "oklch(0.65 0.18 30)",
-                      }}
-                    >
-                      ★
-                    </div>
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: 12,
-                        bottom: 10,
-                        fontSize: 9.5,
-                        fontFamily: "var(--mono-font)",
-                        color: "#fff",
-                        letterSpacing: "0.08em",
-                        background: "rgba(20,22,28,0.5)",
-                        padding: "3px 8px",
-                        borderRadius: 4,
-                      }}
-                    >
-                      {(visual.en ?? "—").toUpperCase()}
-                      {dateText ? ` · ${dateText}` : ""}
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 15.5,
-                      fontWeight: 800,
-                      letterSpacing: "-0.02em",
-                      marginBottom: 6,
-                    }}
-                  >
-                    {p.title}
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      fontSize: 11,
-                      color: ink3,
-                      fontFamily: "var(--mono-font)",
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 6,
-                        height: 6,
-                        background: visual.color,
-                      }}
-                    />
-                    <span>{cat?.name ?? "강화"}</span>
-                    {p.summary ? (
-                      <span
-                        style={{
-                          marginLeft: "auto",
-                          maxWidth: 160,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {p.summary}
-                      </span>
-                    ) : null}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-
-      {/* STATS */}
-      <div style={{ padding: "48px 56px 64px" }}>
-        <h2
-          style={{
-            ...headingStyle,
-            fontSize: 24,
-            textAlign: "center",
-            margin: "0 0 36px",
-          }}
-        >
-          올해 강화유니버스에 모인 사람들
-        </h2>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 16,
-            maxWidth: 880,
-            margin: "0 auto",
-          }}
-        >
-          {[
-            [koCount(participantCount, "명"), "참여자"],
-            [koCount(cardCount, "장"), "쌓인 카드"],
-            [koCount(shopCount, "곳"), "강화의 동행 가게"],
-          ].map(([v, k], i) => (
-            <div key={i} style={{ textAlign: "center", padding: "20px 0" }}>
-              <div
-                style={{
-                  fontSize: 48,
-                  fontWeight: 800,
-                  letterSpacing: "-0.04em",
-                  color: "oklch(0.45 0.13 175)",
-                  lineHeight: 1,
-                  fontFamily: "var(--serif-font)",
-                }}
-              >
-                {v}
-              </div>
-              <div
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: ink2,
-                  marginTop: 12,
-                }}
-              >
-                {k}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* FEED PEEK */}
-      {feedCards.length > 0 ? (
-        <div style={{ padding: "48px 56px 64px", background: mintSoft }}>
-          <h2
-            style={{
-              ...headingStyle,
-              fontSize: 24,
-              textAlign: "center",
-              margin: "0 0 8px",
-            }}
-          >
-            공개로 모인 카드를 살짝 들여다보세요
-          </h2>
-          <div
-            style={{
-              fontSize: 13,
-              textAlign: "center",
-              color: ink3,
-              marginBottom: 28,
-            }}
-          >
-            좋아요·팔로우 없이, 시간순으로만 흐릅니다
-          </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 14,
-              marginBottom: 28,
-            }}
-          >
-            {feedCards.map((c) => {
-              const cat = c.project
-                ? categoryById.get(c.project.category_id)
-                : null;
-              const slug = (cat?.slug ?? null) as CategorySlug | null;
-              const visual = slug
-                ? GH_CAT[slug]
-                : { color: "var(--ink-2)", en: "—" };
-              return (
-                <article
-                  key={c.id}
-                  style={{
-                    aspectRatio: "1/1",
-                    background: "#fff",
-                    border: `1px solid ${rule}`,
-                    borderRadius: 8,
-                    padding: 14,
-                    position: "relative",
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      fontSize: 9.5,
-                      fontFamily: "var(--mono-font)",
-                      letterSpacing: "0.1em",
-                      color: visual.color,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 6,
-                        height: 6,
-                        background: visual.color,
-                      }}
-                    />
-                    {(visual.en ?? "—").toUpperCase()} · No.
-                    {c.id.slice(-4).toUpperCase()}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--serif-font)",
-                      fontSize: 13,
-                      lineHeight: 1.6,
-                      color: ink,
-                      flex: 1,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {c.body ? `"${c.body}"` : "—"}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 10,
-                      fontFamily: "var(--mono-font)",
-                      color: ink3,
-                      marginTop: 8,
-                      display: "flex",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <span>
-                      {c.project?.title ?? c.episode?.title ?? "강화도"}
-                    </span>
-                    <span>{formatDate(c.created_at)}</span>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <Link
-              href="/feed"
-              style={{
-                padding: "12px 22px",
-                borderRadius: 999,
-                background: ink,
-                color: cream,
-                fontSize: 13,
-                fontWeight: 700,
-                letterSpacing: "-0.01em",
-                textDecoration: "none",
-                display: "inline-block",
-              }}
-            >
-              전체 피드 보기 →
-            </Link>
-          </div>
-        </div>
-      ) : null}
-
-      {/* LOG ARCHIVE — 4×2 */}
-      {logCards.length > 0 ? (
-        <div style={{ padding: "56px 56px 56px" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              justifyContent: "space-between",
-              marginBottom: 24,
-            }}
-          >
-            <h2 style={{ ...headingStyle, fontSize: 28, margin: 0 }}>
-              강화유니버스 로그
-            </h2>
-            <span style={{ fontSize: 12, color: ink3 }}>
-              크루가 기록한 현장의 글
-            </span>
-          </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 14,
-            }}
-          >
-            {logCards.map((c, i) => {
-              const cat = c.project
-                ? categoryById.get(c.project.category_id)
-                : null;
-              const slug = (cat?.slug ?? null) as CategorySlug | null;
-              const visual = slug ? GH_CAT[slug] : null;
-              const tagText = `CH.${String(i + 1).padStart(2, "0")}`;
-              const gradient = visual
-                ? `linear-gradient(135deg, ${visual.soft}, oklch(0.55 0.05 200))`
-                : "linear-gradient(135deg, oklch(0.85 0.02 90), oklch(0.55 0.05 200))";
-              return (
-                <Link
-                  key={c.id}
-                  href="/feed"
-                  style={{ textDecoration: "none", color: ink }}
-                >
-                  <div
-                    style={{
-                      position: "relative",
-                      aspectRatio: "4/3",
-                      borderRadius: 8,
-                      background: gradient,
-                      marginBottom: 10,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 8,
-                        right: 8,
-                        width: 8,
-                        height: 8,
-                        borderRadius: 999,
-                        background: "oklch(0.62 0.20 25)",
-                      }}
-                    />
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: 10,
-                        bottom: 8,
-                        fontSize: 9.5,
-                        fontFamily: "var(--mono-font)",
-                        color: "#fff",
-                        letterSpacing: "0.08em",
-                        background: "rgba(20,22,28,0.4)",
-                        padding: "2px 7px",
-                        borderRadius: 4,
-                      }}
-                    >
-                      {tagText}
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12.5,
-                      fontWeight: 700,
-                      lineHeight: 1.5,
-                      marginBottom: 4,
-                      color: ink,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {c.body ?? c.project?.title ?? "강화 어딘가"}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 10.5,
-                      fontFamily: "var(--mono-font)",
-                      color: ink3,
-                    }}
-                  >
-                    {formatDate(c.created_at)}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-
-      {/* SUBSCRIBE CTA */}
-      <div style={{ padding: "24px 56px 64px" }}>
-        <div
-          style={{
-            background: mint,
-            borderRadius: 18,
-            padding: "52px 40px",
-            textAlign: "center",
-          }}
-        >
-          <h2 style={{ ...headingStyle, fontSize: 32, margin: "0 0 12px" }}>
-            강화유니버스에 합류하세요
-          </h2>
-          <p
-            style={{
-              fontSize: 14,
-              color: ink2,
-              lineHeight: 1.7,
-              maxWidth: 520,
-              margin: "0 auto 24px",
-            }}
-          >
-            카카오로 로그인하면 현장에서 받은 QR로 카드를 발급할 수 있어요. 같은
-            자리에 여러 번 와도 카드가 여러 장 쌓입니다.
-          </p>
-          <div
-            style={{
-              display: "inline-flex",
-              gap: 10,
-              alignItems: "center",
-              justifyContent: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <Link
-              href="/login"
-              style={{
-                padding: "12px 22px",
-                borderRadius: 999,
-                background: ink,
-                color: cream,
-                fontSize: 13,
-                fontWeight: 700,
-                textDecoration: "none",
-              }}
-            >
-              카카오로 시작하기 →
-            </Link>
-            <Link
-              href="/impact"
-              style={{
-                padding: "12px 22px",
-                borderRadius: 999,
-                background: "#fff",
-                color: ink,
-                fontSize: 13,
-                fontWeight: 700,
-                border: `1px solid ${rule}`,
-                textDecoration: "none",
-              }}
-            >
-              강화의 진척 보기
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* FOOTER */}
       <div
-        style={{
-          background: ink,
-          color: "oklch(0.7 0.005 250)",
-          padding: "40px 56px",
-        }}
+        className="absolute bottom-11 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2.5 text-[10px] tracking-[3px] sm:flex"
+        style={{ color: "rgba(0,0,0,0.25)" }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 32,
-            marginBottom: 32,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
+        SCROLL
+        <div className="h-11 w-px" style={{ background: "rgba(0,0,0,0.15)" }} />
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────────── 2. Intro Strip ─────────────────────────── */
+
+function IntroStrip() {
+  return (
+    <div
+      className="flex items-center gap-12 overflow-x-auto px-6 py-7 lg:px-[60px]"
+      style={{ background: "#1A1A1A" }}
+    >
+      <strong className="whitespace-nowrap text-[12px] font-medium text-white/70">
+        잠시섬
+      </strong>
+      <IntroDot />
+      <span className="whitespace-nowrap text-[12px] tracking-[0.5px] text-white/40">
+        베이스캠프 · 체류형 환대 플랫폼
+      </span>
+      <IntroDot />
+      <strong className="whitespace-nowrap text-[12px] font-medium text-white/70">
+        2026 프로젝트
+      </strong>
+      <IntroDot />
+      <span className="whitespace-nowrap text-[12px] tracking-[0.5px] text-white/40">
+        액티브 라이프 &nbsp;/&nbsp; 로컬 문화 공동 창작 &nbsp;/&nbsp; 글로벌
+        네트워크 &nbsp;/&nbsp; 테크 &amp; 솔루션
+      </span>
+      <IntroDot />
+      <span className="whitespace-nowrap text-[12px] tracking-[0.5px] text-white/40">
+        소비자에서 시민으로
+      </span>
+    </div>
+  );
+}
+
+function IntroDot() {
+  return (
+    <div className="h-[3px] w-[3px] flex-shrink-0 rounded-full bg-white/20" />
+  );
+}
+
+/* ─────────────────────────── 3. Element 01: 잠시섬 ─────────────────────────── */
+
+function Jamsiseom() {
+  return (
+    <section
+      id="jamsiseom"
+      className="mx-auto max-w-[1200px] px-6 py-[80px] lg:px-[60px] lg:py-[130px]"
+    >
+      <div className="grid items-center gap-11 lg:grid-cols-[1.05fr_0.95fr] lg:gap-[100px]">
+        <AnimateOnScroll delay={0.1}>
+          <div className="group relative aspect-[5/4] overflow-hidden rounded">
+            <Image
+              src="/v2/guniverse_images/guniverse_01.jpg"
+              alt="잠시섬 — 강화유니버스 베이스캠프"
+              fill
+              sizes="(max-width: 900px) 100vw, 60vw"
+              className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
+              priority
+            />
             <div
+              className="absolute bottom-7 left-7 rounded-md border border-white/40 px-[18px] py-2.5 text-[11px] font-medium tracking-[2px] text-v2-ink"
               style={{
-                fontSize: 18,
-                fontWeight: 800,
-                color: "#fff",
-                letterSpacing: "-0.02em",
-                marginBottom: 8,
-                display: "flex",
-                alignItems: "baseline",
-                gap: 2,
+                background: "rgba(255,255,255,0.88)",
+                backdropFilter: "blur(8px)",
               }}
             >
-              강화유니버스
-              <span style={{ color: "oklch(0.65 0.13 175)", fontSize: 22 }}>
-                .
-              </span>
+              JAMSISEOM
             </div>
-            <div
-              style={{
-                fontSize: 11.5,
-                lineHeight: 1.7,
-                color: "oklch(0.6 0.005 250)",
-                maxWidth: 360,
-              }}
+          </div>
+        </AnimateOnScroll>
+        <div>
+          <AnimateOnScroll>
+            <p className="mb-3.5 text-[10.5px] font-medium uppercase tracking-[3.5px] text-v2-brand">
+              Element 01 &nbsp;·&nbsp; 베이스캠프
+            </p>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.1}>
+            <h2
+              className="mb-[22px] font-bold leading-[1.2] tracking-[-1.2px] text-v2-ink"
+              style={{ fontSize: "clamp(28px, 3.8vw, 44px)" }}
             >
-              청풍이 운영하는 강화도 환대 커뮤니티 대시보드. 카카오임팩트
-              지원사업 참여작.
+              강화유니버스의
+              <br />
+              출입구, 잠시섬
+            </h2>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.2}>
+            <p className="mb-9 text-[14.5px] font-light leading-[1.9] text-v2-ink2">
+              잠시섬은 모든 여정이 시작되는 곳입니다.
+              <br />
+              단순한 체류를 넘어, 지역 문화를 함께 만들고
+              <br />
+              환대의 감각을 확장하는 시민이 되는 경험을
+              <br />
+              제공하는 환대의 플랫폼입니다.
+            </p>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.3}>
+            <div className="flex flex-wrap items-center gap-5">
+              <Link
+                href="#jamsiseom"
+                className="inline-flex items-center gap-2 border-b border-v2-brand pb-0.5 text-[13px] font-medium text-v2-brand transition-all hover:gap-3.5 hover:opacity-75"
+              >
+                더 알아보기 →
+              </Link>
+              <Link
+                href="#cta"
+                className="inline-flex items-center gap-1.5 rounded-full bg-v2-brand px-6 py-2.5 text-[13px] font-medium text-white transition-all hover:scale-[1.02] hover:bg-v2-brandDeep active:scale-[0.98]"
+              >
+                참여하기
+              </Link>
             </div>
-          </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, auto)",
-              gap: 48,
-              fontSize: 12,
-              lineHeight: 2,
-            }}
-          >
-            <FooterColumn
-              title="프로그램"
-              items={[
-                ["진행 중인 프로젝트", "/projects"],
-                ["강화의 진척", "/impact"],
-              ]}
-            />
-            <FooterColumn
-              title="커뮤니티"
-              items={[
-                ["참여자 도감", "/collection"],
-                ["로그", "/feed"],
-              ]}
-            />
-            <FooterColumn
-              title="청풍"
-              items={[
-                ["사장님 로그인", "/owner/login"],
-                ["관리자 로그인", "/admin/login"],
-              ]}
-            />
-            <FooterColumn title="가게" items={[["가게 둘러보기", "/shops"]]} />
-          </div>
+          </AnimateOnScroll>
         </div>
-        <div
-          style={{
-            borderTop: "1px solid oklch(0.25 0.006 250)",
-            paddingTop: 18,
-            display: "flex",
-            justifyContent: "space-between",
-            fontSize: 10.5,
-            fontFamily: "var(--mono-font)",
-            color: "oklch(0.55 0.005 250)",
-            letterSpacing: "0.05em",
-          }}
-        >
-          <span>© 2026 협동조합 청풍 · 카카오임팩트 리빙랩</span>
-          <span>이용약관 · 개인정보처리방침</span>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────────── 4. Element 02: 2026 프로젝트 ─────────────────────────── */
+
+type ProjectCard = {
+  badge: string;
+  title: string;
+  desc: React.ReactNode;
+  bg: string;
+  badgeBg: string;
+  badgeColor: string;
+  linkColor: string;
+  btnBg: string;
+  btnColor: string;
+};
+
+const PROJECT_CARDS: ProjectCard[] = [
+  {
+    badge: "클럽형",
+    title: "액티브 라이프",
+    desc: (
+      <>
+        강화의 자연 속에서 몸으로 경험하는 활동적 회복.
+        <br />
+        위캔드 요가 클럽, 강화 팜 라이프 클럽
+      </>
+    ),
+    bg: "#FDF4EC",
+    badgeBg: "rgba(180,110,40,0.12)",
+    badgeColor: "#9B6020",
+    linkColor: "#1A1A1A",
+    btnBg: "rgba(180,110,40,0.12)",
+    btnColor: "#9B6020",
+  },
+  {
+    badge: "아카이브형",
+    title: "로컬 문화 공동 창작",
+    desc: (
+      <>
+        강화의 색깔을 담은 IP를 함께 만드는 프로젝트.
+        <br />
+        윤슬 앨범 같이 만들기, 강화도 차 만들기
+      </>
+    ),
+    bg: "#EAF5EE",
+    badgeBg: "rgba(80,150,100,0.12)",
+    badgeColor: "#3A7A55",
+    linkColor: "#1A1A1A",
+    btnBg: "rgba(80,150,100,0.12)",
+    btnColor: "#3A7A55",
+  },
+  {
+    badge: "관계형",
+    title: "글로벌 & 로컬 네트워크",
+    desc: (
+      <>
+        강화의 환대를 세계와 연결하는 롱텀 프로젝트.
+        <br />
+        시부야대학 교류, 가미야마 협력 파트너십
+      </>
+    ),
+    bg: "#EEF3FF",
+    badgeBg: "rgba(49,130,246,0.12)",
+    badgeColor: "#2060C8",
+    linkColor: "#2060C8",
+    btnBg: "rgba(49,130,246,0.14)",
+    btnColor: "#2060C8",
+  },
+  {
+    badge: "인프라형",
+    title: "테크 & 솔루션",
+    desc: (
+      <>
+        세계관을 지속 가능하게 만드는 기술적 시도.
+        <br />
+        로컬 유니버스 앱, AI Top 100, 테크포임팩트 캠퍼스
+      </>
+    ),
+    bg: "#E8F0F5",
+    badgeBg: "rgba(50,100,160,0.12)",
+    badgeColor: "#2060A0",
+    linkColor: "#2060A0",
+    btnBg: "rgba(50,100,160,0.12)",
+    btnColor: "#2060A0",
+  },
+];
+
+function ProjectsGrid() {
+  return (
+    <div id="projects" className="bg-v2-paper">
+      <div className="mx-auto max-w-[1200px] px-6 py-[80px] lg:px-[60px] lg:py-[130px]">
+        <div className="mb-12 flex flex-col items-start justify-between gap-8 lg:mb-16 lg:flex-row lg:items-end lg:gap-10">
+          <div>
+            <AnimateOnScroll>
+              <p className="mb-3.5 text-[10.5px] font-medium uppercase tracking-[3.5px] text-v2-brand">
+                Element 02 &nbsp;·&nbsp; 2026 프로젝트
+              </p>
+            </AnimateOnScroll>
+            <AnimateOnScroll delay={0.1}>
+              <h2
+                className="font-bold leading-[1.2] tracking-[-1.2px] text-v2-ink"
+                style={{ fontSize: "clamp(28px, 3.8vw, 44px)" }}
+              >
+                강화에서 펼치는
+                <br />
+                작은 실험들
+              </h2>
+            </AnimateOnScroll>
+          </div>
+          <AnimateOnScroll delay={0.2}>
+            <p className="max-w-[300px] text-left text-[14px] font-light leading-[1.8] text-[#888] lg:text-right">
+              정답이 없는 곳에서 시작하는 실험들.
+              <br />
+              강화의 삶을 함께 만들어갑니다.
+            </p>
+          </AnimateOnScroll>
+        </div>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {PROJECT_CARDS.map((c, i) => (
+            <AnimateOnScroll key={c.title} delay={(i + 1) * 0.1}>
+              <ProjectCardView card={c} />
+            </AnimateOnScroll>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function FooterColumn({
-  title,
-  items,
+function ProjectCardView({ card }: { card: ProjectCard }) {
+  return (
+    <div
+      className="group flex min-h-[280px] cursor-default flex-col justify-between overflow-hidden rounded-[20px] p-7 transition-all duration-[250ms] hover:scale-[1.015] hover:shadow-[0_12px_40px_rgba(0,0,0,0.1)] sm:p-10 lg:min-h-[340px]"
+      style={{ background: card.bg }}
+    >
+      <div className="flex justify-start">
+        <span
+          className="inline-block rounded-full px-3 py-[5px] text-[10.5px] font-semibold uppercase tracking-[1.5px]"
+          style={{ background: card.badgeBg, color: card.badgeColor }}
+        >
+          {card.badge}
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col justify-end pt-6">
+        <h3
+          className="mb-3 font-bold leading-[1.2] tracking-[-0.8px] text-v2-ink"
+          style={{ fontSize: "clamp(22px, 2.8vw, 32px)" }}
+        >
+          {card.title}
+        </h3>
+        <p className="mb-7 text-[13px] font-light leading-[1.75] text-v2-ink3">
+          {card.desc}
+        </p>
+        <div className="flex flex-wrap items-center gap-5">
+          <Link
+            href="#projects"
+            className="group/lk relative inline-flex items-center gap-1 text-[13px] font-medium transition-all hover:gap-2"
+            style={{ color: card.linkColor }}
+          >
+            <span>더 알아보기 ›</span>
+            <span
+              className="absolute -bottom-0.5 left-0 right-0 h-px origin-left scale-x-0 transition-transform group-hover/lk:scale-x-100"
+              style={{ background: card.linkColor }}
+            />
+          </Link>
+          <Link
+            href="#cta"
+            className="inline-flex items-center gap-1 rounded-full px-[18px] py-2 text-[13px] font-medium transition-all hover:scale-[1.02] hover:opacity-85 active:scale-[0.98]"
+            style={{ background: card.btnBg, color: card.btnColor }}
+          >
+            참여하기
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────── 5. Manifesto ─────────────────────────── */
+
+function Manifesto() {
+  return (
+    <div className="bg-v2-paper px-6 py-[80px] text-center lg:py-[120px]">
+      <AnimateOnScroll>
+        <blockquote
+          className="mx-auto mb-7 max-w-[700px] font-bold leading-[1.45] tracking-[-0.8px] text-v2-ink"
+          style={{ fontSize: "clamp(22px, 3.5vw, 38px)" }}
+        >
+          &ldquo;여러분은 어떤 세상에서
+          <br />
+          살고 싶나요?&rdquo;
+        </blockquote>
+      </AnimateOnScroll>
+      <AnimateOnScroll delay={0.1}>
+        <cite
+          className="text-[11px] not-italic tracking-[3px]"
+          style={{ color: "#AEAEB2" }}
+        >
+          GANGHWA UNIVERSE &nbsp;·&nbsp; MANIFESTO 2026
+        </cite>
+      </AnimateOnScroll>
+    </div>
+  );
+}
+
+/* ─────────────────────────── 6. Stats ─────────────────────────── */
+
+function Stats() {
+  return (
+    <div className="mx-auto max-w-[1200px] px-6 py-[80px] lg:px-[60px] lg:pb-20 lg:pt-[120px]">
+      <AnimateOnScroll>
+        <p className="mb-3.5 text-[10.5px] font-medium uppercase tracking-[3.5px] text-v2-brand">
+          강화유니버스 현황
+        </p>
+      </AnimateOnScroll>
+      <div className="mt-14 grid grid-cols-1 overflow-hidden rounded-2xl border border-v2-rule lg:grid-cols-3">
+        <StatCell delay={0.1}>
+          <p className="mb-2.5 text-[52px] font-bold leading-none tracking-[-2px] text-v2-brand">
+            <CountUp target={2022} format={false} />
+          </p>
+          <p className="text-[12.5px] font-light text-v2-ink4">
+            잠시섬 시작 연도
+          </p>
+        </StatCell>
+        <StatCell delay={0.2} divider>
+          <p className="mb-2.5 text-[52px] font-bold leading-none tracking-[-2px] text-v2-brand">
+            <CountUp target={1240} />
+            <span className="text-[28px] font-bold text-v2-brand">+</span>
+          </p>
+          <p className="text-[12.5px] font-light text-v2-ink4">누적 방문자</p>
+        </StatCell>
+        <StatCell delay={0.3} divider>
+          <p className="mb-2.5 text-[52px] font-bold leading-none tracking-[-2px] text-v2-brand">
+            <CountUp target={284} />
+            <span className="text-[28px] font-bold text-v2-brand">+</span>
+          </p>
+          <p className="text-[12.5px] font-light text-v2-ink4">
+            강화유니버스 주민
+          </p>
+        </StatCell>
+      </div>
+    </div>
+  );
+}
+
+function StatCell({
+  children,
+  delay,
+  divider,
 }: {
-  title: string;
-  items: Array<[string, string]>;
+  children: React.ReactNode;
+  delay: number;
+  divider?: boolean;
 }) {
   return (
-    <div>
-      <div style={{ color: "#fff", fontWeight: 700, marginBottom: 8 }}>
-        {title}
+    <AnimateOnScroll
+      delay={delay}
+      className={`px-11 py-[52px] text-center ${
+        divider ? "border-t border-v2-rule lg:border-l lg:border-t-0" : ""
+      }`}
+    >
+      {children}
+    </AnimateOnScroll>
+  );
+}
+
+/* ─────────────────────────── 7. FAQ ─────────────────────────── */
+
+const FAQ_ITEMS = [
+  {
+    q: "강화유니버스는 어떤 곳인가요?",
+    a: "강화유니버스는 체류형 관광을 넘어 지역 문화를 함께 만들고 세계관을 공동으로 확장하는 커뮤니티 플랫폼입니다. 여행자가 소비자가 아닌 지역의 시민(Citizen)이 되는 경험을 제공합니다.",
+  },
+  {
+    q: "잠시섬은 무엇인가요?",
+    a: "잠시섬은 강화유니버스의 출입구이자 베이스캠프입니다. 기수제로 운영되는 체류형 환대 플랫폼으로, 강화유니버스의 모든 프로젝트가 담기는 그릇이자 OS 역할을 합니다.",
+  },
+  {
+    q: "2026 프로젝트에 참여하려면 어떻게 하나요?",
+    a: "액티브 라이프, 로컬 문화 공동 창작, 글로벌 네트워크, 테크 & 솔루션 4개 분류 중 관심 있는 프로젝트에 신청하실 수 있습니다. 하단의 '참여하기' 버튼을 통해 문의해 주세요.",
+  },
+  {
+    q: "강화유니버스는 누구나 참여할 수 있나요?",
+    a: "네, 강화에서 새로운 삶을 실험해보고 싶은 분이라면 누구나 참여하실 수 있습니다. 여행자, 창작자, 기술자, 활동가 모두 환영합니다. 환대의 감각을 함께 나눌 수 있는 분이라면 충분합니다.",
+  },
+];
+
+function Faq() {
+  return (
+    <div id="faq" className="bg-v2-paper px-6 pb-[80px] pt-20 lg:pb-[130px]">
+      <div className="mx-auto max-w-[1200px] lg:px-[60px]">
+        <AnimateOnScroll>
+          <p className="mb-12 text-[10.5px] font-medium uppercase tracking-[3.5px] text-v2-brand">
+            자주 묻는 질문
+          </p>
+        </AnimateOnScroll>
+        <FaqAccordion items={FAQ_ITEMS} />
       </div>
-      {items.map(([label, href]) => (
-        <div key={href}>
-          <Link
-            href={href}
-            style={{ color: "inherit", textDecoration: "none" }}
-          >
-            {label}
-          </Link>
-        </div>
-      ))}
     </div>
   );
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
+/* ─────────────────────────── 8. CTA ─────────────────────────── */
 
-function formatDateRange(
-  start: string | null,
-  end: string | null
-): string | null {
-  if (!start && !end) return null;
-  const fmt = (s: string) => {
-    const d = new Date(s);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}.${mm}.${dd}`;
-  };
-  if (start && end) return `${fmt(start)} ~ ${fmt(end)}`;
-  if (start) return `${fmt(start)} ~`;
-  return `~ ${fmt(end!)}`;
-}
-
-function koCount(n: number, unit: string): string {
-  return `${new Intl.NumberFormat("ko-KR").format(n)}${unit}`;
+function CtaSection() {
+  return (
+    <div
+      id="cta"
+      className="px-6 py-[90px] text-center lg:py-[120px]"
+      style={{ background: "#1DB87A" }}
+    >
+      <div className="mx-auto max-w-[700px]">
+        <AnimateOnScroll>
+          <h2
+            className="mb-5 font-bold leading-[1.2] tracking-[-1.5px] text-white"
+            style={{ fontSize: "clamp(28px, 4.5vw, 52px)" }}
+          >
+            여러분의 실험을
+            <br />
+            강화에서 시작하세요
+          </h2>
+        </AnimateOnScroll>
+        <AnimateOnScroll delay={0.1}>
+          <p className="mb-11 text-[16px] font-light leading-[1.85] text-white/80">
+            강화유니버스에서 함께 실험해요.
+            <br />
+            작은 시도들이 모여 세계를 만듭니다.
+          </p>
+        </AnimateOnScroll>
+        <AnimateOnScroll delay={0.2}>
+          <Link
+            href="/login"
+            className="inline-block rounded-full bg-white px-10 py-4 text-[15px] font-semibold text-[#1DB87A] transition-all hover:-translate-y-[3px] hover:shadow-[0_12px_32px_rgba(0,0,0,0.15)]"
+          >
+            강화유니버스 참여하기
+          </Link>
+        </AnimateOnScroll>
+      </div>
+    </div>
+  );
 }

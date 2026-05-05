@@ -1,641 +1,399 @@
-import Image from "next/image";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
-import { GhBadge, GhButton, GhWordmark } from "@/components/claude/primitives";
-import { getCurrentActor } from "@/lib/auth/current-actor";
-import { createAdminClient } from "@/lib/supabase/admin";
-
-import { CrewReactionBar } from "./CrewReactionBar";
-import { EpisodeStatusControl } from "./EpisodeStatusControl";
-
-export const dynamic = "force-dynamic";
-
-const EPISODE_LIMIT = 20;
-const ACTIVITY_LIMIT = 8;
-
-const STATUS_PILL: Record<
-  "planned" | "in_progress" | "completed",
-  { label: string; color: string; bg: string }
-> = {
-  planned: {
-    label: "예정",
-    color: "var(--ink-3)",
-    bg: "var(--paper-3)",
-  },
-  in_progress: {
-    label: "진행",
-    color: "var(--pine)",
-    bg: "var(--pine-soft)",
-  },
-  completed: {
-    label: "완료",
-    color: "var(--ink-2)",
-    bg: "var(--paper-3)",
-  },
-};
+import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
 
 /**
- * /crew — Claude editorial 톤의 크루 대시보드.
+ * v2 redesign — `/crew` 크루 워크스페이스.
+ * 시안: design-v2-reference/강화유니버스_크루.html.
  *
- * 출처: Claude artifact pages/Crew.jsx (2026-04-29).
- * 시각: 시안 그대로 (사이드 레일 220 + 메인 1.4fr/1fr — 이번 주 에피소드 + 오늘 도착한 카드)
- * 기능: 진행/예정 에피소드 status 갱신 + 카드별 hi_five/note 응원 — 기존 그대로.
+ * 구성:
+ *  1. 다크 PageHeader (날짜 / 타이틀 / 빠른 버튼)
+ *  2. 요약 4 카운터
+ *  3. 좌: 진행 중 에피소드 카드 (status 스텝퍼 + 현장 메모)
+ *     우: 도착 카드 리스트 (하이파이브 / 노트 액션)
+ *  4. 다크 푸터 strip
  */
-export default async function CrewHomePage() {
-  const actor = await getCurrentActor();
-  if (actor.role !== "crew") redirect("/crew/login");
+export default function CrewPage() {
+  return (
+    <>
+      <PageHeader />
+      <SummaryStrip />
+      <CrewLayout />
+      <CrewFooterStrip />
+    </>
+  );
+}
 
-  const admin = createAdminClient();
-  const today = new Date();
-
-  const [episodesRes, activitiesRes] = await Promise.all([
-    admin
-      .from("episodes")
-      .select(
-        `id, title, seq, session_date, location, status, updated_at,
-         project:project_id (id, title, slug)`
-      )
-      .in("status", ["planned", "in_progress"])
-      .order("session_date", { ascending: true, nullsFirst: false })
-      .limit(EPISODE_LIMIT),
-    admin
-      .from("activities")
-      .select(
-        `id, type, body, photo_url, is_public, created_at,
-         shop:shop_id (id, name),
-         episode:episode_id (id, title),
-         author:user_id (id, nickname),
-         project:project_id (id, title, slug, category_id)`
-      )
-      .is("removed_at", null)
-      .order("created_at", { ascending: false })
-      .limit(ACTIVITY_LIMIT),
-  ]);
-
-  const episodes = episodesRes.data ?? [];
-  const activities = activitiesRes.data ?? [];
-
-  const todayLabel = today
-    .toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      weekday: "narrow",
-    })
-    .replace(/\.\s?/g, ".")
-    .replace(/\.$/, "")
-    .replace(/\.([일월화수목금토])$/, " $1");
-  const weekNumber =
-    Math.floor(
-      (today.getTime() - new Date("2024-05-01").getTime()) / 86_400_000 / 7
-    ) + 1;
-
+function PageHeader() {
   return (
     <div
-      className="paper-grain"
-      style={{
-        background: "var(--paper-2)",
-        color: "var(--ink)",
-        fontFamily: "var(--ui-font)",
-        minHeight: "100vh",
-        display: "flex",
-      }}
+      className="px-6 pb-10 pt-[112px] lg:px-[60px]"
+      style={{ background: "#1A1A1A" }}
     >
-      {/* Side rail */}
-      <aside
-        style={{
-          width: 220,
-          background: "var(--paper)",
-          borderRight: "1px solid var(--rule)",
-          padding: "22px 18px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 4,
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ marginBottom: 22 }}>
-          <Link href="/" style={{ textDecoration: "none" }}>
-            <GhWordmark size={13} />
-          </Link>
-          <div
-            style={{
-              fontSize: 10,
-              color: "var(--ink-3)",
-              marginTop: 6,
-              fontFamily: "var(--mono-font)",
-              letterSpacing: "0.08em",
-            }}
-          >
-            CREW WORKSPACE
-          </div>
-        </div>
-
-        {[
-          {
-            label: "오늘",
-            badge: episodes.length,
-            href: "#",
-            active: true,
-          },
-          {
-            label: "진행 중 에피소드",
-            badge: episodes.filter((e) => e.status === "in_progress").length,
-            href: "#episodes",
-          },
-          {
-            label: "참여자 카드",
-            badge: activities.length,
-            href: "#cards",
-          },
-          { label: "공개 페이지", badge: null, href: "/impact" },
-          { label: "프로젝트", badge: null, href: "/projects" },
-        ].map((t, i) => (
-          <Link
-            key={i}
-            href={t.href}
-            style={{
-              padding: "9px 12px",
-              borderRadius: 8,
-              background: t.active ? "var(--paper-3)" : "transparent",
-              color: t.active ? "var(--ink)" : "var(--ink-2)",
-              fontSize: 13,
-              fontWeight: t.active ? 600 : 500,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              textDecoration: "none",
-            }}
-          >
-            <span>{t.label}</span>
-            {t.badge != null ? (
-              <span
-                style={{
-                  fontSize: 10,
-                  fontFamily: "var(--mono-font)",
-                  color: "var(--ink-3)",
-                }}
-              >
-                {t.badge}
-              </span>
-            ) : null}
-          </Link>
-        ))}
-
-        <div
-          style={{
-            marginTop: "auto",
-            padding: "12px 12px",
-            fontSize: 10.5,
-            color: "var(--ink-3)",
-            lineHeight: 1.6,
-            borderTop: "1px solid var(--rule)",
-            fontFamily: "var(--mono-font)",
-          }}
-        >
-          공용 계정 · Phase 3
-          <br />
-          crew@chungpung
-        </div>
-      </aside>
-
-      {/* Main */}
-      <main style={{ flex: 1, overflowY: "auto" }} className="gh-scroll">
-        <div
-          style={{
-            padding: "26px 36px 20px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            borderBottom: "1px solid var(--rule)",
-            background: "var(--paper)",
-            gap: 16,
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 11,
-                fontFamily: "var(--mono-font)",
-                color: "var(--ink-3)",
-                letterSpacing: "0.08em",
-              }}
-            >
-              {todayLabel} · {weekNumber}주차
-            </div>
+      <div className="mx-auto flex max-w-[1280px] flex-col items-start justify-between gap-8 lg:flex-row lg:items-end">
+        <AnimateOnScroll>
+          <div>
+            <p className="mb-2.5 text-[11px] tracking-[1.5px] text-white/35">
+              2026.04.24 금 · 17주차
+            </p>
             <h1
-              className="serif"
-              style={{
-                fontSize: 26,
-                fontWeight: 700,
-                margin: "4px 0 0",
-                color: "var(--ink)",
-                letterSpacing: "-0.02em",
-              }}
+              className="mb-1.5 font-bold leading-[1.15] tracking-[-1.2px] text-white"
+              style={{ fontSize: "clamp(28px, 3.5vw, 44px)" }}
             >
-              오늘도 강화도를 이어 주세요
+              오늘도 강화도를
+              <br />
+              이어 주세요
             </h1>
+            <p className="text-[13px] font-light text-white/40">
+              크루 워크스페이스 · 임팩트 페이지 + 아카이브 등록
+            </p>
           </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <Link href="/impact" style={{ textDecoration: "none" }}>
-              <GhButton variant="secondary" size="sm">
-                임팩트 페이지
-              </GhButton>
+        </AnimateOnScroll>
+        <AnimateOnScroll delay={0.08}>
+          <div className="flex flex-shrink-0 gap-2">
+            <Link
+              href="/impact"
+              className="rounded-[10px] bg-white px-5 py-2.5 text-[12.5px] font-medium text-v2-ink transition-opacity hover:opacity-85"
+            >
+              임팩트 보기
             </Link>
-            <Link href="/feed" style={{ textDecoration: "none" }}>
-              <GhButton variant="primary" size="sm">
-                전체 피드
-              </GhButton>
-            </Link>
+            <button
+              type="button"
+              className="rounded-[10px] bg-[#6BAF8A] px-5 py-2.5 text-[12.5px] font-medium text-white transition-opacity hover:opacity-85"
+            >
+              + 아카이브 등록
+            </button>
           </div>
-        </div>
+        </AnimateOnScroll>
+      </div>
+    </div>
+  );
+}
 
-        <div
+const SUMMARY = [
+  { num: 3, label: "오늘 에피소드", accent: true },
+  { num: 2, label: "진행 중" },
+  { num: 12, label: "참여자 카드" },
+  { num: 1, label: "아카이브 등록" },
+];
+
+function SummaryStrip() {
+  return (
+    <div className="border-b border-v2-rule" style={{ background: "#F5F4F1" }}>
+      <div className="mx-auto flex max-w-[1280px] px-6 lg:px-[60px]">
+        {SUMMARY.map((s, i) => (
+          <div
+            key={s.label}
+            className={`flex flex-1 flex-col items-center justify-center gap-1 px-5 py-[18px] lg:px-9 ${i < SUMMARY.length - 1 ? "border-r border-v2-rule" : ""}`}
+          >
+            <p
+              className={`text-[24px] font-bold leading-none tracking-[-0.8px] ${s.accent ? "text-[#6BAF8A]" : "text-v2-ink"}`}
+            >
+              {s.num}
+            </p>
+            <p className="text-[11.5px] font-medium text-[#888]">{s.label}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CrewLayout() {
+  return (
+    <div className="mx-auto max-w-[1280px] px-6 pb-20 pt-10 lg:px-[60px]">
+      <div className="grid items-start gap-10 lg:grid-cols-[1fr_340px]">
+        <Episodes />
+        <Arrivals />
+      </div>
+    </div>
+  );
+}
+
+type EpisodeStatus = "active" | "ready" | "planned";
+type Episode = {
+  status: EpisodeStatus;
+  period: string;
+  title: string;
+  place: string;
+  people: string;
+  current: number; // 0=예정, 1=준비, 2=진행, 3=완료
+  note: string;
+};
+
+const EPISODES: Episode[] = [
+  {
+    status: "active",
+    period: "2026.04.20 – 04.24",
+    title: "시부야 교류 3회차",
+    place: "📍 갯벌카페 · 동막해변",
+    people: "14",
+    current: 2,
+    note: "날씨 좋음. 갯벌 물때 2시",
+  },
+  {
+    status: "ready",
+    period: "2026.04.25 시작",
+    title: "한달살기 4월 입주",
+    place: "📍 화도면 사가리",
+    people: "3",
+    current: 1,
+    note: "",
+  },
+  {
+    status: "planned",
+    period: "2026.04.27",
+    title: "공유 주방 7회차",
+    place: "📍 온돌 공유주방",
+    people: "—",
+    current: 0,
+    note: "",
+  },
+];
+
+function Episodes() {
+  return (
+    <div>
+      <AnimateOnScroll>
+        <div className="mb-4">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[3px] text-[#AEAEB2]">
+            진행 중 에피소드
+          </p>
+          <h2 className="text-[18px] font-bold leading-[1.4] tracking-[-0.5px]">
+            크루가 상태를 올려주면
+            <br />
+            임팩트 페이지에 즉시 반영돼요
+          </h2>
+        </div>
+      </AnimateOnScroll>
+
+      {EPISODES.map((e, i) => (
+        <AnimateOnScroll key={e.title} delay={(i + 1) * 0.08}>
+          <EpisodeCard episode={e} />
+        </AnimateOnScroll>
+      ))}
+    </div>
+  );
+}
+
+const STEPS = ["예정", "준비", "진행", "완료"];
+
+function EpisodeCard({ episode }: { episode: Episode }) {
+  const statusLabel =
+    episode.status === "active"
+      ? "● 진행"
+      : episode.status === "ready"
+        ? "준비"
+        : "예정";
+  const statusClass =
+    episode.status === "active"
+      ? "bg-[rgba(107,175,138,0.12)] text-[#3A7A55]"
+      : episode.status === "ready"
+        ? "bg-[rgba(196,149,106,0.12)] text-[#9B6020]"
+        : "bg-black/[0.05] text-[#888]";
+
+  return (
+    <div className="mb-2.5 rounded-[14px] border border-v2-rule bg-white px-6 py-[22px] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
+      <div className="mb-3.5 flex items-start justify-between">
+        <div>
+          <div className="mb-1.5 flex items-center gap-2">
+            <span
+              className={`rounded-full px-2.5 py-[3px] text-[10px] font-semibold tracking-[1.5px] ${statusClass}`}
+            >
+              {statusLabel}
+            </span>
+            <span className="text-[11px] font-light text-[#AEAEB2]">
+              {episode.period}
+            </span>
+          </div>
+          <p className="mb-1 text-[16px] font-semibold tracking-[-0.3px]">
+            {episode.title}
+          </p>
+          <p className="text-[12px] font-light text-[#AEAEB2]">
+            {episode.place}
+          </p>
+        </div>
+        <div className="flex-shrink-0">
+          <p className="text-[12px] text-[#888]">
+            참여자{" "}
+            <strong className="font-bold text-v2-ink">{episode.people}</strong>
+            명
+          </p>
+        </div>
+      </div>
+
+      <div className="mb-4 flex items-center">
+        {STEPS.map((step, idx) => {
+          const isCurrent = idx === episode.current;
+          const isDone = idx < episode.current;
+          const cls = isCurrent
+            ? "bg-v2-ink text-white border-v2-ink"
+            : isDone
+              ? "bg-[#EDECEA] text-[#888] border-v2-rule"
+              : "bg-[#FAFAF8] text-[#AEAEB2] border-v2-rule";
+          const radius =
+            idx === 0
+              ? "rounded-l-lg"
+              : idx === STEPS.length - 1
+                ? "rounded-r-lg"
+                : "";
+          const borderLeft = idx > 0 ? "border-l-0" : "";
+          return (
+            <div
+              key={step}
+              className={`flex-1 cursor-pointer border px-1 py-[7px] text-center text-[11px] font-medium transition-all ${cls} ${radius} ${borderLeft}`}
+            >
+              {step}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-2.5">
+        <input
+          type="text"
+          defaultValue={episode.note}
+          placeholder="현장 메모 한 줄..."
+          className="flex-1 rounded-lg border border-v2-rule bg-[#F8F8F6] px-3.5 py-2.5 text-[12.5px] text-v2-ink outline-none transition-all focus:border-[#6BAF8A] focus:bg-white"
+        />
+        <button
+          type="button"
+          className="whitespace-nowrap rounded-lg border-none bg-v2-ink px-4 py-2.5 text-[12px] font-medium text-white transition-colors hover:bg-[#333]"
+        >
+          저장
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type Arrival = {
+  no: string;
+  date: string;
+  withLetter: boolean;
+  isPublic: boolean;
+  memo: string;
+  meta: string;
+};
+
+const ARRIVALS: Arrival[] = [
+  {
+    no: "No.284",
+    date: "2026.04.20",
+    withLetter: true,
+    isPublic: true,
+    memo: "시부야에서 온 친구들과 갯벌을 함께 걸었다. 말은 잘 안 통해도, 진흙은 만국 공통이었다.",
+    meta: "@ 동막해변 · 네트워크",
+  },
+  {
+    no: "No.281",
+    date: "2026.04.18",
+    withLetter: true,
+    isPublic: true,
+    memo: "한달살기 2주차. 옆집 할머니가 쑥 한 바구니 주셨다.",
+    meta: "@ 화도면 사가리 · 공유지",
+  },
+  {
+    no: "No.279",
+    date: "2026.04.14",
+    withLetter: false,
+    isPublic: false,
+    memo: "폐교 된 초등학교에서 환대 아카이빙 워크숍. 낡은 책상에 앉아 편지를 썼다.",
+    meta: "@ 교동 대룡시장 · 세계",
+  },
+  {
+    no: "No.276",
+    date: "2026.04.12",
+    withLetter: true,
+    isPublic: true,
+    memo: "공유 주방에서 다 같이 바지락 칼국수. 재료는 전부 오늘 아침 바다에서.",
+    meta: "@ 온수리 · 공유지",
+  },
+];
+
+function Arrivals() {
+  return (
+    <div>
+      <AnimateOnScroll>
+        <p className="mb-3 text-[10px] font-semibold uppercase tracking-[3px] text-[#AEAEB2]">
+          오늘 도착한 카드
+        </p>
+        <h2 className="mb-4 text-[18px] font-bold tracking-[-0.5px]">
+          참여자가 남긴 기록
+        </h2>
+      </AnimateOnScroll>
+      {ARRIVALS.map((a, i) => (
+        <AnimateOnScroll key={a.no} delay={(i + 1) * 0.08}>
+          <ArrivalCard arrival={a} />
+        </AnimateOnScroll>
+      ))}
+    </div>
+  );
+}
+
+function ArrivalCard({ arrival }: { arrival: Arrival }) {
+  return (
+    <div className="mb-2 rounded-xl border border-v2-rule bg-white px-[18px] py-4 transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-[10px] font-semibold tracking-[1.5px] text-[#AEAEB2]">
+          {arrival.withLetter && "💌 "}
+          {arrival.no} · {arrival.date}
+        </span>
+        {arrival.isPublic ? (
+          <span
+            className="rounded border px-[7px] py-[2px] text-[9px] font-semibold tracking-[1px]"
+            style={{
+              color: "#6BAF8A",
+              borderColor: "rgba(107,175,138,0.3)",
+            }}
+          >
+            공개
+          </span>
+        ) : (
+          <span className="rounded border border-v2-rule px-[7px] py-[2px] text-[9px] text-[#AEAEB2]">
+            비공개
+          </span>
+        )}
+      </div>
+      <p className="mb-2.5 line-clamp-2 text-[12.5px] leading-[1.65] text-v2-ink">
+        {arrival.memo}
+      </p>
+      <p className="mb-2.5 text-[10.5px] text-[#AEAEB2]">{arrival.meta}</p>
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          className="flex-1 rounded-[7px] border px-2.5 py-[7px] text-[12px] font-medium transition-colors"
           style={{
-            padding: "24px 36px 40px",
-            display: "grid",
-            gridTemplateColumns: "1.4fr 1fr",
-            gap: 24,
+            background: "rgba(196,149,106,0.1)",
+            color: "#9B6020",
+            borderColor: "rgba(196,149,106,0.2)",
           }}
         >
-          {/* Left: episodes */}
-          <section id="episodes">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                marginBottom: 12,
-              }}
-            >
-              <div>
-                <div
-                  className="serif"
-                  style={{
-                    fontSize: 17,
-                    fontWeight: 700,
-                    color: "var(--ink)",
-                  }}
-                >
-                  이번 주 에피소드
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "var(--ink-3)",
-                    marginTop: 2,
-                  }}
-                >
-                  크루가 상태를 올려주면 관리자·임팩트 페이지에 즉시 반영돼요.
-                </div>
-              </div>
-            </div>
+          ★ 하이파이브
+        </button>
+        <button
+          type="button"
+          className="flex-[2] rounded-[7px] border border-v2-rule bg-[#F5F4F1] px-2.5 py-[7px] text-[12px] font-medium text-v2-ink3 transition-colors hover:bg-[#EDECEA]"
+        >
+          짧은 노트 달기
+        </button>
+      </div>
+    </div>
+  );
+}
 
-            {episodes.length === 0 ? (
-              <p
-                style={{
-                  border: "1px dashed var(--rule)",
-                  padding: "32px 24px",
-                  textAlign: "center",
-                  fontSize: 13,
-                  color: "var(--ink-3)",
-                  background: "var(--paper)",
-                  borderRadius: 14,
-                  fontFamily: "var(--serif-font)",
-                  lineHeight: 1.7,
-                }}
-              >
-                지금 진행 중이거나 예정된 에피소드가 없어요.
-                <br />
-                관리자(/admin/projects) 에서 에피소드를 먼저 만들어주세요.
-              </p>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 14,
-                }}
-              >
-                {episodes.map((ep) => {
-                  const project = ep.project as {
-                    id: string;
-                    title: string;
-                    slug: string;
-                  } | null;
-                  const status =
-                    (ep.status as "planned" | "in_progress" | "completed") ??
-                    "planned";
-                  const pill = STATUS_PILL[status];
-                  return (
-                    <article
-                      key={ep.id as string}
-                      style={{
-                        padding: 20,
-                        background: "var(--paper)",
-                        borderRadius: 14,
-                        border: "1px solid var(--rule)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                          marginBottom: 14,
-                          gap: 12,
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div
-                            style={{
-                              fontSize: 11,
-                              fontFamily: "var(--mono-font)",
-                              color: "var(--ink-3)",
-                            }}
-                          >
-                            {project ? (
-                              <Link
-                                href={`/projects/${project.slug}`}
-                                style={{
-                                  color: "var(--ink-3)",
-                                  textDecoration: "none",
-                                }}
-                              >
-                                {project.title}
-                              </Link>
-                            ) : (
-                              "프로젝트 미지정"
-                            )}
-                            {ep.session_date
-                              ? ` · ${ep.session_date as string}`
-                              : ""}
-                          </div>
-                          <div
-                            className="serif"
-                            style={{
-                              fontSize: 17,
-                              fontWeight: 700,
-                              color: "var(--ink)",
-                              marginTop: 2,
-                              letterSpacing: "-0.015em",
-                            }}
-                          >
-                            {ep.title as string}
-                          </div>
-                          {ep.location ? (
-                            <div
-                              style={{
-                                fontSize: 11.5,
-                                color: "var(--ink-2)",
-                                marginTop: 4,
-                              }}
-                            >
-                              📍 {ep.location as string}
-                            </div>
-                          ) : null}
-                        </div>
-                        <span
-                          style={{
-                            padding: "5px 10px",
-                            borderRadius: 6,
-                            background: pill.bg,
-                            color: pill.color,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            fontFamily: "var(--mono-font)",
-                            flexShrink: 0,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          ● {pill.label}
-                        </span>
-                      </div>
-
-                      <EpisodeStatusControl
-                        episodeId={ep.id as string}
-                        initialStatus={status}
-                      />
-
-                      <div
-                        style={{
-                          marginTop: 14,
-                          fontSize: 11,
-                          color: "var(--ink-3)",
-                          fontFamily: "var(--mono-font)",
-                          letterSpacing: "0.04em",
-                        }}
-                      >
-                        {ep.seq != null ? `${ep.seq}회차` : "회차 미지정"}
-                        {ep.updated_at
-                          ? ` · 최근 업데이트 ${new Date(
-                              ep.updated_at as string
-                            ).toLocaleDateString("ko-KR")}`
-                          : ""}
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Archive uploads (placeholder — episode_archives 도입 시 부착) */}
-            <div
-              style={{
-                marginTop: 20,
-                padding: 18,
-                background: "var(--paper)",
-                borderRadius: 14,
-                border: "1px dashed var(--rule)",
-              }}
-            >
-              <div
-                className="serif"
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: "var(--ink)",
-                  marginBottom: 8,
-                }}
-              >
-                아카이브 / 결과물
-              </div>
-              <div
-                style={{
-                  fontSize: 11.5,
-                  color: "var(--ink-3)",
-                  fontFamily: "var(--serif-font)",
-                  lineHeight: 1.7,
-                }}
-              >
-                후기·사진·기록 링크를 모으는 자리예요. episode_archives 테이블이
-                있어 데이터는 들어와 있지만, UI 는 다음 PR 에서 붙일게요.
-              </div>
-            </div>
-          </section>
-
-          {/* Right: recent cards */}
-          <section id="cards">
-            <div
-              className="serif"
-              style={{
-                fontSize: 17,
-                fontWeight: 700,
-                color: "var(--ink)",
-                marginBottom: 4,
-              }}
-            >
-              오늘 도착한 카드
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                color: "var(--ink-3)",
-                marginBottom: 14,
-              }}
-            >
-              참여자가 남긴 기록 · 하이파이브나 짧은 노트를 달아줄 수 있어요.
-            </div>
-            {activities.length === 0 ? (
-              <p
-                style={{
-                  border: "1px dashed var(--rule)",
-                  padding: "32px 24px",
-                  textAlign: "center",
-                  fontSize: 12,
-                  color: "var(--ink-3)",
-                  background: "var(--paper)",
-                  borderRadius: 12,
-                  fontFamily: "var(--serif-font)",
-                }}
-              >
-                최근 카드가 아직 없어요.
-              </p>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                }}
-              >
-                {activities.map((a) => {
-                  const shopName =
-                    (a.shop as { name: string } | null)?.name ?? null;
-                  const episodeTitle =
-                    (a.episode as { title: string } | null)?.title ?? null;
-                  const authorName =
-                    (a.author as { nickname: string | null } | null)
-                      ?.nickname ?? "(이름 없음)";
-                  const place = shopName ?? episodeTitle ?? "강화 어딘가";
-                  const dateText = new Date(
-                    a.created_at as string
-                  ).toLocaleDateString("ko-KR");
-                  const serial = (a.id as string).slice(-3).toUpperCase();
-                  return (
-                    <article
-                      key={a.id as string}
-                      style={{
-                        padding: 12,
-                        background: "var(--paper)",
-                        borderRadius: 12,
-                        border: "1px solid var(--rule)",
-                        display: "flex",
-                        gap: 12,
-                      }}
-                    >
-                      <div
-                        style={{
-                          flexShrink: 0,
-                          width: 72,
-                          height: 98,
-                          borderRadius: 8,
-                          overflow: "hidden",
-                          position: "relative",
-                          background:
-                            "linear-gradient(135deg, oklch(0.82 0.04 60), oklch(0.72 0.06 45))",
-                          border: "1px solid var(--rule-2)",
-                        }}
-                      >
-                        {a.photo_url ? (
-                          <Image
-                            src={a.photo_url as string}
-                            alt={(a.body as string | null) ?? place}
-                            fill
-                            sizes="72px"
-                            style={{ objectFit: "cover" }}
-                          />
-                        ) : null}
-                      </div>
-                      <div
-                        style={{
-                          flex: 1,
-                          display: "flex",
-                          flexDirection: "column",
-                          minWidth: 0,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "baseline",
-                            gap: 8,
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: 10.5,
-                              fontFamily: "var(--mono-font)",
-                              color: "var(--ink-3)",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            No.{serial} · {place} · {authorName} · {dateText}
-                          </span>
-                          <span style={{ flexShrink: 0 }}>
-                            {a.is_public ? (
-                              <GhBadge
-                                color="var(--pine)"
-                                bg="var(--pine-soft)"
-                              >
-                                공개
-                              </GhBadge>
-                            ) : (
-                              <GhBadge color="var(--ink-3)">비공개</GhBadge>
-                            )}
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            fontFamily: "var(--serif-font)",
-                            fontSize: 12.5,
-                            lineHeight: 1.5,
-                            color: "var(--ink)",
-                            marginTop: 4,
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                          }}
-                        >
-                          {(a.body as string | null) ?? "(본문 없음)"}
-                        </div>
-                        <div style={{ marginTop: 8 }}>
-                          <CrewReactionBar activityId={a.id as string} />
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        </div>
-      </main>
+function CrewFooterStrip() {
+  return (
+    <div
+      className="flex items-center justify-between px-6 py-5 lg:px-[60px]"
+      style={{ background: "#1A1A1A" }}
+    >
+      <span className="text-[11.5px] text-white/30">
+        공용 계정 · Phase 3 · crew@chungpung
+      </span>
+      <span className="text-[11.5px] text-white/20">
+        © 2026 Ganghwa Universe
+      </span>
     </div>
   );
 }

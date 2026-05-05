@@ -1,766 +1,541 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
-import { GhWordmark } from "@/components/claude/primitives";
-import { getCurrentActor } from "@/lib/auth/current-actor";
-import { createAdminClient } from "@/lib/supabase/admin";
-
-import { ChapterSection, type Chapter } from "./ChapterSection";
-
-export const dynamic = "force-dynamic";
-
-type Params = { params: { slug: string } };
-
-const CATEGORY_COLOR: Record<string, string> = {
-  commons: "var(--cat-commons)",
-  network: "var(--cat-network)",
-  world: "var(--cat-world)",
-  policy: "var(--cat-policy)",
-};
-
-const CATEGORY_SOFT: Record<string, string> = {
-  commons: "var(--cat-commons-soft)",
-  network: "var(--cat-network-soft)",
-  world: "var(--cat-world-soft)",
-  policy: "var(--cat-policy-soft)",
-};
-
-const CATEGORY_EN: Record<string, string> = {
-  commons: "commons",
-  network: "network",
-  world: "world",
-  policy: "policy",
-};
-
-const HERO_GRADIENT_BY_CAT: Record<string, string> = {
-  network:
-    "linear-gradient(135deg, oklch(0.30 0.04 230) 0%, oklch(0.46 0.06 220) 55%, oklch(0.68 0.04 200) 100%)",
-  commons:
-    "linear-gradient(135deg, oklch(0.32 0.05 160) 0%, oklch(0.46 0.07 155) 55%, oklch(0.66 0.06 145) 100%)",
-  world:
-    "linear-gradient(135deg, oklch(0.32 0.06 50) 0%, oklch(0.48 0.10 45) 55%, oklch(0.70 0.10 55) 100%)",
-  policy:
-    "linear-gradient(135deg, oklch(0.22 0.02 260) 0%, oklch(0.36 0.03 255) 55%, oklch(0.58 0.04 250) 100%)",
-};
+import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
+import { CountUp } from "@/components/v2/CountUp";
 
 /**
- * /projects/[slug] — Claude editorial 톤의 프로젝트 상세.
+ * v2 redesign — `/projects/[slug]` 단일 프로젝트 상세.
+ * 시안: design-v2-reference/강화유니버스_프로젝트.html (시부야 교류 예시).
  *
- * 출처: Claude artifact pages/ProjectDetailDesktop.jsx (2026-04-29).
- * 시각: 시안 그대로 (slim breadcrumb / 64px serif hero / 챕터 stepper / 2-col 본문 / YOUR CONTRIBUTION 밴드)
- * 기능: 우리 episodes·activities·reactions 데이터 그대로. 챕터=에피소드 매핑.
+ * 섹션:
+ *  1. Breadcrumb
+ *  2. ProjectHero — 카테고리 뱃지 / 타이틀 / 4 stat
+ *  3. ChapterTimeline — 가로 스크롤 챕터 카드 + 진척바
+ *  4. ActiveChapter — 진행 중 챕터 좌측 + 공지 우측
+ *  5. ProjectCards — 이 프로젝트의 공개 카드
+ *  6. NoticeStrip
  *
- * 시안의 notices 는 우리 schema 에 없어서 (현 단계엔) 빈 배열로 둠 — 추후
- * episode_archives 또는 별도 notices 테이블에서 끌어올 자리.
+ * MVP 단계라 모든 슬러그가 동일한 시안 데이터를 보여주는 정적 페이지.
  */
-export default async function ProjectDetailPage({ params }: Params) {
-  const actor = await getCurrentActor();
-  const admin = createAdminClient();
-
-  const { data: project } = await admin
-    .from("projects")
-    .select(
-      `
-      id, slug, title, summary, description, is_public,
-      progress_type, progress_target, started_at, ended_at,
-      category:category_id (id, slug, name)
-    `
-    )
-    .eq("slug", params.slug)
-    .maybeSingle();
-
-  if (!project || !project.is_public) {
-    notFound();
-  }
-
-  const category = project.category as {
-    id: string;
-    slug: string;
-    name: string;
-  } | null;
-
-  const { data: episodes } = await admin
-    .from("episodes")
-    .select("id, seq, title, summary, session_date, location, status")
-    .eq("project_id", project.id as string)
-    .eq("is_public", true)
-    .order("seq", { ascending: true, nullsFirst: false })
-    .order("session_date", { ascending: true, nullsFirst: false });
-
-  const episodeList = episodes ?? [];
-  const episodeIds = episodeList.map((e) => e.id as string);
-
-  const orFilter =
-    episodeIds.length > 0
-      ? `project_id.eq.${project.id},episode_id.in.(${episodeIds.join(",")})`
-      : `project_id.eq.${project.id}`;
-
-  const { data: allActivities } = await admin
-    .from("activities")
-    .select(
-      `id, episode_id, project_id, user_id, type, body, photo_url, created_at,
-       shop:shop_id (id, name)`
-    )
-    .or(orFilter)
-    .eq("is_public", true)
-    .is("removed_at", null)
-    .order("created_at", { ascending: false });
-
-  const activities = (allActivities ?? []) as Array<{
-    id: string;
-    episode_id: string | null;
-    project_id: string | null;
-    user_id: string | null;
-    type: string;
-    body: string | null;
-    photo_url: string | null;
-    created_at: string;
-    shop: { id: string; name: string } | null;
-  }>;
-
-  // 활동 ID → reactions (kind=letter | hi_five)
-  const activityIds = activities.map((a) => a.id);
-  const { data: reactions } =
-    activityIds.length > 0
-      ? await admin
-          .from("reactions")
-          .select("id, kind, activity_id")
-          .in("activity_id", activityIds)
-          .in("kind", ["letter", "hi_five"])
-      : { data: [] as { id: string; kind: string; activity_id: string }[] };
-
-  const reactionList = (reactions ?? []) as {
-    id: string;
-    kind: string;
-    activity_id: string;
-  }[];
-
-  // ─────────────────────────────────────────────────────────────
-  // 에피소드별 stats 집계
-  // ─────────────────────────────────────────────────────────────
-  type EpisodeStats = {
-    cards: number;
-    letters: number;
-    highFives: number;
-    people: Set<string>;
-  };
-  const statsByEpisode = new Map<string, EpisodeStats>();
-  for (const eid of episodeIds) {
-    statsByEpisode.set(eid, {
-      cards: 0,
-      letters: 0,
-      highFives: 0,
-      people: new Set(),
-    });
-  }
-
-  for (const a of activities) {
-    if (!a.episode_id) continue;
-    const bucket = statsByEpisode.get(a.episode_id);
-    if (!bucket) continue;
-    bucket.cards += 1;
-    if (a.user_id) bucket.people.add(a.user_id);
-  }
-
-  const activityToEpisode = new Map(
-    activities.map((a) => [a.id, a.episode_id])
-  );
-  for (const r of reactionList) {
-    const eid = activityToEpisode.get(r.activity_id);
-    if (!eid) continue;
-    const bucket = statsByEpisode.get(eid);
-    if (!bucket) continue;
-    if (r.kind === "letter") bucket.letters += 1;
-    if (r.kind === "hi_five") bucket.highFives += 1;
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // 챕터 구성 — 에피소드 → Claude chapter 매핑
-  // ─────────────────────────────────────────────────────────────
-  const STATUS_MAP: Record<string, Chapter["status"]> = {
-    completed: "done",
-    in_progress: "active",
-    planned: "planned",
-  };
-  const STATUS_PHASE: Record<Chapter["status"], string> = {
-    done: "마무리됨",
-    active: "진행 중",
-    planned: "예정",
-  };
-
-  const chapters: Chapter[] = episodeList.map((e, i) => {
-    const status = STATUS_MAP[(e.status as string) ?? "planned"] ?? "planned";
-    const sessionDate = e.session_date as string | null;
-    const year = sessionDate ? sessionDate.slice(0, 4) : null;
-    const idxLabel =
-      e.seq != null
-        ? String(e.seq).padStart(2, "0")
-        : String(i + 1).padStart(2, "0");
-    const stats = statsByEpisode.get(e.id as string);
-    return {
-      id: e.id as string,
-      idx: idxLabel,
-      year,
-      phase: e.title as string,
-      status,
-      headline: (e.summary as string | null) ?? (e.title as string),
-      summary: (e.summary as string | null) ?? null,
-      moments: (e.location as string | null) ?? null,
-      stats: stats
-        ? {
-            cards: stats.cards,
-            letters: stats.letters,
-            people: stats.people.size,
-            highFives: stats.highFives,
-            sessionDate,
-          }
-        : null,
-      statusLabel: STATUS_PHASE[status],
-    };
-  });
-
-  const totalChapters = chapters.length;
-  const activeChapterCount = chapters.filter(
-    (c) => c.status === "active"
-  ).length;
-  const doneChapterCount = chapters.filter((c) => c.status === "done").length;
-  const inFlightCount = doneChapterCount + activeChapterCount;
-
-  // 첫 chapter 기본값: active 가 있으면 그쪽, 없으면 가장 최근 done, 없으면 첫 챕터
-  const initialChapterId =
-    chapters.find((c) => c.status === "active")?.id ??
-    [...chapters].reverse().find((c) => c.status === "done")?.id ??
-    chapters[0]?.id ??
-    null;
-
-  // 챕터별 속한 카드 (cardsInChapter용) — 에피소드 ID 기준 group
-  const cardsByEpisode = new Map<
-    string,
-    Array<{
-      id: string;
-      body: string | null;
-      photo_url: string | null;
-      created_at: string;
-      categorySlug: string | null;
-      categoryName: string | null;
-      letter: boolean;
-      highFiveCount: number;
-      place: string;
-    }>
-  >();
-
-  const lettersByActivity = new Map<string, number>();
-  const highFivesByActivity = new Map<string, number>();
-  for (const r of reactionList) {
-    if (r.kind === "letter") {
-      lettersByActivity.set(
-        r.activity_id,
-        (lettersByActivity.get(r.activity_id) ?? 0) + 1
-      );
-    } else if (r.kind === "hi_five") {
-      highFivesByActivity.set(
-        r.activity_id,
-        (highFivesByActivity.get(r.activity_id) ?? 0) + 1
-      );
-    }
-  }
-
-  for (const a of activities) {
-    if (!a.episode_id) continue;
-    const list = cardsByEpisode.get(a.episode_id) ?? [];
-    list.push({
-      id: a.id,
-      body: a.body,
-      photo_url: a.photo_url,
-      created_at: a.created_at,
-      categorySlug: category?.slug ?? null,
-      categoryName: category?.name ?? null,
-      letter: (lettersByActivity.get(a.id) ?? 0) > 0,
-      highFiveCount: highFivesByActivity.get(a.id) ?? 0,
-      place: a.shop?.name ?? "강화 어딘가",
-    });
-    cardsByEpisode.set(a.episode_id, list);
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // Bottom band — YOUR CONTRIBUTION (참여자 로그인 시만)
-  // ─────────────────────────────────────────────────────────────
-  let myContribution: {
-    cards: number;
-    received: number;
-    highFives: number;
-    cardSamples: Array<{
-      id: string;
-      body: string | null;
-      photo_url: string | null;
-      created_at: string;
-    }>;
-  } | null = null;
-
-  if (actor.role === "participant") {
-    const myActs = activities.filter((a) => a.user_id === actor.userId);
-    const myActivityIds = new Set(myActs.map((a) => a.id));
-    let receivedLetters = 0;
-    let receivedHighFives = 0;
-    for (const r of reactionList) {
-      if (!myActivityIds.has(r.activity_id)) continue;
-      if (r.kind === "letter") receivedLetters += 1;
-      if (r.kind === "hi_five") receivedHighFives += 1;
-    }
-    myContribution = {
-      cards: myActs.length,
-      received: receivedLetters,
-      highFives: receivedHighFives,
-      cardSamples: myActs.slice(0, 3).map((a) => ({
-        id: a.id,
-        body: a.body,
-        photo_url: a.photo_url,
-        created_at: a.created_at,
-      })),
-    };
-  }
-
-  // 카테고리 시각
-  const catSlug = category?.slug ?? "";
-  const catColor = CATEGORY_COLOR[catSlug] ?? "var(--ink-2)";
-  const catSoft = CATEGORY_SOFT[catSlug] ?? "var(--paper-3)";
-  const catEn = CATEGORY_EN[catSlug] ?? "—";
-  const heroGradient =
-    HERO_GRADIENT_BY_CAT[catSlug] ??
-    "linear-gradient(135deg, var(--paper-3), var(--paper-2))";
-
-  const period = formatPeriod(
-    project.started_at as string | null,
-    project.ended_at as string | null
-  );
-
+export default function ProjectDetailPage() {
   return (
-    <div
-      style={{
-        background: "var(--paper)",
-        color: "var(--ink)",
-        fontFamily: "var(--ui-font)",
-        minHeight: "100vh",
-      }}
-    >
-      {/* Breadcrumb nav */}
-      <div
-        style={{
-          padding: "14px 40px",
-          borderBottom: "1px solid var(--rule)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 14,
-            fontSize: 12,
-            color: "var(--ink-2)",
-          }}
-        >
+    <>
+      <Breadcrumb />
+      <ProjectHero />
+      <Divider />
+      <ChapterTimeline />
+      <ActiveChapter />
+      <ProjectCards />
+      <NoticeStrip />
+    </>
+  );
+}
+
+function Breadcrumb() {
+  return (
+    <div className="mx-auto max-w-[1280px] px-6 pt-[112px] lg:px-[60px]">
+      <AnimateOnScroll>
+        <div className="flex items-center gap-2 text-[12px] text-[#AEAEB2]">
           <Link
             href="/projects"
-            style={{
-              color: "var(--ink-3)",
-              fontFamily: "var(--mono-font)",
-              fontSize: 11,
-              textDecoration: "none",
-            }}
+            className="transition-colors hover:text-v2-ink"
           >
             ← 프로젝트 전체
           </Link>
-          <span style={{ color: "var(--rule)" }}>/</span>
-          <span
-            style={{
-              fontFamily: "var(--mono-font)",
-              fontSize: 11,
-              color: "var(--ink-3)",
-              letterSpacing: "0.08em",
-            }}
-          >
-            {catEn.toUpperCase()} · {project.title as string}
-          </span>
+          <span className="text-[#D0D0D0]">/</span>
+          <span>네트워크</span>
+          <span className="text-[#D0D0D0]">/</span>
+          <span className="font-medium text-v2-ink3">시부야 교류</span>
         </div>
-        <Link href="/" style={{ textDecoration: "none" }}>
-          <GhWordmark size={12} mono />
-        </Link>
-      </div>
-
-      {/* Hero band */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1.3fr 1fr",
-          borderBottom: "1px solid var(--rule)",
-        }}
-      >
-        <div style={{ padding: "56px 56px 48px" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 18,
-            }}
-          >
-            <span
-              style={{
-                width: 10,
-                height: 10,
-                background: catColor,
-              }}
-            />
-            <span
-              style={{
-                fontSize: 11,
-                fontFamily: "var(--mono-font)",
-                color: "var(--ink-3)",
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-              }}
-            >
-              {catEn}
-              {period ? ` · ${period}` : ""}
-            </span>
-          </div>
-          <h1
-            className="serif"
-            style={{
-              fontSize: 64,
-              fontWeight: 700,
-              margin: 0,
-              letterSpacing: "-0.04em",
-              lineHeight: 1.05,
-            }}
-          >
-            {project.title as string}
-          </h1>
-          {project.summary ? (
-            <p
-              style={{
-                fontSize: 15,
-                lineHeight: 1.85,
-                color: "var(--ink-2)",
-                marginTop: 22,
-                maxWidth: 520,
-                whiteSpace: "pre-line",
-              }}
-            >
-              {project.summary as string}
-            </p>
-          ) : null}
-        </div>
-        <div
-          style={{
-            background: heroGradient,
-            position: "relative",
-            minHeight: 280,
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "radial-gradient(ellipse at 30% 80%, oklch(1 0 0 / 0.10), transparent 60%)",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              left: 24,
-              bottom: 18,
-              right: 24,
-              color: "oklch(1 0 0 / 0.75)",
-              fontFamily: "var(--mono-font)",
-              fontSize: 11,
-              letterSpacing: "0.12em",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
-            <span>
-              {category?.name ?? "강화"}
-              {period ? ` · ${period}` : ""}
-            </span>
-            <span>ph. crew archive</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Chapter stepper + body (client) */}
-      {chapters.length > 0 ? (
-        <ChapterSection
-          chapters={chapters}
-          totalChapters={totalChapters}
-          inFlightCount={inFlightCount}
-          initialChapterId={initialChapterId ?? chapters[0].id}
-          categoryColor={catColor}
-          cardsByEpisode={Object.fromEntries(
-            Array.from(cardsByEpisode.entries()).map(([k, v]) => [
-              k,
-              v.slice(0, 4),
-            ])
-          )}
-        />
-      ) : (
-        <div
-          style={{
-            padding: "80px 56px",
-            textAlign: "center",
-            fontFamily: "var(--serif-font)",
-            color: "var(--ink-3)",
-            fontSize: 14,
-            lineHeight: 1.8,
-          }}
-        >
-          아직 등록된 회차가 없어요.
-          <br />첫 회차가 열리면 여기에 챕터로 채워집니다.
-        </div>
-      )}
-
-      {/* YOUR CONTRIBUTION — 참여자 한정 */}
-      {myContribution && myContribution.cards > 0 ? (
-        <div
-          style={{
-            background: "var(--paper-2)",
-            borderTop: "1px solid var(--rule)",
-          }}
-        >
-          <div
-            style={{
-              padding: "48px 56px",
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 48,
-              alignItems: "start",
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: 10.5,
-                  fontFamily: "var(--mono-font)",
-                  color: "var(--ink-3)",
-                  letterSpacing: "0.18em",
-                  marginBottom: 14,
-                }}
-              >
-                YOUR CONTRIBUTION — 이 프로젝트에서 나의 기여
-              </div>
-              <div
-                className="serif"
-                style={{
-                  fontSize: 28,
-                  lineHeight: 1.4,
-                  letterSpacing: "-0.025em",
-                  marginBottom: 24,
-                }}
-              >
-                카드{" "}
-                <span style={{ color: catColor, fontWeight: 700 }}>
-                  {myContribution.cards}장
-                </span>
-                을 남겼고,
-                <br />
-                편지{" "}
-                <span style={{ color: catColor, fontWeight: 700 }}>
-                  {myContribution.received}통
-                </span>
-                을 받았습니다.
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3, 1fr)",
-                  borderTop: "1px solid var(--rule)",
-                  borderBottom: "1px solid var(--rule)",
-                  marginBottom: 24,
-                  maxWidth: 420,
-                }}
-              >
-                {(
-                  [
-                    ["MY CARDS", myContribution.cards],
-                    ["RECEIVED", myContribution.received],
-                    ["HIGH★", myContribution.highFives],
-                  ] as const
-                ).map(([k, v], i) => (
-                  <div
-                    key={k}
-                    style={{
-                      padding: "14px 4px",
-                      textAlign: "center",
-                      borderRight: i < 2 ? "1px solid var(--rule)" : "none",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 9.5,
-                        fontFamily: "var(--mono-font)",
-                        color: "var(--ink-3)",
-                        letterSpacing: "0.12em",
-                      }}
-                    >
-                      {k}
-                    </div>
-                    <div
-                      className="serif"
-                      style={{
-                        fontSize: 26,
-                        fontWeight: 700,
-                        letterSpacing: "-0.03em",
-                        margin: "2px 0 0",
-                      }}
-                    >
-                      {v}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <Link
-                href="/collection"
-                style={{
-                  padding: 14,
-                  background: "var(--paper)",
-                  border: "1px solid var(--rule)",
-                  display: "flex",
-                  gap: 12,
-                  alignItems: "center",
-                  maxWidth: 420,
-                  textDecoration: "none",
-                  color: "var(--ink)",
-                }}
-              >
-                <span
-                  style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: 999,
-                    background: catSoft,
-                    color: catColor,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontFamily: "var(--mono-font)",
-                    fontWeight: 700,
-                    fontSize: 13,
-                  }}
-                >
-                  ↗
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    className="serif"
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      marginBottom: 2,
-                    }}
-                  >
-                    내 도감으로
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 11.5,
-                      color: "var(--ink-2)",
-                      lineHeight: 1.55,
-                    }}
-                  >
-                    이 프로젝트에서 남긴 카드를 한자리에서 봐요
-                  </div>
-                </div>
-              </Link>
-            </div>
-
-            <div>
-              <div
-                style={{
-                  fontSize: 10.5,
-                  fontFamily: "var(--mono-font)",
-                  color: "var(--ink-3)",
-                  letterSpacing: "0.18em",
-                  marginBottom: 14,
-                }}
-              >
-                MY CARDS IN THIS PROJECT
-              </div>
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                {myContribution.cardSamples.length === 0 ? (
-                  <p
-                    style={{
-                      fontSize: 12,
-                      color: "var(--ink-3)",
-                      fontFamily: "var(--serif-font)",
-                    }}
-                  >
-                    아직 등록된 내 카드가 없어요.
-                  </p>
-                ) : (
-                  myContribution.cardSamples.map((c) => (
-                    <Link
-                      key={c.id}
-                      href={`/collection/${c.id}`}
-                      style={{
-                        textDecoration: "none",
-                        color: "var(--ink)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 120,
-                          height: 166,
-                          borderRadius: 8,
-                          background: c.photo_url
-                            ? `oklch(0.82 0.04 60) center/cover no-repeat url(${c.photo_url})`
-                            : `linear-gradient(135deg, ${catSoft}, var(--paper-3))`,
-                          border: "1px solid var(--rule-2)",
-                          padding: 8,
-                          display: "flex",
-                          flexDirection: "column",
-                          justifyContent: "flex-end",
-                          color: "var(--paper)",
-                          textShadow: c.photo_url
-                            ? "0 1px 2px rgba(0,0,0,0.5)"
-                            : "none",
-                        }}
-                      >
-                        <div
-                          className="serif"
-                          style={{
-                            fontSize: 11,
-                            lineHeight: 1.4,
-                            color: c.photo_url ? "#fff" : "var(--ink)",
-                            display: "-webkit-box",
-                            WebkitLineClamp: 3,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                          }}
-                        >
-                          {c.body ?? "—"}
-                        </div>
-                      </div>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      </AnimateOnScroll>
     </div>
   );
 }
 
-function formatPeriod(start: string | null, end: string | null): string {
-  if (!start && !end) return "";
-  const ys = start ? start.slice(0, 4) : "";
-  const ye = end ? end.slice(0, 4) : "";
-  if (ys && ye) return ys === ye ? ys : `${ys}–${ye}`;
-  if (ys) return `${ys}–`;
-  return `–${ye}`;
+function ProjectHero() {
+  return (
+    <div className="mx-auto max-w-[1280px] px-6 pt-7 lg:px-[60px]">
+      <div className="grid items-end gap-9 lg:grid-cols-[1fr_420px] lg:gap-[60px]">
+        <div>
+          <AnimateOnScroll>
+            <span
+              className="mb-[18px] inline-block rounded-full px-3 py-[5px] text-[10px] font-semibold uppercase tracking-[2px]"
+              style={{
+                background: "rgba(107,175,138,0.12)",
+                color: "#3A7A55",
+              }}
+            >
+              NETWORK · 네트워크
+            </span>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.08}>
+            <p className="mb-2.5 text-[11px] tracking-[1px] text-[#AEAEB2]">
+              2024 – 2028
+            </p>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.16}>
+            <h1
+              className="mb-5 font-bold leading-[1.1] tracking-[-2px] text-v2-ink"
+              style={{ fontSize: "clamp(36px, 4.5vw, 58px)" }}
+            >
+              시부야 교류
+            </h1>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.24}>
+            <p className="mb-8 max-w-[480px] text-[14.5px] font-light leading-[1.85] text-v2-ink3">
+              강화와 시부야, 두 도시의 사람들이 매년 서로를 방문하며 일상을
+              겹쳐갑니다. 손님이 아니라 이웃이 되어가는 과정의 기록입니다.
+            </p>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.32}>
+            <div className="flex flex-wrap gap-8">
+              <HeroStat num={22} label="카드" accent />
+              <HeroStat num={6} label="편지" />
+              <HeroStat num={31} label="참여자" />
+              <HeroStat num={5} label="진행 일수" />
+            </div>
+          </AnimateOnScroll>
+        </div>
+        <AnimateOnScroll delay={0.24}>
+          <div className="lg:max-w-[420px]">
+            <div className="group relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#EDECEA]">
+              <div
+                className="h-full w-full transition-transform duration-[500ms] group-hover:scale-[1.03]"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #C4D4E8 0%, #88AADD 50%, #6BAF8A 100%)",
+                }}
+              />
+              <div
+                className="absolute bottom-5 left-5 rounded-md border border-white/40 px-3 py-1.5 text-[10px] font-medium tracking-[1.5px] text-v2-ink"
+                style={{
+                  background: "rgba(255,255,255,0.85)",
+                  backdropFilter: "blur(6px)",
+                }}
+              >
+                SHIBUYA × GANGHWA
+              </div>
+            </div>
+            <p className="mt-2 block text-[9.5px] font-light tracking-[0.3px] text-[#AEAEB2]">
+              시부야대학 교류 현장 · 2026 · ph. crew archive
+            </p>
+          </div>
+        </AnimateOnScroll>
+      </div>
+    </div>
+  );
+}
+
+function HeroStat({
+  num,
+  label,
+  accent,
+}: {
+  num: number;
+  label: string;
+  accent?: boolean;
+}) {
+  return (
+    <div>
+      <p
+        className={`mb-1 text-[28px] font-bold leading-none tracking-[-1px] ${
+          accent ? "text-[#6BAF8A]" : "text-v2-ink"
+        }`}
+      >
+        <CountUp target={num} />
+      </p>
+      <p className="text-[11px] font-light tracking-[0.5px] text-[#AEAEB2]">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function Divider() {
+  return (
+    <div className="mx-auto max-w-[1280px] px-6 lg:px-[60px]">
+      <div className="mt-12 border-t border-v2-rule" />
+    </div>
+  );
+}
+
+type ChapterStatus = "done" | "active" | "pending";
+type ChapterCard = {
+  status: ChapterStatus;
+  no: string;
+  year: string;
+  name: string;
+  cards: string;
+  people: string;
+};
+
+const CHAPTERS: ChapterCard[] = [
+  {
+    status: "done",
+    no: "CH.01",
+    year: "2024",
+    name: "첫 만남",
+    cards: "12",
+    people: "12",
+  },
+  {
+    status: "done",
+    no: "CH.02",
+    year: "2025",
+    name: "정기 교환",
+    cards: "18",
+    people: "19",
+  },
+  {
+    status: "active",
+    no: "CH.03",
+    year: "2026",
+    name: "봄, 지금",
+    cards: "22",
+    people: "31",
+  },
+  {
+    status: "pending",
+    no: "CH.04",
+    year: "2026",
+    name: "가을 재방문",
+    cards: "0",
+    people: "14",
+  },
+  {
+    status: "pending",
+    no: "CH.05",
+    year: "2027",
+    name: "마무리",
+    cards: "—",
+    people: "—",
+  },
+];
+
+function ChapterTimeline() {
+  return (
+    <div className="mx-auto max-w-[1280px] px-6 pt-14 lg:px-[60px]">
+      <AnimateOnScroll>
+        <p className="mb-7 text-[10.5px] font-semibold uppercase tracking-[3.5px] text-[#6BAF8A]">
+          CHAPTERS · 전체 진행 흐름
+        </p>
+      </AnimateOnScroll>
+      <AnimateOnScroll delay={0.08}>
+        <div className="mb-5 flex items-center gap-3">
+          <span className="whitespace-nowrap text-[12px] text-[#AEAEB2]">
+            <strong className="font-semibold text-v2-ink">3</strong> / 5 챕터
+            진행 중
+          </span>
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-v2-rule">
+            <div
+              className="h-full rounded-full transition-[width] duration-[1200ms] ease-out"
+              style={{ width: "60%", background: "#6BAF8A" }}
+            />
+          </div>
+        </div>
+      </AnimateOnScroll>
+      <AnimateOnScroll delay={0.16}>
+        <div className="overflow-x-auto pb-3">
+          <div className="flex min-w-max gap-2.5 pt-1">
+            {CHAPTERS.map((c) => (
+              <ChapterCardView key={c.no} chapter={c} />
+            ))}
+          </div>
+        </div>
+      </AnimateOnScroll>
+    </div>
+  );
+}
+
+function ChapterCardView({ chapter }: { chapter: ChapterCard }) {
+  const isActive = chapter.status === "active";
+  const isDone = chapter.status === "done";
+  const statusLabel =
+    chapter.status === "active"
+      ? "● 진행 중"
+      : chapter.status === "done"
+        ? "완료"
+        : "예정";
+  const statusColor =
+    chapter.status === "active"
+      ? "#6BAF8A"
+      : chapter.status === "done"
+        ? "#AEAEB2"
+        : "#C4956A";
+
+  return (
+    <div
+      className={`relative w-[200px] flex-shrink-0 rounded-[14px] border-[1.5px] p-5 pt-5 transition-all duration-[200ms] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.07)] ${
+        isActive
+          ? "border-[#6BAF8A] bg-[#F4FAF7] shadow-[0_6px_20px_rgba(107,175,138,0.15)]"
+          : isDone
+            ? "border-v2-rule bg-[#FAFAF8]"
+            : "border-v2-rule bg-white"
+      }`}
+    >
+      <p
+        className="mb-2.5 text-[9px] font-semibold uppercase tracking-[1.5px]"
+        style={{ color: statusColor }}
+      >
+        {statusLabel}
+      </p>
+      <p className="mb-1 text-[10px] tracking-[1px] text-[#AEAEB2]">
+        {chapter.no}
+      </p>
+      <p className="mb-2 text-[10px] text-[#AEAEB2]">{chapter.year}</p>
+      <p className="mb-3.5 text-[14px] font-semibold leading-[1.3] tracking-[-0.3px] text-v2-ink">
+        {chapter.name}
+      </p>
+      <div className="flex gap-2.5">
+        <span className="flex items-center gap-1 text-[10.5px] text-[#AEAEB2]">
+          카드{" "}
+          <span className="font-semibold text-v2-ink">{chapter.cards}</span>
+        </span>
+        <span className="flex items-center gap-1 text-[10.5px] text-[#AEAEB2]">
+          참여{" "}
+          <span className="font-semibold text-v2-ink">{chapter.people}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const NOTICES = [
+  {
+    type: "진행",
+    color: "#C4956A",
+    text: "교동 대룡시장 방문 에피소드 내일 오전 10시 출발. 크루 준비물 공지.",
+    date: "2026.04.25",
+  },
+  {
+    type: "공지",
+    color: "#6BAF8A",
+    text: "이번 주 갯벌카페 저녁 자리는 인원 마감. 다음 주 수요일 추가 편성.",
+    date: "2026.04.23",
+  },
+  {
+    type: "기록",
+    color: "#88AADD",
+    text: "시부야 Yui가 남긴 카드 No.291이 공개됐어요.",
+    date: "2026.04.22",
+  },
+];
+
+function ActiveChapter() {
+  return (
+    <div className="mx-auto max-w-[1280px] px-6 pt-12 lg:px-[60px]">
+      <div className="grid items-start gap-10 lg:grid-cols-[1fr_320px]">
+        <div>
+          <AnimateOnScroll>
+            <p className="mb-4 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[2px] text-[#6BAF8A]">
+              <span
+                className="h-[7px] w-[7px] animate-pulse rounded-full"
+                style={{ background: "#6BAF8A" }}
+              />
+              CHAPTER 03 · 2026 봄, 지금
+            </p>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.08}>
+            <h2
+              className="mb-3.5 font-bold leading-[1.2] tracking-[-0.8px] text-v2-ink"
+              style={{ fontSize: "clamp(22px, 2.8vw, 32px)" }}
+            >
+              &ldquo;당신은 강화의 일원입니다&rdquo;
+            </h2>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.16}>
+            <p className="mb-7 max-w-[500px] text-[14.5px] leading-[1.9] text-[#4A4A4A]">
+              3회차가 진행 중입니다. 당신은 이 프로젝트의 22번째 참여자로,
+              시부야에서 온 친구들과 동막해변을 걸었고 갯벌카페 사장님의 편지를
+              받았습니다.
+            </p>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.24}>
+            <div className="flex flex-wrap gap-3">
+              <ActiveStat num="22" label="카드" />
+              <ActiveStat num="6" label="편지" />
+              <ActiveStat num="31" label="참여자" />
+              <ActiveStat num="5" label="진행 일수" />
+            </div>
+          </AnimateOnScroll>
+        </div>
+
+        <AnimateOnScroll delay={0.16}>
+          <div>
+            <p className="mb-3.5 text-[9.5px] font-semibold uppercase tracking-[3px] text-[#AEAEB2]">
+              NOTICES — 이 챕터의 소식
+            </p>
+            <div className="flex flex-col">
+              {NOTICES.map((n, i) => (
+                <div
+                  key={n.text}
+                  className={`py-4 ${i < NOTICES.length - 1 ? "border-b border-v2-rule" : ""}`}
+                >
+                  <p
+                    className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[1.5px]"
+                    style={{ color: n.color }}
+                  >
+                    {n.type}
+                  </p>
+                  <p className="mb-1 text-[12.5px] leading-[1.7] text-v2-ink">
+                    {n.text}
+                  </p>
+                  <p className="text-[10.5px] font-light text-[#AEAEB2]">
+                    {n.date}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </AnimateOnScroll>
+      </div>
+    </div>
+  );
+}
+
+function ActiveStat({ num, label }: { num: string; label: string }) {
+  return (
+    <div className="flex min-w-[80px] flex-col items-center rounded-xl border border-v2-rule bg-[#F5F4F1] px-5 py-4">
+      <p className="mb-1.5 text-[26px] font-bold leading-none tracking-[-1px] text-v2-ink">
+        {num}
+      </p>
+      <p className="text-[11.5px] font-medium text-[#888]">{label}</p>
+    </div>
+  );
+}
+
+type CardItem = {
+  no: string;
+  memo: string;
+  place: string;
+  date: string;
+  letters: number;
+  hifive: number;
+};
+
+const CARDS: CardItem[] = [
+  {
+    no: "No.284",
+    memo: "시부야에서 온 친구들과 갯벌을 함께 걸었다. 말은 잘 안 통해도, 진흙은 만국 공통이었다.",
+    place: "@ 동막해변",
+    date: "2026.04.20",
+    letters: 7,
+    hifive: 12,
+  },
+  {
+    no: "No.279",
+    memo: 'Yui가 강화 해협을 보면서 "이 바다 건너면 일본이야?"라고 물었다. 아니야, 북한이야.',
+    place: "@ 동막해변",
+    date: "2026.04.19",
+    letters: 3,
+    hifive: 8,
+  },
+  {
+    no: "No.261",
+    memo: "갯벌카페 사장님이 일본어로 메뉴판을 만들어 오셨다. 일주일 걸렸다고 했다.",
+    place: "@ 갯벌카페",
+    date: "2026.04.18",
+    letters: 5,
+    hifive: 14,
+  },
+  {
+    no: "No.255",
+    memo: "저녁 식사 후 각자 고향 사진 보여주기. Taka 고향이 바다마을이었다. 달랐지만 닮았다.",
+    place: "@ 잠시섬",
+    date: "2026.04.17",
+    letters: 2,
+    hifive: 9,
+  },
+];
+
+function ProjectCards() {
+  return (
+    <div className="mx-auto max-w-[1280px] px-6 pb-20 pt-14 lg:px-[60px]">
+      <AnimateOnScroll>
+        <div className="mb-7 flex items-end justify-between">
+          <div>
+            <p className="mb-3 text-[10.5px] font-semibold uppercase tracking-[3.5px] text-[#6BAF8A]">
+              이 프로젝트의 카드들
+            </p>
+            <h2
+              className="font-bold tracking-[-0.8px] text-v2-ink"
+              style={{ fontSize: "clamp(20px, 2.5vw, 28px)" }}
+            >
+              시부야 교류에서
+              <br />
+              쌓인 순간들
+            </h2>
+          </div>
+          <Link
+            href="/feed"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#6BAF8A] transition-all hover:gap-2.5"
+          >
+            전체 피드 보기 →
+          </Link>
+        </div>
+      </AnimateOnScroll>
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        {CARDS.map((c, i) => (
+          <AnimateOnScroll key={c.no} delay={(i + 1) * 0.08}>
+            <ProjectCardView card={c} />
+          </AnimateOnScroll>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProjectCardView({ card }: { card: CardItem }) {
+  return (
+    <div className="cursor-pointer overflow-hidden rounded-[14px] border border-black/[0.06] bg-white transition-all duration-[220ms] hover:-translate-y-1 hover:shadow-[0_14px_36px_rgba(0,0,0,0.09)]">
+      <div className="flex items-center justify-between border-b border-[#F4F4F2] px-3.5 pb-2 pt-3">
+        <span className="text-[10px] font-semibold tracking-[1.5px] text-[#AEAEB2]">
+          {card.no}
+        </span>
+        <span
+          className="rounded px-2 py-[3px] text-[9.5px] font-semibold tracking-[0.5px]"
+          style={{ background: "rgba(107,175,138,0.12)", color: "#3A7A55" }}
+        >
+          네트워크
+        </span>
+      </div>
+      <div className="px-3.5 pb-3 pt-3.5">
+        <p className="mb-3 line-clamp-3 text-[12.5px] leading-[1.7] text-v2-ink">
+          {card.memo}
+        </p>
+        <div className="flex items-center justify-between">
+          <span className="text-[10.5px] font-light text-[#AEAEB2]">
+            {card.place}
+          </span>
+          <span className="text-[10.5px] font-light text-[#AEAEB2]">
+            {card.date}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center justify-between border-t border-[#F4F4F2] bg-[#FAFAF8] px-3.5 py-2">
+        <span className="text-[10px] font-medium text-[#6BAF8A]">
+          💌 +{card.letters}
+        </span>
+        <span className="text-[10px] font-medium text-[#C4956A]">
+          ★ {card.hifive}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function NoticeStrip() {
+  return (
+    <div
+      className="flex items-center justify-center px-6 py-5 lg:px-[60px]"
+      style={{ background: "#1A1A1A" }}
+    >
+      <p className="text-center text-[12px] leading-[1.7] tracking-[0.5px] text-white/50">
+        <strong className="font-medium text-white/80">
+          챕터를 클릭하면 해당 시기로 이동합니다.
+        </strong>
+        &nbsp;진행 중인 에피소드는 크루가 실시간으로 업데이트합니다.
+      </p>
+    </div>
+  );
 }
