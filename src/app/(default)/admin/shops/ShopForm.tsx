@@ -207,7 +207,7 @@ export function ShopForm({ initial, returnTo }: Props) {
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-60"
+          className="v2-legacy-button"
         >
           {submitting ? "저장 중..." : editing ? "수정 저장" : "가게 만들기"}
         </button>
@@ -226,8 +226,7 @@ export function ShopForm({ initial, returnTo }: Props) {
   );
 }
 
-const inputClass =
-  "rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring w-full";
+const inputClass = "v2-legacy-input text-sm";
 
 function LabeledField({
   label,
@@ -238,7 +237,7 @@ function LabeledField({
 }) {
   return (
     <label className="flex flex-col gap-1 text-sm">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-xs text-v2-ink3">{label}</span>
       {children}
     </label>
   );

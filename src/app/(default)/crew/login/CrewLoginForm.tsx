@@ -51,7 +51,7 @@ export function CrewLoginForm() {
           autoComplete="current-password"
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          className="rounded-md border border-input px-3 py-2 text-base tracking-widest"
+          className="v2-legacy-input text-base tracking-widest"
           placeholder="청풍이 전달한 코드"
           required
           minLength={6}
@@ -67,7 +67,7 @@ export function CrewLoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="mt-2 rounded-md bg-[#1e3a8a] px-4 py-3 text-base font-medium text-white transition hover:brightness-105 disabled:opacity-60"
+        className="v2-legacy-button mt-2 w-full text-base"
       >
         {loading ? "확인 중…" : "로그인"}
       </button>

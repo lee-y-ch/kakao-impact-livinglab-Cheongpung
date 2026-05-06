@@ -2,6 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import {
+  LegacyContainer,
+  LegacyHeader,
+  LegacyPage,
+} from "@/components/legacy-v2/PageChrome";
 import { getCurrentActor } from "@/lib/auth/current-actor";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -82,136 +87,129 @@ export default async function AdminReportsPage({ searchParams }: SearchProps) {
   const removedCount = removedCountRes.count ?? 0;
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
-      <header className="flex flex-col gap-2">
-        <Link
-          href="/admin"
-          className="text-xs text-muted-foreground hover:underline"
-        >
-          ← 운영 홈
-        </Link>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          신고 대응
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          신고된 카드를 확인하고 공개 영역에서 가리거나 신고를 해제하세요. 모든
-          조치는 감사 로그에 기록됩니다.
-        </p>
-      </header>
-
-      <nav className="mt-6 flex flex-wrap gap-2 text-sm">
-        <FilterTab
-          href="/admin/reports"
-          label="대응 대기"
-          count={pendingCount}
-          active={filter === "pending"}
+    <LegacyPage>
+      <LegacyContainer className="max-w-[1120px]">
+        <LegacyHeader
+          eyebrow="Admin Reports"
+          title="신고 대응"
+          description="신고된 카드를 확인하고 공개 영역에서 가리거나 신고를 해제합니다. 모든 조치는 감사 로그에 기록됩니다."
+          backHref="/admin"
+          backLabel="← 운영 홈"
         />
-        <FilterTab
-          href="/admin/reports?filter=removed"
-          label="가려진 카드"
-          count={removedCount}
-          active={filter === "removed"}
-        />
-      </nav>
 
-      {error ? (
-        <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-          카드를 불러오지 못했어요: {error.message}
-        </p>
-      ) : !rows || rows.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-          {filter === "pending"
-            ? "대응할 신고가 없어요."
-            : "가려진 카드가 없어요."}
-        </p>
-      ) : (
-        <ul className="mt-6 flex flex-col gap-3">
-          {rows.map((r) => {
-            const shopName = (r.shop as { name: string } | null)?.name ?? null;
-            const episodeTitle =
-              (r.episode as { title: string } | null)?.title ?? null;
-            const projectTitle =
-              (r.project as { title: string } | null)?.title ?? null;
-            const authorName =
-              (r.author as { nickname: string | null } | null)?.nickname ??
-              "(이름 없음)";
-            const contextLabel =
-              shopName ?? episodeTitle ?? projectTitle ?? "강화 어딘가";
-            const reportedAt = r.reported_at as string | null;
-            const removedAt = r.removed_at as string | null;
+        <nav className="mt-2 flex flex-wrap gap-2 text-sm">
+          <FilterTab
+            href="/admin/reports"
+            label="대응 대기"
+            count={pendingCount}
+            active={filter === "pending"}
+          />
+          <FilterTab
+            href="/admin/reports?filter=removed"
+            label="가려진 카드"
+            count={removedCount}
+            active={filter === "removed"}
+          />
+        </nav>
 
-            return (
-              <li
-                key={r.id as string}
-                className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-4 sm:flex-row"
-              >
-                <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-muted">
-                  {r.photo_url ? (
-                    <Image
-                      src={r.photo_url as string}
-                      alt={(r.body as string | null) ?? contextLabel}
-                      fill
-                      sizes="112px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-muted-foreground">
-                      (사진 없음)
-                    </div>
-                  )}
-                </div>
+        {error ? (
+          <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+            카드를 불러오지 못했어요: {error.message}
+          </p>
+        ) : !rows || rows.length === 0 ? (
+          <p className="v2-legacy-empty mt-6">
+            {filter === "pending"
+              ? "대응할 신고가 없어요."
+              : "가려진 카드가 없어요."}
+          </p>
+        ) : (
+          <ul className="mt-6 flex flex-col gap-3">
+            {rows.map((r) => {
+              const shopName =
+                (r.shop as { name: string } | null)?.name ?? null;
+              const episodeTitle =
+                (r.episode as { title: string } | null)?.title ?? null;
+              const projectTitle =
+                (r.project as { title: string } | null)?.title ?? null;
+              const authorName =
+                (r.author as { nickname: string | null } | null)?.nickname ??
+                "(이름 없음)";
+              const contextLabel =
+                shopName ?? episodeTitle ?? projectTitle ?? "강화 어딘가";
+              const reportedAt = r.reported_at as string | null;
+              const removedAt = r.removed_at as string | null;
 
-                <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/80">
-                      {r.type as string}
-                    </span>
-                    <span>{contextLabel}</span>
-                    <span>·</span>
-                    <span>{authorName}</span>
-                    {reportedAt ? (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                        신고 {new Date(reportedAt).toLocaleString("ko-KR")}
-                      </span>
-                    ) : null}
-                    {removedAt ? (
-                      <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
-                        가림 {new Date(removedAt).toLocaleString("ko-KR")}
-                      </span>
-                    ) : null}
-                    {!r.face_consent ? (
-                      <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
-                        초상권 미동의
-                      </span>
-                    ) : null}
+              return (
+                <li
+                  key={r.id as string}
+                  className="v2-legacy-panel flex flex-col gap-4 p-4 sm:flex-row"
+                >
+                  <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-muted">
+                    {r.photo_url ? (
+                      <Image
+                        src={r.photo_url as string}
+                        alt={(r.body as string | null) ?? contextLabel}
+                        fill
+                        sizes="112px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-muted-foreground">
+                        (사진 없음)
+                      </div>
+                    )}
                   </div>
 
-                  <p className="line-clamp-3 whitespace-pre-wrap text-sm text-foreground/90">
-                    {(r.body as string | null) ??
-                      (r.title as string | null) ??
-                      "(본문 없음)"}
-                  </p>
-                </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span className="v2-legacy-pill">{r.type as string}</span>
+                      <span>{contextLabel}</span>
+                      <span>·</span>
+                      <span>{authorName}</span>
+                      {reportedAt ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                          신고 {new Date(reportedAt).toLocaleString("ko-KR")}
+                        </span>
+                      ) : null}
+                      {removedAt ? (
+                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
+                          가림 {new Date(removedAt).toLocaleString("ko-KR")}
+                        </span>
+                      ) : null}
+                      {!r.face_consent ? (
+                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
+                          초상권 미동의
+                        </span>
+                      ) : null}
+                    </div>
 
-                <div className="flex shrink-0 flex-col items-end justify-between gap-3">
-                  <ReportRowActions
-                    activityId={r.id as string}
-                    removed={Boolean(removedAt)}
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                    <p className="line-clamp-3 whitespace-pre-wrap text-sm text-foreground/90">
+                      {(r.body as string | null) ??
+                        (r.title as string | null) ??
+                        "(본문 없음)"}
+                    </p>
+                  </div>
 
-      {rows && rows.length === PAGE_SIZE ? (
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          최근 {PAGE_SIZE} 건만 표시합니다. 더 많은 이력은 Phase 7 이후에
-          도입합니다.
-        </p>
-      ) : null}
-    </main>
+                  <div className="flex shrink-0 flex-col items-end justify-between gap-3">
+                    <ReportRowActions
+                      activityId={r.id as string}
+                      removed={Boolean(removedAt)}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {rows && rows.length === PAGE_SIZE ? (
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            최근 {PAGE_SIZE} 건만 표시합니다. 더 많은 이력은 Phase 7 이후에
+            도입합니다.
+          </p>
+        ) : null}
+      </LegacyContainer>
+    </LegacyPage>
   );
 }
 
@@ -232,8 +230,8 @@ function FilterTab({
       className={
         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition " +
         (active
-          ? "border-foreground bg-foreground text-background"
-          : "border-border bg-background text-muted-foreground hover:bg-muted")
+          ? "border-v2-ink bg-v2-ink text-white"
+          : "border-[var(--rule)] bg-white/70 text-v2-ink3 hover:bg-[var(--paper-2)]")
       }
     >
       <span>{label}</span>
@@ -241,8 +239,8 @@ function FilterTab({
         className={
           "rounded-full px-1.5 py-0.5 text-[10px] " +
           (active
-            ? "bg-background/20 text-background"
-            : "bg-muted text-foreground/70")
+            ? "bg-white/15 text-white"
+            : "bg-[var(--paper-2)] text-v2-ink2")
         }
       >
         {count}

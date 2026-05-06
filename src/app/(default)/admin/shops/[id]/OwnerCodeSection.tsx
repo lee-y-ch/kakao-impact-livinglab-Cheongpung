@@ -146,7 +146,7 @@ export function OwnerCodeSection({ shopId, owners }: Props) {
 
       <form
         onSubmit={handleIssue}
-        className="flex flex-col gap-3 rounded-xl border border-border bg-background p-4"
+        className="v2-legacy-panel flex flex-col gap-3 p-4"
       >
         <h3 className="text-sm font-semibold">새 사장님 추가 + 코드 발급</h3>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
@@ -162,7 +162,7 @@ export function OwnerCodeSection({ shopId, owners }: Props) {
           <button
             type="submit"
             disabled={issuing}
-            className="h-[38px] shrink-0 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+            className="v2-legacy-button h-[44px] shrink-0"
           >
             {issuing ? "발급 중..." : "코드 발급"}
           </button>
@@ -228,5 +228,4 @@ export function OwnerCodeSection({ shopId, owners }: Props) {
   );
 }
 
-const inputClass =
-  "rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring w-full";
+const inputClass = "v2-legacy-input text-sm";
