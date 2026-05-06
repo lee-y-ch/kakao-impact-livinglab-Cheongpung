@@ -1,28 +1,31 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
+import { getCurrentActor } from "@/lib/auth/current-actor";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 /**
  * v2 redesign — `/collection` 내 도감.
  * 시안: design-v2-reference/강화유니버스_도감.html.
  *
- * 레이아웃: 좌 사이드바(프로필 + 진척 + 다음 회차) + 우 도감 그리드.
- * 책 표지 형태의 4가지 카테고리별 그라디언트 카드.
+ * 시안 markup·디자인 토큰 그대로 유지하며 BOOK_CARDS 하드코딩만
+ * 본인 activities Supabase 페치로 교체. 비로그인 시 /login redirect.
  */
 
+type CategorySlug = "commons" | "network" | "world" | "policy";
 type Category = "공유지" | "네트워크" | "세계" | "정책";
 
-type BookCard = {
-  no: string;
-  category: Category;
-  project: string;
-  memo: string;
-  place: string;
-  date: string;
-  letters: number;
-  hifive: number;
-  isPublic: boolean;
+const SLUG_TO_LABEL: Record<CategorySlug, Category> = {
+  commons: "공유지",
+  network: "네트워크",
+  world: "세계",
+  policy: "정책",
 };
+
+const CATEGORY_ORDER: Category[] = ["공유지", "네트워크", "세계", "정책"];
 
 type CategoryStyle = {
   bg: string;
@@ -53,185 +56,448 @@ const CATEGORY_STYLE: Record<Category, CategoryStyle> = {
   },
 };
 
-const PROGRESS = [
-  { name: "공유지" as Category, current: 8, total: 12, pct: 67 },
-  { name: "네트워크" as Category, current: 5, total: 10, pct: 50 },
-  { name: "세계" as Category, current: 3, total: 8, pct: 38 },
-  { name: "정책" as Category, current: 2, total: 6, pct: 33 },
-];
+type BookCard = {
+  id: string;
+  no: string;
+  category: Category;
+  project: string;
+  memo: string;
+  place: string;
+  date: string;
+  letters: number;
+  hifive: number;
+  isPublic: boolean;
+};
 
-const BOOK_CARDS: BookCard[] = [
-  {
-    no: "No.284",
-    category: "네트워크",
-    project: "시부야 교류 · 3회차",
-    memo: "시부야에서 온 친구들과 갯벌을 함께 걸었다. 말은 잘 안 통해도, 진흙은 만국 공통이었다.",
-    place: "@ 동막해변",
-    date: "2026.04.20",
-    letters: 7,
-    hifive: 12,
-    isPublic: true,
-  },
-  {
-    no: "No.281",
-    category: "공유지",
-    project: "한달살기 · 18회차",
-    memo: "한달살기 2주차. 옆집 할머니가 쑥 한 바구니 주셨다.",
-    place: "@ 화도면 사가리",
-    date: "2026.04.18",
-    letters: 3,
-    hifive: 8,
-    isPublic: true,
-  },
-  {
-    no: "No.279",
-    category: "세계",
-    project: "환대 아카이빙 · 12회차",
-    memo: "폐교 된 초등학교에서 환대 아카이빙 워크숍. 낡은 책상에 앉아 편지를 썼다.",
-    place: "@ 교동 대룡시장",
-    date: "2026.04.14",
-    letters: 2,
-    hifive: 5,
-    isPublic: false,
-  },
-  {
-    no: "No.276",
-    category: "공유지",
-    project: "공유 주방 · 7회차",
-    memo: "공유 주방에서 다 같이 바지락 칼국수. 재료는 전부 오늘 아침 바다에서.",
-    place: "@ 온수리",
-    date: "2026.04.12",
-    letters: 1,
-    hifive: 6,
-    isPublic: true,
-  },
-  {
-    no: "No.270",
-    category: "네트워크",
-    project: "시부야 교류 · 2회차",
-    memo: "Shibuya University 팀과 줌 미팅. 올가을 3회차 방한 확정.",
-    place: "@ 화도면 사가리",
-    date: "2026.04.08",
-    letters: 0,
-    hifive: 4,
-    isPublic: true,
-  },
-  {
-    no: "No.268",
-    category: "정책",
-    project: "빈집 정책 연구 · 3회차",
-    memo: "군청 담당자 미팅. 빈집 실태조사 데이터 공유 요청. 생각보다 열려 있었다.",
-    place: "@ 강화군청",
-    date: "2026.04.05",
-    letters: 0,
-    hifive: 2,
-    isPublic: false,
-  },
-  {
-    no: "No.261",
-    category: "세계",
-    project: "해녀 학교 · 6회차",
-    memo: '해녀 선생님이 "고향이 하나 더 생긴 것 같다"고 했다. 다음 주도 오고 싶다.',
-    place: "@ 책방 국자와 주걱",
-    date: "2026.04.02",
-    letters: 4,
-    hifive: 9,
-    isPublic: true,
-  },
-  {
-    no: "No.255",
-    category: "공유지",
-    project: "한달살기 · 17회차",
-    memo: "전등사 새벽 산행. 안개 속 석탑을 혼자 봤다. 아무도 없었다.",
-    place: "@ 전등사",
-    date: "2026.03.28",
-    letters: 2,
-    hifive: 7,
-    isPublic: true,
-  },
-  {
-    no: "No.249",
-    category: "네트워크",
-    project: "시부야 교류 · 1회차",
-    memo: "처음 만난 날. 언어가 달라도 밥 먹는 속도는 비슷하다는 걸 알았다.",
-    place: "@ 갯벌카페",
-    date: "2026.03.22",
-    letters: 1,
-    hifive: 3,
-    isPublic: false,
-  },
-  {
-    no: "No.242",
-    category: "세계",
-    project: "빈집 정책 연구 · 14회차",
-    memo: "빈집 주인 할아버지와 두 시간 대화. 팔기 싫다고 했다. 그 마음이 더 중요했다.",
-    place: "@ 해명산",
-    date: "2026.03.18",
-    letters: 1,
-    hifive: 3,
-    isPublic: true,
-  },
-  {
-    no: "No.238",
-    category: "정책",
-    project: "빈집 정책 연구 · 2회차",
-    memo: "빈집 현황 지도 작업 시작. 마을 어르신들이 더 잘 알고 있었다.",
-    place: "@ 화도면 사가리",
-    date: "2026.03.14",
-    letters: 0,
-    hifive: 1,
-    isPublic: false,
-  },
-  {
-    no: "No.231",
-    category: "공유지",
-    project: "공유 주방 · 6회차",
-    memo: "동막해변 일몰. 카메라 없이 그냥 봤다. 그게 더 오래 남았다.",
-    place: "@ 동막해변",
-    date: "2026.03.10",
-    letters: 0,
-    hifive: 11,
-    isPublic: true,
-  },
-];
+type ProgressRow = {
+  name: Category;
+  current: number;
+  total: number;
+  pct: number;
+};
 
-export default function CollectionPage() {
+type NextMoment = {
+  title: string;
+  project: string;
+  dateLabel: string;
+  href: string;
+};
+
+type ProfileSummary = {
+  initial: string;
+  nickname: string;
+  joinedLabel: string;
+  visitsLabel: string;
+  totalCards: number;
+  totalLetters: number;
+  totalHifive: number;
+  visitCount: number;
+};
+
+type ActivityRow = {
+  id: string;
+  body: string | null;
+  photo_url: string | null;
+  is_public: boolean;
+  created_at: string;
+  type: string;
+  episode: {
+    id: string | null;
+    title: string | null;
+    seq: number | null;
+    location: string | null;
+    project: {
+      id: string | null;
+      title: string | null;
+      slug: string | null;
+      category: { slug: string | null; name: string | null } | null;
+    } | null;
+  } | null;
+  project: {
+    id: string | null;
+    title: string | null;
+    slug: string | null;
+    category: { slug: string | null; name: string | null } | null;
+  } | null;
+  shop: {
+    id: string | null;
+    name: string | null;
+    address: string | null;
+  } | null;
+};
+
+export default async function CollectionPage({
+  searchParams,
+}: {
+  searchParams?: { cat?: string };
+}) {
+  const actor = await getCurrentActor();
+  if (actor.role !== "participant") {
+    redirect("/login?next=/collection");
+  }
+
+  const supabase = createServerSupabase();
+
+  const [activitiesResult, userResult, projectsResult] = await Promise.all([
+    supabase
+      .from("activities")
+      .select(
+        `
+        id, body, photo_url, is_public, created_at, type,
+        episode:episodes (
+          id, title, seq, location,
+          project:projects (
+            id, title, slug,
+            category:categories ( slug, name )
+          )
+        ),
+        project:projects (
+          id, title, slug,
+          category:categories ( slug, name )
+        ),
+        shop:shops ( id, name, address )
+      `
+      )
+      .eq("user_id", actor.userId)
+      .is("removed_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("users")
+      .select("created_at")
+      .eq("id", actor.userId)
+      .maybeSingle(),
+    supabase
+      .from("projects")
+      .select("id, progress_type, progress_target, category:categories(slug)")
+      .eq("is_public", true),
+  ]);
+
+  const activities = (activitiesResult.data ?? []) as unknown as ActivityRow[];
+  const userRow = userResult.data;
+  const rawProjects = projectsResult.data ?? [];
+
+  // reactions on user's activities — fetched in one round-trip, aggregated in JS
+  const activityIds = activities.map((a) => a.id);
+  const reactionsByActivity = new Map<
+    string,
+    { letters: number; hifive: number }
+  >();
+  let totalLetters = 0;
+  let totalHifive = 0;
+
+  if (activityIds.length > 0) {
+    const { data: rawReactions } = await supabase
+      .from("reactions")
+      .select("activity_id, kind")
+      .in("activity_id", activityIds);
+
+    for (const r of rawReactions ?? []) {
+      const m = reactionsByActivity.get(r.activity_id) ?? {
+        letters: 0,
+        hifive: 0,
+      };
+      if (r.kind === "letter") {
+        m.letters += 1;
+        totalLetters += 1;
+      } else if (r.kind === "hi_five") {
+        m.hifive += 1;
+        totalHifive += 1;
+      }
+      reactionsByActivity.set(r.activity_id, m);
+    }
+  }
+
+  // 방문 횟수 = distinct created_at 날짜
+  const visitDates = new Set<string>();
+  for (const a of activities) {
+    visitDates.add(a.created_at.slice(0, 10));
+  }
+  const visitCount = visitDates.size;
+
+  // 카테고리별 카드 수
+  const categoryCounts: Record<Category, number> = {
+    공유지: 0,
+    네트워크: 0,
+    세계: 0,
+    정책: 0,
+  };
+  for (const a of activities) {
+    const slug = resolveCategorySlug(a);
+    if (slug && slug in SLUG_TO_LABEL) {
+      categoryCounts[SLUG_TO_LABEL[slug as CategorySlug]] += 1;
+    }
+  }
+
+  // 카테고리별 목표 카드 수 (progress_target.target_cards 합산)
+  const categoryTargets: Record<Category, number> = {
+    공유지: 0,
+    네트워크: 0,
+    세계: 0,
+    정책: 0,
+  };
+  type ProjectProgressRow = {
+    progress_type: string | null;
+    progress_target: unknown;
+    category: { slug: string | null } | null;
+  };
+  for (const p of rawProjects as unknown as ProjectProgressRow[]) {
+    const slug = p.category?.slug;
+    if (!slug || !(slug in SLUG_TO_LABEL)) continue;
+    const target = (p.progress_target as { target_cards?: unknown } | null)
+      ?.target_cards;
+    if (typeof target === "number" && Number.isFinite(target)) {
+      categoryTargets[SLUG_TO_LABEL[slug as CategorySlug]] += target;
+    }
+  }
+
+  const progress: ProgressRow[] = CATEGORY_ORDER.map((name) => {
+    const current = categoryCounts[name];
+    const total = categoryTargets[name];
+    const pct =
+      total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
+    return { name, current, total, pct };
+  });
+
+  // 다음 회차 — 본인 참여 프로젝트 중 가장 가까운 예정·진행 에피소드
+  const userProjectIds = new Set<string>();
+  for (const a of activities) {
+    const pid = a.episode?.project?.id ?? a.project?.id;
+    if (pid) userProjectIds.add(pid);
+  }
+
+  let nextEpisode: NextMoment | null = null;
+  if (userProjectIds.size > 0) {
+    const today = new Date().toISOString().slice(0, 10);
+    type NextEpisodeRow = {
+      id: string;
+      title: string;
+      seq: number | null;
+      session_date: string | null;
+      status: string;
+      project: { title: string | null; slug: string | null } | null;
+    };
+    const { data: nextEps } = await supabase
+      .from("episodes")
+      .select(
+        `id, title, seq, session_date, status,
+         project:projects ( title, slug )`
+      )
+      .in("project_id", [...userProjectIds])
+      .in("status", ["planned", "in_progress"])
+      .gte("session_date", today)
+      .order("session_date", { ascending: true })
+      .limit(1);
+
+    const ep = (nextEps as unknown as NextEpisodeRow[] | null)?.[0];
+    if (ep) {
+      const projectTitle = ep.project?.title ?? "";
+      const projectSlug = ep.project?.slug ?? "";
+      const projectLine = ep.seq
+        ? `${projectTitle} ${ep.seq}회차`
+        : projectTitle;
+      nextEpisode = {
+        title: ep.title,
+        project: projectLine,
+        dateLabel: ep.session_date ? formatDateRelative(ep.session_date) : "",
+        href: projectSlug ? `/projects/${projectSlug}` : "/projects",
+      };
+    }
+  }
+
+  // 카테고리 필터
+  const activeFilterLabel = parseCategoryFilter(searchParams?.cat);
+  const visibleActivities = activeFilterLabel
+    ? activities.filter((a) => {
+        const slug = resolveCategorySlug(a);
+        return (
+          slug != null &&
+          slug in SLUG_TO_LABEL &&
+          SLUG_TO_LABEL[slug as CategorySlug] === activeFilterLabel
+        );
+      })
+    : activities;
+
+  // BookCard view models — No.XXX 는 user 도감 안에서만 의미 있는 일련번호
+  const totalAll = activities.length;
+  const indexById = new Map<string, number>();
+  activities.forEach((a, i) => indexById.set(a.id, i));
+
+  const cards: BookCard[] = visibleActivities.map((a) => {
+    const slug = resolveCategorySlug(a);
+    const label =
+      slug && slug in SLUG_TO_LABEL
+        ? SLUG_TO_LABEL[slug as CategorySlug]
+        : "공유지";
+
+    const projectTitle = a.episode?.project?.title ?? a.project?.title ?? "";
+    const episodeBit =
+      a.episode?.seq != null
+        ? `${a.episode.seq}회차`
+        : (a.episode?.title ?? "");
+    const place = a.shop?.name
+      ? `@ ${a.shop.name}`
+      : a.episode?.location
+        ? `@ ${a.episode.location}`
+        : "";
+    const reactions = reactionsByActivity.get(a.id) ?? {
+      letters: 0,
+      hifive: 0,
+    };
+    const seqInList = totalAll - (indexById.get(a.id) ?? 0);
+
+    return {
+      id: a.id,
+      no: `No.${String(seqInList).padStart(3, "0")}`,
+      category: label,
+      project: [projectTitle, episodeBit].filter(Boolean).join(" · ") || "—",
+      memo: a.body ?? "",
+      place,
+      date: formatDate(a.created_at),
+      letters: reactions.letters,
+      hifive: reactions.hifive,
+      isPublic: a.is_public,
+    };
+  });
+
+  const profile: ProfileSummary = {
+    initial: (actor.nickname ?? "여").slice(0, 1),
+    nickname: actor.nickname ?? "강화 여행자",
+    joinedLabel: userRow?.created_at
+      ? `JOINED ${formatJoined(userRow.created_at)}`
+      : "JOINED ─",
+    visitsLabel: visitCount > 0 ? `강화 ${visitCount}회 방문` : "첫 방문 준비",
+    totalCards: activities.length,
+    totalLetters,
+    totalHifive,
+    visitCount,
+  };
+
   return (
     <>
-      <CollectionLayout />
+      <CollectionLayout
+        profile={profile}
+        progress={progress}
+        nextEpisode={nextEpisode}
+        cards={cards}
+        categoryCounts={categoryCounts}
+        totalCount={activities.length}
+        activeFilter={activeFilterLabel}
+      />
       <NoticeStrip />
     </>
   );
 }
 
-function CollectionLayout() {
+// ── helpers ────────────────────────────────────────────────────
+
+function resolveCategorySlug(a: ActivityRow): string | null {
+  return (
+    a.episode?.project?.category?.slug ?? a.project?.category?.slug ?? null
+  );
+}
+
+function parseCategoryFilter(cat: string | undefined): Category | null {
+  const allowed: Category[] = ["공유지", "네트워크", "세계", "정책"];
+  if (cat && (allowed as string[]).includes(cat)) return cat as Category;
+  return null;
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const yy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yy}.${mm}.${dd}`;
+}
+
+function formatJoined(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "─";
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatDateRelative(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(d);
+  target.setHours(0, 0, 0, 0);
+  const diffDays = Math.round(
+    (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (diffDays === 0) return "오늘";
+  if (diffDays === 1) return "내일";
+  if (diffDays > 1 && diffDays <= 7) return `${diffDays}일 후`;
+  return formatDate(dateStr);
+}
+
+// ── presentation (시안 markup 그대로) ─────────────────────────
+
+function CollectionLayout({
+  profile,
+  progress,
+  nextEpisode,
+  cards,
+  categoryCounts,
+  totalCount,
+  activeFilter,
+}: {
+  profile: ProfileSummary;
+  progress: ProgressRow[];
+  nextEpisode: NextMoment | null;
+  cards: BookCard[];
+  categoryCounts: Record<Category, number>;
+  totalCount: number;
+  activeFilter: Category | null;
+}) {
   return (
     <div className="mx-auto max-w-[1280px] px-6 pb-20 pt-[100px] lg:px-[60px]">
       <div className="grid items-start gap-8 pt-8 lg:grid-cols-[260px_1fr] lg:gap-[52px]">
-        <Sidebar />
-        <Main />
+        <Sidebar
+          profile={profile}
+          progress={progress}
+          nextEpisode={nextEpisode}
+        />
+        <Main
+          cards={cards}
+          categoryCounts={categoryCounts}
+          totalCount={totalCount}
+          activeFilter={activeFilter}
+        />
       </div>
     </div>
   );
 }
 
-function Sidebar() {
+function Sidebar({
+  profile,
+  progress,
+  nextEpisode,
+}: {
+  profile: ProfileSummary;
+  progress: ProgressRow[];
+  nextEpisode: NextMoment | null;
+}) {
   return (
     <aside className="lg:sticky lg:top-[88px]">
       <AnimateOnScroll>
-        <ProfileCard />
+        <ProfileCard profile={profile} />
       </AnimateOnScroll>
       <AnimateOnScroll delay={0.07}>
-        <ProgressCard />
+        <ProgressCard progress={progress} />
       </AnimateOnScroll>
-      <AnimateOnScroll delay={0.14}>
-        <NextMomentCard />
-      </AnimateOnScroll>
+      {nextEpisode && (
+        <AnimateOnScroll delay={0.14}>
+          <NextMomentCard moment={nextEpisode} />
+        </AnimateOnScroll>
+      )}
     </aside>
   );
 }
 
-function ProfileCard() {
+function ProfileCard({ profile }: { profile: ProfileSummary }) {
   return (
     <div className="mb-4 rounded-2xl border border-v2-rule bg-white px-6 py-7">
       <div className="mb-1.5 flex items-center gap-3">
@@ -241,25 +507,23 @@ function ProfileCard() {
             background: "linear-gradient(135deg, #6BAF8A, #C4956A)",
           }}
         >
-          풀
+          {profile.initial}
         </div>
         <div>
-          <p className="text-[16px] font-bold tracking-[-0.3px]">풀잎</p>
+          <p className="text-[16px] font-bold tracking-[-0.3px]">
+            {profile.nickname}
+          </p>
           <p className="text-[11.5px] font-light text-[#AEAEB2]">
-            JOINED 2024.11 · 강화 7회 방문
+            {profile.joinedLabel} · {profile.visitsLabel}
           </p>
         </div>
       </div>
-      <p className="my-3.5 border-t border-[#F0F0EC] pt-3.5 text-[12.5px] font-light leading-[1.75] text-v2-ink3">
-        갯벌이 좋아 자주 옵니다.
-        <br />
-        여행자도, 주민도 아닌 사이로.
-      </p>
+      <div className="my-3.5 border-t border-[#F0F0EC] pt-3.5" />
       <div className="grid grid-cols-2 gap-2.5">
-        <ProfileStat num={12} label="모은 카드" />
-        <ProfileStat num={6} label="받은 편지" sub="💌" />
-        <ProfileStat num={23} label="하이파이브" sub="★" />
-        <ProfileStat num={7} label="방문 횟수" />
+        <ProfileStat num={profile.totalCards} label="모은 카드" />
+        <ProfileStat num={profile.totalLetters} label="받은 편지" sub="💌" />
+        <ProfileStat num={profile.totalHifive} label="하이파이브" sub="★" />
+        <ProfileStat num={profile.visitCount} label="방문 횟수" />
       </div>
     </div>
   );
@@ -287,67 +551,80 @@ function ProfileStat({
   );
 }
 
-function ProgressCard() {
+function ProgressCard({ progress }: { progress: ProgressRow[] }) {
   return (
     <div className="mb-4 rounded-2xl border border-v2-rule bg-white px-6 py-5">
       <p className="mb-4 text-[9.5px] font-semibold uppercase tracking-[3px] text-[#AEAEB2]">
         MY PROGRESS
       </p>
-      {PROGRESS.map((p, i) => (
-        <div key={p.name} className={i < PROGRESS.length - 1 ? "mb-3.5" : ""}>
-          <div className="mb-1.5 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[12.5px] font-medium">
-              <span
-                className="h-[7px] w-[7px] flex-shrink-0 rounded-full"
-                style={{ background: CATEGORY_STYLE[p.name].dot }}
-              />
-              {p.name}
-            </span>
-            <span className="text-[11px] font-light text-[#AEAEB2]">
-              {p.current} / {p.total}
-            </span>
-          </div>
-          <div
-            className="h-[5px] overflow-hidden rounded-full"
-            style={{ background: "#EDECEA" }}
-          >
+      {progress.map((p, i) => {
+        const hasTarget = p.total > 0;
+        return (
+          <div key={p.name} className={i < progress.length - 1 ? "mb-3.5" : ""}>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[12.5px] font-medium">
+                <span
+                  className="h-[7px] w-[7px] flex-shrink-0 rounded-full"
+                  style={{ background: CATEGORY_STYLE[p.name].dot }}
+                />
+                {p.name}
+              </span>
+              <span className="text-[11px] font-light text-[#AEAEB2]">
+                {hasTarget ? `${p.current} / ${p.total}` : `${p.current}장`}
+              </span>
+            </div>
             <div
-              className="h-full rounded-full transition-[width] duration-[1200ms] ease-out"
-              style={{
-                width: `${p.pct}%`,
-                background: CATEGORY_STYLE[p.name].dot,
-              }}
-            />
+              className="h-[5px] overflow-hidden rounded-full"
+              style={{ background: "#EDECEA" }}
+            >
+              <div
+                className="h-full rounded-full transition-[width] duration-[1200ms] ease-out"
+                style={{
+                  width: `${p.pct}%`,
+                  background: CATEGORY_STYLE[p.name].dot,
+                }}
+              />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-function NextMomentCard() {
+function NextMomentCard({ moment }: { moment: NextMoment }) {
   return (
     <div className="rounded-2xl px-6 py-5" style={{ background: "#1A1A1A" }}>
       <p className="mb-3 text-[9.5px] font-semibold uppercase tracking-[3px] text-white/35">
         NEXT MOMENT
       </p>
       <p className="mb-1 text-[14px] font-semibold leading-[1.5] text-white/85">
-        교동 대룡시장 방문
+        {moment.title}
       </p>
       <p className="mb-4 text-[11.5px] font-light leading-[1.6] text-white/40">
-        시부야 교류 3회차 · 내일 오전 10시
+        {[moment.project, moment.dateLabel].filter(Boolean).join(" · ")}
       </p>
       <Link
-        href="/projects/shibuya-exchange"
+        href={moment.href}
         className="inline-block rounded-full bg-[#6BAF8A] px-[18px] py-2 text-[12px] font-medium text-v2-ink transition-colors hover:bg-[#5A9B78]"
       >
-        참여 확정 →
+        자세히 보기 →
       </Link>
     </div>
   );
 }
 
-function Main() {
+function Main({
+  cards,
+  categoryCounts,
+  totalCount,
+  activeFilter,
+}: {
+  cards: BookCard[];
+  categoryCounts: Record<Category, number>;
+  totalCount: number;
+  activeFilter: Category | null;
+}) {
   return (
     <main>
       <AnimateOnScroll>
@@ -374,21 +651,33 @@ function Main() {
 
       <AnimateOnScroll delay={0.07}>
         <div className="mb-6 flex flex-wrap gap-1.5">
-          <CategoryFilter active>전체 12</CategoryFilter>
-          <CategoryFilter dot="#C4956A">공유지 4</CategoryFilter>
-          <CategoryFilter dot="#6BAF8A">네트워크 3</CategoryFilter>
-          <CategoryFilter dot="#88AADD">세계 3</CategoryFilter>
-          <CategoryFilter dot="#A080CC">정책 2</CategoryFilter>
+          <CategoryFilter href="/collection" active={!activeFilter}>
+            전체 {totalCount}
+          </CategoryFilter>
+          {CATEGORY_ORDER.map((name) => (
+            <CategoryFilter
+              key={name}
+              href={`/collection?cat=${encodeURIComponent(name)}`}
+              active={activeFilter === name}
+              dot={CATEGORY_STYLE[name].dot}
+            >
+              {name} {categoryCounts[name]}
+            </CategoryFilter>
+          ))}
         </div>
       </AnimateOnScroll>
 
-      <div className="grid grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
-        {BOOK_CARDS.map((card, i) => (
-          <AnimateOnScroll key={card.no} delay={((i % 3) + 1) * 0.07}>
-            <BookCardView card={card} />
-          </AnimateOnScroll>
-        ))}
-      </div>
+      {cards.length === 0 ? (
+        <EmptyState hasFilter={!!activeFilter} />
+      ) : (
+        <div className="grid grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
+          {cards.map((card, i) => (
+            <AnimateOnScroll key={card.id} delay={((i % 3) + 1) * 0.07}>
+              <BookCardView card={card} />
+            </AnimateOnScroll>
+          ))}
+        </div>
+      )}
     </main>
   );
 }
@@ -415,17 +704,19 @@ function ViewTab({
 }
 
 function CategoryFilter({
+  href,
   active,
   dot,
   children,
 }: {
+  href: string;
   active?: boolean;
   dot?: string;
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
+    <Link
+      href={href}
       className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] transition-colors ${
         active
           ? "border-v2-ink bg-v2-ink font-medium text-white"
@@ -439,7 +730,7 @@ function CategoryFilter({
         />
       )}
       {children}
-    </button>
+    </Link>
   );
 }
 
@@ -447,7 +738,7 @@ function BookCardView({ card }: { card: BookCard }) {
   const style = CATEGORY_STYLE[card.category];
   return (
     <Link
-      href={`/collection/${card.no.replace("No.", "")}`}
+      href={`/collection/${card.id}`}
       className="group relative block cursor-pointer transition-transform duration-[280ms] hover:-translate-y-1.5"
     >
       {/* 뒤에 삐져나온 종이들 */}
@@ -514,11 +805,11 @@ function BookCardView({ card }: { card: BookCard }) {
             className="mb-4 line-clamp-3 text-[13px] font-medium leading-[1.65] text-white"
             style={{ textShadow: "0 1px 2px rgba(0,0,0,0.15)" }}
           >
-            {card.memo}
+            {card.memo || "(메모 없음)"}
           </p>
           <div className="flex items-center justify-between border-t border-white/15 pt-3">
             <span className="text-[10.5px] font-light text-white/60">
-              {card.place}
+              {card.place || " "}
             </span>
             <span className="text-[10.5px] font-light text-white/50">
               {card.date}
@@ -536,6 +827,23 @@ function BookCardView({ card }: { card: BookCard }) {
         </div>
       </div>
     </Link>
+  );
+}
+
+function EmptyState({ hasFilter }: { hasFilter: boolean }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-v2-rule bg-white/50 px-8 py-16 text-center">
+      <p className="mb-2 text-[14px] font-semibold text-v2-ink">
+        {hasFilter
+          ? "이 카테고리에는 아직 카드가 없어요."
+          : "아직 모은 카드가 없어요."}
+      </p>
+      <p className="text-[12.5px] font-light leading-[1.7] text-v2-ink3">
+        {hasFilter
+          ? "다른 카테고리를 둘러봐도 좋아요."
+          : "강화도 가게에서 QR을 스캔해 첫 카드를 발급해보세요."}
+      </p>
+    </div>
   );
 }
 
