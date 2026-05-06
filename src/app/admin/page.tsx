@@ -1,19 +1,167 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
+import { getCurrentActor } from "@/lib/auth/current-actor";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+import { AdminReviewActions } from "./AdminReviewActions";
+
+export const dynamic = "force-dynamic";
 
 /**
  * v2 redesign — `/admin` 운영 홈.
  * 시안: design-v2-reference/강화유니버스_관리자.html.
  *
- * 사이드바 + topbar + 콘텐츠 3 영역. 데이터는 시안 하드코딩.
- * 글로벌 Navbar/Footer 가 root layout 에서 함께 렌더되며, 관리자 콘솔은
- * 그 아래에서 자체 sidebar 로 운영 메뉴를 제공한다.
+ * 시안 markup·디자인 토큰을 유지하되, 데이터를 service role 로 집계해
+ * 알림·검수 큐·에피소드·운영 지표 4개 영역을 실데이터로 채운다.
+ *
+ * Navbar/Footer 는 root layout 에서 /admin* 경로일 때 비활성화된다 —
+ * 이 페이지가 자체 sidebar 셸을 그리기 때문.
  */
-export default function AdminPage() {
+
+const REVIEW_QUEUE_LIMIT = 6;
+const EPISODE_PANEL_LIMIT = 5;
+
+type CategoryLabel = "공유지" | "네트워크" | "세계" | "정책";
+
+const SLUG_TO_LABEL: Record<string, CategoryLabel> = {
+  commons: "공유지",
+  network: "네트워크",
+  world: "세계",
+  policy: "정책",
+};
+
+const BADGE_CLASS: Record<CategoryLabel, string> = {
+  공유지: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
+  네트워크: "bg-[rgba(107,175,138,0.12)] text-[#3A7A55]",
+  세계: "bg-[rgba(49,130,246,0.1)] text-[#2060C8]",
+  정책: "bg-[rgba(160,128,204,0.14)] text-[#5A3A88]",
+};
+
+const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
+  in_progress: { label: "● 진행", cls: "text-[#3A7A55]" },
+  planned: { label: "예정", cls: "text-[#888]" },
+  completed: { label: "완료", cls: "text-[#AEAEB2]" },
+};
+
+type ReviewRow = {
+  id: string;
+  body: string | null;
+  title: string | null;
+  reported_at: string | null;
+  created_at: string;
+  episode: {
+    title: string | null;
+    seq: number | null;
+    project: {
+      title: string | null;
+      category: { slug: string | null } | null;
+    } | null;
+  } | null;
+  project: {
+    title: string | null;
+    category: { slug: string | null } | null;
+  } | null;
+};
+
+type EpisodeRow = {
+  id: string;
+  title: string;
+  seq: number | null;
+  status: string;
+  session_date: string | null;
+  project: { title: string | null } | null;
+};
+
+export default async function AdminPage() {
+  const actor = await getCurrentActor();
+  if (actor.role !== "admin") {
+    redirect("/admin/login");
+  }
+
+  const admin = createAdminClient();
+  const startOfMonth = monthStartIso();
+
+  const [
+    publicCountRes,
+    reportedCountRes,
+    shopsCountRes,
+    shopsThisMonthRes,
+    episodeInProgressRes,
+    totalCardsRes,
+  ] = await Promise.all([
+    admin
+      .from("activities")
+      .select("id", { count: "exact", head: true })
+      .eq("is_public", true)
+      .is("removed_at", null),
+    admin
+      .from("activities")
+      .select("id", { count: "exact", head: true })
+      .not("reported_at", "is", null)
+      .is("removed_at", null),
+    admin.from("shops").select("id", { count: "exact", head: true }),
+    admin
+      .from("shops")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", startOfMonth),
+    admin
+      .from("episodes")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "in_progress"),
+    admin.from("activities").select("id", { count: "exact", head: true }),
+  ]);
+
+  const publicCount = publicCountRes.count ?? 0;
+  const reportedCount = reportedCountRes.count ?? 0;
+  const shopsCount = shopsCountRes.count ?? 0;
+  const shopsThisMonth = shopsThisMonthRes.count ?? 0;
+  const episodeInProgress = episodeInProgressRes.count ?? 0;
+  const totalCards = totalCardsRes.count ?? 0;
+
+  // 검수 큐 — 가장 오래된 공개 카드 N건 (행위 큐: 위에서부터 처리)
+  const { data: reviewRowsRaw } = await admin
+    .from("activities")
+    .select(
+      `
+      id, body, title, reported_at, created_at,
+      episode:episodes (
+        title, seq,
+        project:projects ( title, category:categories ( slug ) )
+      ),
+      project:projects (
+        title, category:categories ( slug )
+      )
+    `
+    )
+    .eq("is_public", true)
+    .is("removed_at", null)
+    .order("created_at", { ascending: true })
+    .limit(REVIEW_QUEUE_LIMIT);
+
+  const reviewRows = (reviewRowsRaw ?? []) as unknown as ReviewRow[];
+  const oldestReview = reviewRows[0];
+  const oldestReviewDays = oldestReview
+    ? daysSince(oldestReview.created_at)
+    : null;
+
+  // 에피소드 패널 — 진행 중·예정만
+  const { data: episodeRowsRaw } = await admin
+    .from("episodes")
+    .select(
+      `id, title, seq, status, session_date,
+       project:projects ( title )`
+    )
+    .in("status", ["in_progress", "planned"])
+    .order("session_date", { ascending: true, nullsFirst: false })
+    .limit(EPISODE_PANEL_LIMIT);
+
+  const episodeRows = (episodeRowsRaw ?? []) as unknown as EpisodeRow[];
+
   return (
-    <div className="flex min-h-[calc(100vh-200px)] bg-[#F0F0EC]">
-      <Sidebar />
+    <div className="flex min-h-screen bg-[#F0F0EC]">
+      <Sidebar reviewBadge={publicCount} reportedBadge={reportedCount} />
       <div className="ml-0 flex flex-1 flex-col lg:ml-[220px]">
         <Topbar />
         <div className="flex-1 px-6 pb-16 pt-8 lg:px-10">
@@ -23,38 +171,148 @@ export default function AdminPage() {
                 오늘 처리할 것들
               </h1>
               <p className="text-[12.5px] font-light text-[#AEAEB2]">
-                가장 오래된 검수 · 3일 전 · 긴급 1건 포함
+                {summarySubtext({
+                  oldestReviewDays,
+                  reportedCount,
+                  publicCount,
+                })}
               </p>
             </div>
           </AnimateOnScroll>
-          <AlertGrid />
-          <TwoColumn />
-          <MetricsGrid />
+
+          <AlertGrid
+            publicCount={publicCount}
+            reportedCount={reportedCount}
+            oldestReviewDays={oldestReviewDays}
+            shopsThisMonth={shopsThisMonth}
+          />
+
+          <TwoColumn rows={reviewRows} episodes={episodeRows} />
+
+          <MetricsGrid
+            publicCount={publicCount}
+            totalCards={totalCards}
+            shopsCount={shopsCount}
+            shopsThisMonth={shopsThisMonth}
+            episodeInProgress={episodeInProgress}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-/* ─────────────────────────── Sidebar ─────────────────────────── */
+// ── helpers ────────────────────────────────────────────────────
 
-const SIDEBAR_ITEMS = [
-  { icon: "◉", label: "운영 홈", href: "/admin", active: true },
-  { icon: "⊞", label: "프로젝트·에피소드", href: "/admin/projects" },
-  { icon: "⚑", label: "가게·QR", href: "/admin/shops" },
-  { icon: "✓", label: "공개 검수 큐", href: "/admin/review", badge: "7" },
-  {
-    icon: "!",
-    label: "신고 대응",
-    href: "/admin/reports",
-    badge: "2",
-    urgent: true,
-  },
-  { icon: "◎", label: "참여자", href: "#" },
-  { icon: "◈", label: "크루 계정", href: "#" },
-];
+function monthStartIso(): string {
+  const d = new Date();
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)
+  ).toISOString();
+}
 
-function Sidebar() {
+function daysSince(iso: string): number {
+  const created = new Date(iso).getTime();
+  if (Number.isNaN(created)) return 0;
+  const diff = Date.now() - created;
+  return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+}
+
+function todayKr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function shortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function categoryLabel(row: ReviewRow): CategoryLabel | null {
+  const slug =
+    row.episode?.project?.category?.slug ?? row.project?.category?.slug ?? null;
+  if (!slug) return null;
+  return SLUG_TO_LABEL[slug] ?? null;
+}
+
+function projectLine(row: ReviewRow): string {
+  const projectTitle =
+    row.episode?.project?.title ?? row.project?.title ?? null;
+  const seq = row.episode?.seq;
+  if (projectTitle && seq != null) return `${projectTitle} ${seq}회차`;
+  if (projectTitle) return projectTitle;
+  return "프로젝트 미연결";
+}
+
+function episodeLine(ep: EpisodeRow): string {
+  const projectTitle = ep.project?.title ?? "";
+  const seq = ep.seq != null ? ` ${ep.seq}회차` : "";
+  if (projectTitle) return `${projectTitle}${seq}`.trim();
+  return ep.title;
+}
+
+function episodePeriod(ep: EpisodeRow): string {
+  return ep.session_date ? shortDate(ep.session_date) : "일정 미정";
+}
+
+function summarySubtext({
+  oldestReviewDays,
+  reportedCount,
+  publicCount,
+}: {
+  oldestReviewDays: number | null;
+  reportedCount: number;
+  publicCount: number;
+}): string {
+  if (publicCount === 0) {
+    return "검수할 공개 카드가 없어요. 잠시 한 숨 돌리셔도 됩니다.";
+  }
+  const oldestText =
+    oldestReviewDays == null
+      ? "가장 오래된 검수 · 오늘"
+      : oldestReviewDays === 0
+        ? "가장 오래된 검수 · 오늘"
+        : `가장 오래된 검수 · ${oldestReviewDays}일 전`;
+  const reportedText = reportedCount > 0 ? ` · 신고 ${reportedCount}건` : "";
+  return `${oldestText}${reportedText}`;
+}
+
+// ── Sidebar ────────────────────────────────────────────────────
+
+function Sidebar({
+  reviewBadge,
+  reportedBadge,
+}: {
+  reviewBadge: number;
+  reportedBadge: number;
+}) {
+  const items: {
+    icon: string;
+    label: string;
+    href: string;
+    active?: boolean;
+    badge?: number;
+    urgent?: boolean;
+  }[] = [
+    { icon: "◉", label: "운영 홈", href: "/admin", active: true },
+    { icon: "⊞", label: "프로젝트·에피소드", href: "/admin/projects" },
+    { icon: "⚑", label: "가게·QR", href: "/admin/shops" },
+    {
+      icon: "✓",
+      label: "공개 검수 큐",
+      href: "/admin/review",
+      badge: reviewBadge,
+    },
+    {
+      icon: "!",
+      label: "신고 대응",
+      href: "/admin/reports",
+      badge: reportedBadge,
+      urgent: reportedBadge > 0,
+    },
+  ];
+
   return (
     <aside className="fixed bottom-0 left-0 top-0 z-50 hidden w-[220px] flex-shrink-0 flex-col bg-v2-ink lg:flex">
       <div className="border-b border-white/[0.07] px-6 pb-5 pt-7">
@@ -64,7 +322,7 @@ function Sidebar() {
         </p>
       </div>
       <nav className="flex-1 py-4">
-        {SIDEBAR_ITEMS.map((it) => (
+        {items.map((it) => (
           <Link
             key={it.label}
             href={it.href}
@@ -79,7 +337,7 @@ function Sidebar() {
             )}
             <span>{it.icon}</span>
             <span>{it.label}</span>
-            {it.badge && (
+            {it.badge && it.badge > 0 ? (
               <span
                 className={`ml-auto min-w-[18px] rounded-full px-[7px] py-px text-center text-[10px] font-bold text-white ${
                   it.urgent ? "bg-[#E05555]" : "bg-[#C4956A]"
@@ -87,12 +345,12 @@ function Sidebar() {
               >
                 {it.badge}
               </span>
-            )}
+            ) : null}
           </Link>
         ))}
       </nav>
       <div className="border-t border-white/[0.07] px-6 py-5 text-[11px] text-white/20">
-        운영자 · 호영
+        운영자 콘솔
         <br />
         Supabase Auth
       </div>
@@ -100,14 +358,14 @@ function Sidebar() {
   );
 }
 
-/* ─────────────────────────── Topbar ─────────────────────────── */
+// ── Topbar ─────────────────────────────────────────────────────
 
 function Topbar() {
   return (
     <div className="sticky top-0 z-40 flex items-center justify-between border-b border-v2-rule bg-[#F8F8F6] px-6 py-4 lg:px-10">
       <p className="text-[13px] text-[#AEAEB2]">
         DASHBOARD ·{" "}
-        <strong className="font-semibold text-v2-ink">2026.04.24</strong>
+        <strong className="font-semibold text-v2-ink">{todayKr()}</strong>
       </p>
       <div className="flex gap-2">
         <Link
@@ -116,54 +374,75 @@ function Topbar() {
         >
           임팩트 페이지 보기
         </Link>
-        <button
-          type="button"
+        <Link
+          href="/admin/projects"
           className="rounded-lg bg-[#6BAF8A] px-[18px] py-2 text-[12.5px] font-medium text-white transition-colors hover:bg-[#5A9B78]"
         >
           + 새 프로젝트
-        </button>
+        </Link>
       </div>
     </div>
   );
 }
 
-/* ─────────────────────────── Alert grid ─────────────────────────── */
+// ── Alert grid ────────────────────────────────────────────────
 
-const ALERTS = [
-  {
-    num: "7",
-    color: "text-[#6BAF8A]",
-    label: "공개 검수 대기",
-    sub: "가장 오래된 · 3일 전",
-  },
-  {
-    num: "2",
-    color: "text-[#E05555]",
-    label: "신고 대기",
-    sub: "긴급 1건 포함",
-    urgent: true,
-  },
-  {
-    num: "1",
-    color: "text-[#C4956A]",
-    label: "가게 등록 대기",
-    sub: "처리 대기 없음",
-  },
-  {
-    num: "0",
-    color: "text-[#888]",
-    label: "사장님 코드 재발급",
-    sub: "처리 대기 없음",
-  },
-];
+function AlertGrid({
+  publicCount,
+  reportedCount,
+  oldestReviewDays,
+  shopsThisMonth,
+}: {
+  publicCount: number;
+  reportedCount: number;
+  oldestReviewDays: number | null;
+  shopsThisMonth: number;
+}) {
+  const cells: {
+    num: number;
+    color: string;
+    label: string;
+    sub: string;
+    urgent?: boolean;
+  }[] = [
+    {
+      num: publicCount,
+      color: "text-[#6BAF8A]",
+      label: "공개 검수 대기",
+      sub:
+        publicCount === 0
+          ? "처리할 카드 없음"
+          : oldestReviewDays != null && oldestReviewDays > 0
+            ? `가장 오래된 · ${oldestReviewDays}일 전`
+            : "오늘 들어온 카드",
+    },
+    {
+      num: reportedCount,
+      color: reportedCount > 0 ? "text-[#E05555]" : "text-[#888]",
+      label: "신고 대기",
+      sub: reportedCount > 0 ? "지금 처리 필요" : "처리 대기 없음",
+      urgent: reportedCount > 0,
+    },
+    {
+      num: shopsThisMonth,
+      color: shopsThisMonth > 0 ? "text-[#C4956A]" : "text-[#888]",
+      label: "이번 달 새 가게",
+      sub: shopsThisMonth > 0 ? "QR · 사장님 코드 점검" : "신규 등록 없음",
+    },
+    {
+      num: 0,
+      color: "text-[#888]",
+      label: "사장님 코드 재발급",
+      sub: "수동 요청 기준 (자동 큐 미구현)",
+    },
+  ];
 
-function AlertGrid() {
   return (
     <div className="mb-8 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-      {ALERTS.map((a, i) => (
+      {cells.map((a, i) => (
         <AnimateOnScroll key={a.label} delay={(i + 1) * 0.06}>
           <div
-            className={`cursor-pointer rounded-xl border bg-white p-5 transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] ${
+            className={`rounded-xl border bg-white p-5 transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] ${
               a.urgent
                 ? "border-[rgba(224,85,85,0.3)] bg-[rgba(224,85,85,0.03)]"
                 : "border-v2-rule"
@@ -185,130 +464,92 @@ function AlertGrid() {
   );
 }
 
-/* ─────────────────────────── Two column ─────────────────────────── */
+// ── Two column ────────────────────────────────────────────────
 
-function TwoColumn() {
+function TwoColumn({
+  rows,
+  episodes,
+}: {
+  rows: ReviewRow[];
+  episodes: EpisodeRow[];
+}) {
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[1fr_360px]">
-      <ReviewQueue />
-      <EpisodePanel />
+      <ReviewQueue rows={rows} />
+      <EpisodePanel episodes={episodes} />
     </div>
   );
 }
 
-const REVIEW_ITEMS = [
-  {
-    no: "💌 No.284",
-    badge: "네트워크",
-    badgeClass: "bg-[rgba(107,175,138,0.12)] text-[#3A7A55]",
-    memo: "시부야에서 온 친구들과 갯벌을 함께 걸었다. 말은 잘 안 통해도, 진흙은 만국 공통이었다.",
-    date: "2026.04.20 · 시부야 교류 3회차",
-  },
-  {
-    no: "💌 No.281",
-    badge: "공유지",
-    badgeClass: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
-    memo: "한달살기 2주차. 옆집 할머니가 쑥 한 바구니 주셨다.",
-    date: "2026.04.18 · 한달살기",
-  },
-  {
-    no: "No.279",
-    badge: "세계",
-    badgeClass: "bg-[rgba(49,130,246,0.1)] text-[#2060C8]",
-    memo: "폐교 된 초등학교에서 환대 아카이빙 워크숍. 낡은 책상에 앉아 편지를 썼다.",
-    date: "2026.04.14 · 환대 아카이빙",
-  },
-  {
-    no: "💌 No.276",
-    badge: "공유지",
-    badgeClass: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
-    memo: "공유 주방에서 다 같이 바지락 칼국수. 재료는 전부 오늘 아침 바다에서.",
-    date: "2026.04.12 · 공유 주방",
-  },
-];
-
-function ReviewQueue() {
+function ReviewQueue({ rows }: { rows: ReviewRow[] }) {
   return (
     <AnimateOnScroll delay={0.06}>
       <div className="overflow-hidden rounded-2xl border border-v2-rule bg-white">
         <div className="flex items-center justify-between border-b border-v2-rule px-5 py-4">
           <p className="text-[14px] font-semibold text-v2-ink">
-            공개 검수 큐 · 7건
+            공개 검수 큐 · 최신 {rows.length}건
           </p>
-          <span className="cursor-pointer text-[12px] text-[#6BAF8A]">
-            전체 보기 →
-          </span>
-        </div>
-        {REVIEW_ITEMS.map((r, i) => (
-          <div
-            key={r.no + i}
-            className={`px-5 py-4 transition-colors hover:bg-[#FAFAF8] ${
-              i < REVIEW_ITEMS.length - 1 ? "border-b border-[#F0F0EC]" : ""
-            }`}
+          <Link
+            href="/admin/review"
+            className="text-[12px] text-[#6BAF8A] transition-colors hover:underline"
           >
-            <div className="mb-1.5 flex items-start justify-between">
-              <span className="text-[10px] font-semibold tracking-[1.5px] text-[#AEAEB2]">
-                {r.no} · {r.badge}
-              </span>
-              <span
-                className={`rounded px-2 py-0.5 text-[9px] font-semibold ${r.badgeClass}`}
-              >
-                {r.badge}
-              </span>
-            </div>
-            <p className="mb-2.5 line-clamp-2 text-[12.5px] leading-[1.65] text-v2-ink">
-              {r.memo}
+            전체 보기 →
+          </Link>
+        </div>
+        {rows.length === 0 ? (
+          <div className="px-5 py-8 text-center">
+            <p className="mb-1 text-[13px] font-semibold text-v2-ink">
+              검수할 카드가 없어요.
             </p>
-            <p className="mb-2.5 text-[10.5px] text-[#AEAEB2]">{r.date}</p>
-            <div className="flex gap-1.5">
-              <button
-                type="button"
-                className="flex-1 rounded-md border border-[rgba(107,175,138,0.25)] bg-[rgba(107,175,138,0.1)] py-1.5 text-[12px] font-medium text-[#3A7A55] transition-colors hover:bg-[rgba(107,175,138,0.2)]"
-              >
-                승인
-              </button>
-              <button
-                type="button"
-                className="flex-1 rounded-md border border-[rgba(224,85,85,0.2)] bg-[rgba(224,85,85,0.07)] py-1.5 text-[12px] font-medium text-[#C04040] transition-colors hover:bg-[rgba(224,85,85,0.14)]"
-              >
-                반려
-              </button>
-            </div>
+            <p className="text-[11.5px] font-light text-[#AEAEB2]">
+              새 공개 카드가 생기면 여기 자동으로 모입니다.
+            </p>
           </div>
-        ))}
+        ) : (
+          rows.map((r, i) => {
+            const label = categoryLabel(r);
+            const badgeCls = label
+              ? BADGE_CLASS[label]
+              : "bg-[#EDECEA] text-[#888]";
+            const noLabel = `No.${r.id.slice(0, 4).toUpperCase()}`;
+            return (
+              <div
+                key={r.id}
+                className={`px-5 py-4 transition-colors hover:bg-[#FAFAF8] ${
+                  i < rows.length - 1 ? "border-b border-[#F0F0EC]" : ""
+                }`}
+              >
+                <div className="mb-1.5 flex items-start justify-between gap-2">
+                  <span className="text-[10px] font-semibold tracking-[1.5px] text-[#AEAEB2]">
+                    {r.reported_at ? "⚠ " : ""}
+                    {noLabel} · {label ?? "—"}
+                  </span>
+                  <span
+                    className={`rounded px-2 py-0.5 text-[9px] font-semibold ${badgeCls}`}
+                  >
+                    {label ?? "미분류"}
+                  </span>
+                </div>
+                <p className="mb-2.5 line-clamp-2 text-[12.5px] leading-[1.65] text-v2-ink">
+                  {r.body || r.title || "(본문 없음)"}
+                </p>
+                <p className="mb-2.5 text-[10.5px] text-[#AEAEB2]">
+                  {shortDate(r.created_at)} · {projectLine(r)}
+                </p>
+                <AdminReviewActions
+                  activityId={r.id}
+                  reported={r.reported_at != null}
+                />
+              </div>
+            );
+          })
+        )}
       </div>
     </AnimateOnScroll>
   );
 }
 
-const EPISODES = [
-  {
-    status: "● 진행",
-    statusClass: "text-[#3A7A55]",
-    title: "시부야 교류 3회차",
-    period: "2026.04.20 – 04.24",
-  },
-  {
-    status: "준비",
-    statusClass: "text-[#9B6020]",
-    title: "한달살기 4월 입주",
-    period: "2026.04.25 ~",
-  },
-  {
-    status: "예정",
-    statusClass: "text-[#888]",
-    title: "공유 주방 7회차",
-    period: "2026.04.27",
-  },
-  {
-    status: "● 진행",
-    statusClass: "text-[#3A7A55]",
-    title: "환대 아카이빙",
-    period: "공모 진행",
-  },
-];
-
-function EpisodePanel() {
+function EpisodePanel({ episodes }: { episodes: EpisodeRow[] }) {
   return (
     <AnimateOnScroll delay={0.12}>
       <div className="overflow-hidden rounded-2xl border border-v2-rule bg-white">
@@ -318,53 +559,81 @@ function EpisodePanel() {
           </p>
           <Link
             href="/crew"
-            className="cursor-pointer text-[12px] text-[#6BAF8A]"
+            className="text-[12px] text-[#6BAF8A] transition-colors hover:underline"
           >
             크루 업데이트 →
           </Link>
         </div>
-        {EPISODES.map((e, i) => (
-          <div
-            key={e.title}
-            className={`px-[18px] py-3.5 ${
-              i < EPISODES.length - 1 ? "border-b border-[#F0F0EC]" : ""
-            }`}
-          >
-            <p
-              className={`mb-1 text-[10px] font-semibold tracking-[1px] ${e.statusClass}`}
-            >
-              {e.status}
+        {episodes.length === 0 ? (
+          <div className="px-5 py-6 text-center">
+            <p className="text-[12px] font-light text-[#AEAEB2]">
+              진행 중 에피소드가 없어요.
             </p>
-            <p className="mb-0.5 text-[13px] font-semibold text-v2-ink">
-              {e.title}
-            </p>
-            <p className="text-[11px] text-[#AEAEB2]">{e.period}</p>
           </div>
-        ))}
+        ) : (
+          episodes.map((ep, i) => {
+            const status = STATUS_LABEL[ep.status] ?? {
+              label: ep.status,
+              cls: "text-[#888]",
+            };
+            return (
+              <div
+                key={ep.id}
+                className={`px-[18px] py-3.5 ${
+                  i < episodes.length - 1 ? "border-b border-[#F0F0EC]" : ""
+                }`}
+              >
+                <p
+                  className={`mb-1 text-[10px] font-semibold tracking-[1px] ${status.cls}`}
+                >
+                  {status.label}
+                </p>
+                <p className="mb-0.5 text-[13px] font-semibold text-v2-ink">
+                  {episodeLine(ep)}
+                </p>
+                <p className="text-[11px] text-[#AEAEB2]">
+                  {episodePeriod(ep)}
+                </p>
+              </div>
+            );
+          })
+        )}
       </div>
     </AnimateOnScroll>
   );
 }
 
-/* ─────────────────────────── Metrics grid ─────────────────────────── */
+// ── Metrics ────────────────────────────────────────────────────
 
-const METRICS = [
-  { unit: "최근 30일", num: "94", label: "검수 처리율 (%)" },
-  { unit: "평균", num: "11", label: "평균 응답 (시간)" },
-  { unit: "누적", num: "3", label: "신고 건수" },
-  { unit: "이번 달", num: "2", label: "새 가게" },
-  { unit: "이번 주", num: "18", label: "크루 활동" },
-];
+function MetricsGrid({
+  publicCount,
+  totalCards,
+  shopsCount,
+  shopsThisMonth,
+  episodeInProgress,
+}: {
+  publicCount: number;
+  totalCards: number;
+  shopsCount: number;
+  shopsThisMonth: number;
+  episodeInProgress: number;
+}) {
+  const metrics: { unit: string; num: number; label: string }[] = [
+    { unit: "누적", num: totalCards, label: "전체 카드" },
+    { unit: "지금", num: publicCount, label: "공개 카드" },
+    { unit: "누적", num: shopsCount, label: "등록 가게" },
+    { unit: "이번 달", num: shopsThisMonth, label: "신규 가게" },
+    { unit: "지금", num: episodeInProgress, label: "진행 중 에피소드" },
+  ];
 
-function MetricsGrid() {
   return (
     <AnimateOnScroll delay={0.18}>
       <div className="mt-6 grid grid-cols-2 overflow-hidden rounded-2xl border border-v2-rule bg-white sm:grid-cols-3 lg:grid-cols-5">
-        {METRICS.map((m, i) => (
+        {metrics.map((m, i) => (
           <div
             key={m.label}
             className={`px-4 py-5 text-center ${
-              i < METRICS.length - 1
+              i < metrics.length - 1
                 ? "border-b border-r border-v2-rule lg:border-b-0"
                 : ""
             }`}
