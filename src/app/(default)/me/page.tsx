@@ -2,6 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import {
+  LegacyContainer,
+  LegacyHeader,
+  LegacyPage,
+  LegacyPanel,
+  LegacyStatRow,
+} from "@/components/legacy-v2/PageChrome";
 import { LogoutButton } from "@/components/layout/LogoutButton";
 import { getCurrentActor } from "@/lib/auth/current-actor";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
@@ -24,63 +31,75 @@ export default async function MePage() {
     .is("removed_at", null);
 
   return (
-    <main className="mx-auto flex max-w-xl flex-col gap-6 px-6 py-8">
-      <section className="flex items-center gap-4">
-        <div className="relative h-16 w-16 overflow-hidden rounded-full bg-muted">
-          {actor.profileImageUrl ? (
-            <Image
-              src={actor.profileImageUrl}
-              alt={actor.nickname ?? "프로필"}
-              fill
-              sizes="64px"
-              className="object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-muted-foreground">
-              {(actor.nickname ?? "?").slice(0, 1)}
+    <LegacyPage>
+      <LegacyContainer className="max-w-[960px]">
+        <LegacyHeader
+          eyebrow="My Profile"
+          title={actor.nickname ?? "강화 여행자"}
+          description="참여자의 기본 프로필과 도감 진입, 계정 상태를 한 화면에서 확인합니다."
+        />
+
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <LegacyPanel className="flex flex-col gap-5">
+            <div className="flex items-center gap-4">
+              <div className="relative h-20 w-20 overflow-hidden rounded-full bg-[var(--paper-3)]">
+                {actor.profileImageUrl ? (
+                  <Image
+                    src={actor.profileImageUrl}
+                    alt={actor.nickname ?? "프로필"}
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xl font-semibold text-v2-ink3">
+                    {(actor.nickname ?? "?").slice(0, 1)}
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="v2-legacy-kicker mb-2">Participant</p>
+                <p className="text-xl font-semibold tracking-[-0.03em] text-v2-ink">
+                  {actor.nickname ?? "강화 여행자"}
+                </p>
+                <p className="mt-1 text-sm text-v2-ink3">
+                  카카오 계정으로 로그인되어 있습니다.
+                </p>
+              </div>
             </div>
-          )}
-        </div>
-        <div className="flex flex-col">
-          <h1 className="text-xl font-bold tracking-tight">
-            {actor.nickname ?? "강화 여행자"}
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            카카오 계정으로 로그인했어요.
-          </p>
-        </div>
-      </section>
+            <LegacyStatRow
+              items={[
+                {
+                  label: "누적 카드",
+                  value: (
+                    <>
+                      {count ?? 0}
+                      <span className="ml-1 text-base font-normal text-v2-ink3">
+                        장
+                      </span>
+                    </>
+                  ),
+                },
+              ]}
+            />
+            <div className="flex flex-wrap gap-3">
+              <Link href="/collection" className="v2-legacy-button">
+                내 도감 보기
+              </Link>
+            </div>
+          </LegacyPanel>
 
-      <section className="rounded-xl border border-border bg-background p-4">
-        <div className="flex items-baseline justify-between">
-          <span className="text-sm text-muted-foreground">누적 카드</span>
-          <span className="text-xl font-semibold tabular-nums">
-            {count ?? 0}
-            <span className="ml-0.5 text-sm font-normal text-muted-foreground">
-              장
-            </span>
-          </span>
+          <LegacyPanel className="flex flex-col gap-4">
+            <p className="v2-legacy-kicker">Account</p>
+            <p className="v2-legacy-copy !text-sm">
+              로그아웃하면 다시 카카오 로그인이 필요합니다.
+            </p>
+            <div className="self-start">
+              <LogoutButton actorRole="participant" />
+            </div>
+          </LegacyPanel>
         </div>
-      </section>
-
-      <section className="flex flex-col gap-2 text-sm">
-        <Link
-          href="/collection"
-          className="rounded-xl border border-border bg-background px-4 py-3 transition hover:bg-muted/60"
-        >
-          내 도감 보기 →
-        </Link>
-      </section>
-
-      <section className="flex flex-col gap-3 rounded-xl border border-border bg-background p-4">
-        <h2 className="text-sm font-medium">계정</h2>
-        <p className="text-xs text-muted-foreground">
-          로그아웃하면 다시 카카오 로그인이 필요해요.
-        </p>
-        <div className="self-start">
-          <LogoutButton actorRole="participant" />
-        </div>
-      </section>
-    </main>
+      </LegacyContainer>
+    </LegacyPage>
   );
 }

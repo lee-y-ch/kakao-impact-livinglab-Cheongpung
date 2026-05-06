@@ -45,7 +45,7 @@ export function EpisodeSection({ projectId, episodes }: Props) {
         </h3>
 
         {episodes.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border bg-muted/20 p-5 text-center text-sm text-muted-foreground">
+          <p className="v2-legacy-empty">
             아직 회차가 없어요. 위에서 새 회차를 추가해주세요.
           </p>
         ) : (
@@ -124,7 +124,7 @@ function NewEpisodeForm({ projectId }: { projectId: string }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-3 rounded-xl border border-border bg-background p-4"
+      className="v2-legacy-panel flex flex-col gap-3 p-4"
     >
       <h3 className="text-sm font-semibold">새 회차 추가</h3>
 
@@ -191,7 +191,7 @@ function NewEpisodeForm({ projectId }: { projectId: string }) {
         </LabeledField>
 
         <LabeledField label="공개 여부">
-          <label className="flex h-[38px] items-center gap-2 text-sm">
+          <label className="flex h-[44px] items-center gap-2 text-sm text-v2-ink2">
             <input
               type="checkbox"
               checked={isPublic}
@@ -211,7 +211,7 @@ function NewEpisodeForm({ projectId }: { projectId: string }) {
       <button
         type="submit"
         disabled={submitting}
-        className="self-start rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-60"
+        className="v2-legacy-button self-start"
       >
         {submitting ? "추가 중..." : "회차 추가"}
       </button>
@@ -293,15 +293,15 @@ function EpisodeRowEditor({ episode }: { episode: EpisodeRow }) {
 
   if (!editing) {
     return (
-      <li className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-4 py-3">
+      <li className="v2-legacy-panel flex items-center justify-between gap-3 px-4 py-3">
         <div className="flex min-w-0 flex-col">
           <div className="flex items-center gap-2 text-sm font-medium">
             {episode.seq !== null ? (
-              <span className="text-muted-foreground">{episode.seq}회차</span>
+              <span className="text-v2-ink3">{episode.seq}회차</span>
             ) : null}
             <span className="truncate">{episode.title}</span>
           </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-v2-ink3">
             <span>상태 · {STATUS_LABEL[episode.status]}</span>
             {episode.session_date ? (
               <span>· {episode.session_date}</span>
@@ -313,7 +313,7 @@ function EpisodeRowEditor({ episode }: { episode: EpisodeRow }) {
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="shrink-0 text-xs font-medium text-foreground underline underline-offset-4"
+          className="v2-legacy-button-muted shrink-0 !px-3 !py-2 !text-xs"
         >
           편집
         </button>
@@ -322,7 +322,7 @@ function EpisodeRowEditor({ episode }: { episode: EpisodeRow }) {
   }
 
   return (
-    <li className="flex flex-col gap-3 rounded-xl border border-border bg-background p-4">
+    <li className="v2-legacy-panel flex flex-col gap-3 p-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[100px_1fr]">
         <LabeledField label="회차 번호">
           <input
@@ -382,7 +382,7 @@ function EpisodeRowEditor({ episode }: { episode: EpisodeRow }) {
           </select>
         </LabeledField>
         <LabeledField label="공개 여부">
-          <label className="flex h-[38px] items-center gap-2 text-sm">
+          <label className="flex h-[44px] items-center gap-2 text-sm text-v2-ink2">
             <input
               type="checkbox"
               checked={isPublic}
@@ -405,7 +405,7 @@ function EpisodeRowEditor({ episode }: { episode: EpisodeRow }) {
             type="button"
             onClick={handleSave}
             disabled={submitting}
-            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+            className="v2-legacy-button !px-4 !py-2"
           >
             {submitting ? "저장 중..." : "저장"}
           </button>
@@ -413,7 +413,7 @@ function EpisodeRowEditor({ episode }: { episode: EpisodeRow }) {
             type="button"
             onClick={() => setEditing(false)}
             disabled={submitting}
-            className="text-xs text-muted-foreground underline underline-offset-4"
+            className="v2-legacy-button-muted !px-3 !py-2 !text-xs"
           >
             취소
           </button>
@@ -431,8 +431,7 @@ function EpisodeRowEditor({ episode }: { episode: EpisodeRow }) {
   );
 }
 
-const inputClass =
-  "rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring w-full";
+const inputClass = "v2-legacy-input text-sm";
 
 function LabeledField({
   label,
@@ -443,7 +442,7 @@ function LabeledField({
 }) {
   return (
     <label className="flex flex-col gap-1 text-sm">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-xs text-v2-ink3">{label}</span>
       {children}
     </label>
   );

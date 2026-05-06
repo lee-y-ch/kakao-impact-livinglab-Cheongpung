@@ -35,7 +35,7 @@ export function LogoutButton({
       type="button"
       onClick={handleClick}
       disabled={loading}
-      className="rounded-md border border-border px-3 py-1.5 text-muted-foreground transition hover:border-foreground hover:text-foreground disabled:opacity-60"
+      className="v2-legacy-button-muted disabled:opacity-60"
     >
       {loading ? "…" : "로그아웃"}
     </button>
