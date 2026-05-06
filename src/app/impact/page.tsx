@@ -2,27 +2,280 @@ import Link from "next/link";
 
 import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
 import { CountUp } from "@/components/v2/CountUp";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
 
 /**
  * v2 redesign — `/impact` 강화도 진척 공개 대시보드.
  * 시안: design-v2-reference/강화유니버스_임팩트.html.
  *
- * 데이터는 시안 하드코딩. 추후 Supabase 집계로 교체.
+ * 공개 페이지 (auth 가드 없음). 6 stat / 카테고리 진척 / 최근 공개 카드를
+ * service role 로 집계해 시연용 노드맵 SVG (정적 좌표) 와 함께 렌더.
+ *
+ * 노드맵은 D3/React Flow 도입 전까지 시연용 정적 좌표 유지 — 시안 그대로.
  */
-export default function ImpactPage() {
+
+const FEED_LIMIT = 4;
+
+type CategorySlug = "commons" | "network" | "world" | "policy";
+type CategoryLabel = "공유지" | "네트워크" | "세계" | "정책";
+
+const SLUG_TO_LABEL: Record<CategorySlug, CategoryLabel> = {
+  commons: "공유지",
+  network: "네트워크",
+  world: "세계",
+  policy: "정책",
+};
+
+type FeedActivity = {
+  id: string;
+  body: string | null;
+  created_at: string;
+  episode: {
+    location: string | null;
+    project: {
+      title: string | null;
+      category: { slug: string | null } | null;
+    } | null;
+  } | null;
+  project: {
+    title: string | null;
+    category: { slug: string | null } | null;
+  } | null;
+  shop: { name: string | null } | null;
+};
+
+type ProjectProgressRow = {
+  id: string;
+  progress_type: string | null;
+  progress_target: unknown;
+  category: { slug: string | null } | null;
+};
+
+export default async function ImpactPage() {
+  const admin = createAdminClient();
+
+  type CategoryActivity = {
+    episode: {
+      project: { category: { slug: string | null } | null } | null;
+    } | null;
+    project: { category: { slug: string | null } | null } | null;
+  };
+
+  const [
+    publicCardsRes,
+    publicShopsRes,
+    usersRes,
+    episodesRes,
+    lettersRes,
+    hiFiveRes,
+    feedRes,
+    projectsRes,
+    earliestActivityRes,
+    publicCardsForCategoryRes,
+  ] = await Promise.all([
+    admin
+      .from("activities")
+      .select("id", { count: "exact", head: true })
+      .eq("is_public", true)
+      .is("removed_at", null),
+    admin
+      .from("shops")
+      .select("id", { count: "exact", head: true })
+      .eq("is_public", true),
+    admin.from("users").select("id", { count: "exact", head: true }),
+    admin.from("episodes").select("id", { count: "exact", head: true }),
+    admin
+      .from("reactions")
+      .select("id", { count: "exact", head: true })
+      .eq("kind", "letter")
+      .eq("author_role", "owner"),
+    admin
+      .from("reactions")
+      .select("id", { count: "exact", head: true })
+      .eq("kind", "hi_five"),
+    admin
+      .from("activities")
+      .select(
+        `
+        id, body, created_at,
+        episode:episodes (
+          location,
+          project:projects ( title, category:categories ( slug ) )
+        ),
+        project:projects ( title, category:categories ( slug ) ),
+        shop:shops ( name )
+      `
+      )
+      .eq("is_public", true)
+      .is("removed_at", null)
+      .order("created_at", { ascending: false })
+      .limit(FEED_LIMIT),
+    admin
+      .from("projects")
+      .select("id, progress_type, progress_target, category:categories(slug)")
+      .eq("is_public", true),
+    admin
+      .from("activities")
+      .select("created_at")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    admin
+      .from("activities")
+      .select(
+        `
+        episode:episodes ( project:projects ( category:categories ( slug ) ) ),
+        project:projects ( category:categories ( slug ) )
+      `
+      )
+      .eq("is_public", true)
+      .is("removed_at", null),
+  ]);
+
+  const stats = {
+    cards: publicCardsRes.count ?? 0,
+    shops: publicShopsRes.count ?? 0,
+    users: usersRes.count ?? 0,
+    episodes: episodesRes.count ?? 0,
+    letters: lettersRes.count ?? 0,
+    hiFive: hiFiveRes.count ?? 0,
+  };
+
+  const feed = (feedRes.data ?? []) as unknown as FeedActivity[];
+  const projects = (projectsRes.data ?? []) as unknown as ProjectProgressRow[];
+  const allPublic = (publicCardsForCategoryRes.data ??
+    []) as unknown as CategoryActivity[];
+
+  // 카테고리 진척 — 한 번의 SELECT 로 가져온 공개 카드를 JS 에서 group-by
+  const categoryCounts: Record<CategoryLabel, number> = {
+    공유지: 0,
+    네트워크: 0,
+    세계: 0,
+    정책: 0,
+  };
+  const categoryTargets: Record<CategoryLabel, number> = {
+    공유지: 0,
+    네트워크: 0,
+    세계: 0,
+    정책: 0,
+  };
+
+  for (const a of allPublic) {
+    const slug =
+      a.episode?.project?.category?.slug ?? a.project?.category?.slug ?? null;
+    if (!slug || !(slug in SLUG_TO_LABEL)) continue;
+    categoryCounts[SLUG_TO_LABEL[slug as CategorySlug]] += 1;
+  }
+
+  for (const p of projects) {
+    const slug = p.category?.slug;
+    if (!slug || !(slug in SLUG_TO_LABEL)) continue;
+    const target = (p.progress_target as { target_cards?: unknown } | null)
+      ?.target_cards;
+    if (typeof target === "number" && Number.isFinite(target)) {
+      categoryTargets[SLUG_TO_LABEL[slug as CategorySlug]] += target;
+    }
+  }
+
+  const categoryProgress = (
+    ["공유지", "네트워크", "세계", "정책"] as CategoryLabel[]
+  ).map((label) => {
+    const current = categoryCounts[label];
+    const total = categoryTargets[label];
+    const pct =
+      total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
+    return {
+      name: label === "공유지" ? "환대의 공유지" : label,
+      label,
+      current,
+      total,
+      pct,
+    };
+  });
+
+  const earliestIso =
+    (earliestActivityRes.data as { created_at?: string } | null)?.created_at ??
+    null;
+
   return (
     <>
-      <PageHeader />
-      <StatsStrip />
+      <PageHeader earliestIso={earliestIso} />
+      <StatsStrip stats={stats} />
       <NodeMapSection />
-      <ProgressSection />
-      <RecentFeed />
+      <ProgressSection rows={categoryProgress} />
+      <RecentFeed feed={feed} />
       <NoticeStrip />
     </>
   );
 }
 
-function PageHeader() {
+// ── helpers ────────────────────────────────────────────────────
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatYearMonth(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function daysSince(iso: string): number {
+  const d = new Date(iso).getTime();
+  if (Number.isNaN(d)) return 0;
+  return Math.max(0, Math.floor((Date.now() - d) / (1000 * 60 * 60 * 24)));
+}
+
+function feedCategoryLabel(f: FeedActivity): CategoryLabel | null {
+  const slug =
+    f.episode?.project?.category?.slug ?? f.project?.category?.slug ?? null;
+  if (!slug || !(slug in SLUG_TO_LABEL)) return null;
+  return SLUG_TO_LABEL[slug as CategorySlug];
+}
+
+function feedNo(id: string): string {
+  return `No.${id.slice(0, 4).toUpperCase()}`;
+}
+
+function feedPlace(f: FeedActivity): string {
+  if (f.shop?.name) return `@ ${f.shop.name}`;
+  if (f.episode?.location) return `@ ${f.episode.location}`;
+  return "";
+}
+
+const CATEGORY_DOT: Record<CategoryLabel, string> = {
+  공유지: "#9B6020",
+  네트워크: "#3A7A55",
+  세계: "#2060C8",
+  정책: "#6040A0",
+};
+const CATEGORY_FILL: Record<CategoryLabel, string> = {
+  공유지: "#C4956A",
+  네트워크: "#6BAF8A",
+  세계: "#88AADD",
+  정책: "#A080CC",
+};
+const CATEGORY_BADGE: Record<CategoryLabel, string> = {
+  공유지: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
+  네트워크: "bg-[rgba(107,175,138,0.12)] text-[#3A7A55]",
+  세계: "bg-[rgba(49,130,246,0.1)] text-[#2060C8]",
+  정책: "bg-[rgba(130,90,180,0.1)] text-[#6040A0]",
+};
+
+// ── presentation ───────────────────────────────────────────────
+
+function PageHeader({ earliestIso }: { earliestIso: string | null }) {
+  const todayStr = formatDate(new Date().toISOString());
+  const sinceLabel = earliestIso
+    ? `RUNNING SINCE ${formatYearMonth(earliestIso)}`
+    : "RUNNING SINCE —";
+  const daysLabel = earliestIso ? `${daysSince(earliestIso)} DAYS` : "0 DAYS";
+
   return (
     <div
       className="pt-[100px]"
@@ -59,11 +312,11 @@ function PageHeader() {
             ● LIVE
           </span>
           <DateSep />
-          <DateBarItem>2026.04.24</DateBarItem>
+          <DateBarItem>{todayStr}</DateBarItem>
           <DateSep />
-          <DateBarItem>RUNNING SINCE 2024.05</DateBarItem>
+          <DateBarItem>{sinceLabel}</DateBarItem>
           <DateSep />
-          <DateBarItem>412 DAYS</DateBarItem>
+          <DateBarItem>{daysLabel}</DateBarItem>
         </div>
       </AnimateOnScroll>
     </div>
@@ -82,25 +335,36 @@ function DateSep() {
   return <div className="mx-4 h-3 w-px bg-black/15" />;
 }
 
-const STATS = [
-  { num: 284, label: "누적 환대 카드", accent: true },
-  { num: 12, label: "연결된 가게" },
-  { num: 58, label: "참여자" },
-  { num: 22, label: "에피소드" },
-  { num: 63, label: "사장님 편지" },
-  { num: 97, label: "하이파이브" },
-];
+function StatsStrip({
+  stats,
+}: {
+  stats: {
+    cards: number;
+    shops: number;
+    users: number;
+    episodes: number;
+    letters: number;
+    hiFive: number;
+  };
+}) {
+  const cells: { num: number; label: string; accent?: boolean }[] = [
+    { num: stats.cards, label: "누적 환대 카드", accent: true },
+    { num: stats.shops, label: "연결된 가게" },
+    { num: stats.users, label: "참여자" },
+    { num: stats.episodes, label: "에피소드" },
+    { num: stats.letters, label: "사장님 편지" },
+    { num: stats.hiFive, label: "하이파이브" },
+  ];
 
-function StatsStrip() {
   return (
     <div className="border-y border-v2-rule" style={{ background: "#F5F4F1" }}>
       <div className="mx-auto max-w-[1280px] px-6 lg:px-[60px]">
         <div className="flex items-stretch overflow-x-auto">
-          {STATS.map((s, i) => (
+          {cells.map((s, i) => (
             <div
               key={s.label}
               className={`flex flex-1 flex-col items-center justify-center gap-1.5 px-9 py-5 ${
-                i < STATS.length - 1 ? "border-r border-v2-rule" : ""
+                i < cells.length - 1 ? "border-r border-v2-rule" : ""
               }`}
             >
               <p
@@ -170,7 +434,7 @@ function NodeMapSection() {
           <div className="relative h-[300px] overflow-hidden rounded-[20px] border border-black/[0.06] bg-white lg:h-[460px]">
             <NodeMapSvg />
             <p className="absolute bottom-5 right-5 text-[10.5px] tracking-[1px] text-[#AEAEB2]">
-              드래그 · 줌으로 탐색
+              시연용 정적 시각화
             </p>
           </div>
         </AnimateOnScroll>
@@ -383,14 +647,17 @@ function NodeMapSvg() {
   );
 }
 
-const CATEGORY_PROGRESS = [
-  { name: "환대의 공유지", dot: "#9B6020", fill: "#C4956A", pct: 67 },
-  { name: "네트워크", dot: "#3A7A55", fill: "#6BAF8A", pct: 50 },
-  { name: "세계", dot: "#2060C8", fill: "#88AADD", pct: 38 },
-  { name: "정책", dot: "#6040A0", fill: "#A080CC", pct: 39 },
-];
-
-function ProgressSection() {
+function ProgressSection({
+  rows,
+}: {
+  rows: {
+    name: string;
+    label: CategoryLabel;
+    current: number;
+    total: number;
+    pct: number;
+  }[];
+}) {
   return (
     <div className="bg-v2-paper py-20">
       <div className="mx-auto max-w-[1280px] px-6 lg:px-[60px]">
@@ -407,110 +674,59 @@ function ProgressSection() {
                 4개 분류가 얼마나 자랐나
               </h2>
             </div>
-            <p className="max-w-[220px] text-left text-[13px] font-light leading-[1.7] text-[#999] lg:text-right">
-              각 카테고리의 목표 대비 현재 카드 수입니다.
-              <br />
-              수치는 실시간으로 업데이트됩니다.
+            <p className="max-w-[260px] text-left text-[13px] font-light leading-[1.7] text-[#999] lg:text-right">
+              각 카테고리의 목표 대비 현재 공개 카드 수입니다. 목표가 아직
+              설정되지 않은 카테고리는 누적 카드 수만 표시됩니다.
             </p>
           </div>
         </AnimateOnScroll>
         <div className="overflow-hidden rounded-2xl border border-v2-rule bg-white">
-          {CATEGORY_PROGRESS.map((c, i) => (
-            <AnimateOnScroll key={c.name} delay={(i + 1) * 0.08}>
-              <div
-                className={`grid grid-cols-[100px_1fr_56px] items-center gap-4 px-5 py-6 transition-colors hover:bg-[#FAFAF8] lg:grid-cols-[160px_1fr_80px] lg:gap-8 lg:px-9 lg:py-7 ${
-                  i < CATEGORY_PROGRESS.length - 1
-                    ? "border-b border-v2-rule"
-                    : ""
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
+          {rows.map((c, i) => {
+            const dot = CATEGORY_DOT[c.label];
+            const fill = CATEGORY_FILL[c.label];
+            const hasTarget = c.total > 0;
+            return (
+              <AnimateOnScroll key={c.label} delay={(i + 1) * 0.08}>
+                <div
+                  className={`grid grid-cols-[100px_1fr_72px] items-center gap-4 px-5 py-6 transition-colors hover:bg-[#FAFAF8] lg:grid-cols-[180px_1fr_96px] lg:gap-8 lg:px-9 lg:py-7 ${
+                    i < rows.length - 1 ? "border-b border-v2-rule" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className="h-2 w-2 flex-shrink-0 rounded-full"
+                      style={{ background: dot }}
+                    />
+                    <span className="text-[13.5px] font-medium text-v2-ink">
+                      {c.name}
+                    </span>
+                  </div>
                   <div
-                    className="h-2 w-2 flex-shrink-0 rounded-full"
-                    style={{ background: c.dot }}
-                  />
-                  <span className="text-[13.5px] font-medium text-v2-ink">
-                    {c.name}
+                    className="h-1.5 overflow-hidden rounded-full"
+                    style={{ background: "#EDECEA" }}
+                  >
+                    <div
+                      className="h-full rounded-full transition-[width] duration-[1200ms] ease-out"
+                      style={{
+                        width: `${hasTarget ? c.pct : Math.min(100, c.current * 4)}%`,
+                        background: fill,
+                      }}
+                    />
+                  </div>
+                  <span className="text-right text-[12.5px] font-semibold tracking-[-0.3px] text-v2-ink">
+                    {hasTarget ? `${c.current} / ${c.total}` : `${c.current}장`}
                   </span>
                 </div>
-                <div
-                  className="h-1.5 overflow-hidden rounded-full"
-                  style={{ background: "#EDECEA" }}
-                >
-                  <div
-                    className="h-full rounded-full transition-[width] duration-[1200ms] ease-out"
-                    style={{ width: `${c.pct}%`, background: c.fill }}
-                  />
-                </div>
-                <span className="text-right text-[13px] font-semibold tracking-[-0.3px] text-v2-ink">
-                  {c.pct}%
-                </span>
-              </div>
-            </AnimateOnScroll>
-          ))}
+              </AnimateOnScroll>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
 
-type FeedCard = {
-  no: string;
-  category: "공유지" | "네트워크" | "세계" | "정책";
-  memo: string;
-  place: string;
-  date: string;
-  letters: number;
-  hifive: number;
-};
-
-const FEED_CARDS: FeedCard[] = [
-  {
-    no: "No.284",
-    category: "네트워크",
-    memo: "시부야에서 온 친구들과 갯벌을 함께 걸었다. 말은 잘 안 통해도, 진흙은 만국 공통이었다.",
-    place: "@ 동막해변",
-    date: "2026.04.20",
-    letters: 7,
-    hifive: 12,
-  },
-  {
-    no: "No.281",
-    category: "공유지",
-    memo: "한달살기 2주차. 옆집 할머니가 쑥 한 바구니 주셨다.",
-    place: "@ 화도면 사가리",
-    date: "2026.04.18",
-    letters: 3,
-    hifive: 8,
-  },
-  {
-    no: "No.279",
-    category: "세계",
-    memo: "폐교 된 초등학교에서 환대 아카이빙 워크숍. 낡은 책상에 앉아 편지를 썼다.",
-    place: "@ 교동 대룡시장",
-    date: "2026.04.14",
-    letters: 2,
-    hifive: 5,
-  },
-  {
-    no: "No.276",
-    category: "공유지",
-    memo: "공유 주방에서 다 같이 바지락 칼국수. 재료는 전부 오늘 아침 바다에서.",
-    place: "@ 온수리",
-    date: "2026.04.12",
-    letters: 1,
-    hifive: 6,
-  },
-];
-
-const CATEGORY_BADGE: Record<FeedCard["category"], string> = {
-  공유지: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
-  네트워크: "bg-[rgba(107,175,138,0.12)] text-[#3A7A55]",
-  세계: "bg-[rgba(49,130,246,0.1)] text-[#2060C8]",
-  정책: "bg-[rgba(130,90,180,0.1)] text-[#6040A0]",
-};
-
-function RecentFeed() {
+function RecentFeed({ feed }: { feed: FeedActivity[] }) {
   return (
     <div className="py-20" style={{ background: "#F0F0EC" }}>
       <div className="mx-auto max-w-[1280px] px-6 lg:px-[60px]">
@@ -537,51 +753,57 @@ function RecentFeed() {
             </Link>
           </div>
         </AnimateOnScroll>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {FEED_CARDS.map((c, i) => (
-            <AnimateOnScroll key={c.no} delay={(i + 1) * 0.08}>
-              <FeedCardView card={c} />
-            </AnimateOnScroll>
-          ))}
-        </div>
+        {feed.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-v2-rule bg-white/60 px-8 py-16 text-center">
+            <p className="mb-1 text-[13.5px] font-semibold text-v2-ink">
+              아직 공개된 카드가 없어요.
+            </p>
+            <p className="text-[12px] font-light leading-[1.7] text-v2-ink3">
+              첫 공개 카드가 도착하면 여기 자동으로 모입니다.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {feed.map((c, i) => (
+              <AnimateOnScroll key={c.id} delay={(i + 1) * 0.08}>
+                <FeedCardView card={c} />
+              </AnimateOnScroll>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function FeedCardView({ card }: { card: FeedCard }) {
+function FeedCardView({ card }: { card: FeedActivity }) {
+  const label = feedCategoryLabel(card);
+  const badge = label ? CATEGORY_BADGE[label] : "bg-[#EDECEA] text-[#888]";
+
   return (
-    <div className="cursor-pointer overflow-hidden rounded-2xl border border-black/[0.06] bg-white transition-all duration-[250ms] hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.1)]">
+    <div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white transition-all duration-[250ms] hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(0,0,0,0.1)]">
       <div className="flex items-center justify-between border-b border-[#F0F0EC] px-[18px] pb-2.5 pt-3.5">
         <span className="text-[10px] font-semibold tracking-[1.5px] text-[#AEAEB2]">
-          {card.no}
+          {feedNo(card.id)}
         </span>
         <span
-          className={`rounded px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[1px] ${CATEGORY_BADGE[card.category]}`}
+          className={`rounded px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[1px] ${badge}`}
         >
-          {card.category}
+          {label ?? "미분류"}
         </span>
       </div>
       <div className="px-[18px] pb-3.5 pt-4">
         <p className="mb-3.5 line-clamp-3 text-[13px] leading-[1.7] text-v2-ink">
-          {card.memo}
+          {card.body || "(메모 없음)"}
         </p>
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1 text-[11px] font-light text-[#AEAEB2]">
-            {card.place}
+            {feedPlace(card)}
           </span>
           <span className="text-[11px] font-light text-[#AEAEB2]">
-            {card.date}
+            {formatDate(card.created_at)}
           </span>
         </div>
-      </div>
-      <div className="flex items-center justify-between border-t border-[#F0F0EC] bg-[#FAFAF8] px-[18px] py-2.5">
-        <span className="flex items-center gap-1 text-[10px] font-medium text-[#6BAF8A]">
-          💌 편지 +{card.letters}
-        </span>
-        <span className="flex items-center gap-1 text-[10px] font-medium text-[#C4956A]">
-          ★ 하이파이브 {card.hifive}
-        </span>
       </div>
     </div>
   );
