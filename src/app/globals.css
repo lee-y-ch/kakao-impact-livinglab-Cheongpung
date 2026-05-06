@@ -1,9 +1,21 @@
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 @import url("https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * v2 redesign — globals.
+ * 팀원 시안(design-v2-reference) 의 base. 기존 Ink-on-Linen 토큰은 그대로 두고,
+ * v2 페이지는 .v2-root 안에서 brand-green / paper / ink 배경을 직접 적용한다.
+ */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+}
 
 /*
  * Ink-on-Linen 디자인 토큰.
@@ -155,5 +167,153 @@
     background-position:
       0 0,
       2px 3px;
+  }
+
+  .v2-legacy-page {
+    min-height: 100vh;
+    background: linear-gradient(
+      180deg,
+      oklch(0.985 0.002 90) 0%,
+      oklch(0.968 0.003 90) 28%,
+      oklch(0.992 0.002 90) 100%
+    );
+  }
+
+  .v2-legacy-container {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 1200px;
+    padding-inline: 1.5rem;
+  }
+
+  .v2-legacy-hero {
+    padding-top: 7.5rem;
+    padding-bottom: 2rem;
+  }
+
+  .v2-legacy-kicker {
+    color: var(--ink-3);
+    font-family: var(--mono-font);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .v2-legacy-title {
+    color: var(--ink);
+    font-size: clamp(2rem, 3.4vw, 3.5rem);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+  }
+
+  .v2-legacy-copy {
+    color: var(--ink-2);
+    font-size: 0.95rem;
+    line-height: 1.85;
+  }
+
+  .v2-legacy-panel {
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: color-mix(in oklab, white 76%, var(--paper-2));
+    box-shadow: var(--shadow-card);
+  }
+
+  .v2-legacy-panel-soft {
+    border: 1px solid var(--rule-2);
+    border-radius: 10px;
+    background: color-mix(in oklab, white 42%, var(--paper-2));
+  }
+
+  .v2-legacy-input {
+    width: 100%;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: color-mix(in oklab, white 84%, var(--paper));
+    padding: 0.7rem 0.85rem;
+    color: var(--ink);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    outline: none;
+  }
+
+  .v2-legacy-input::placeholder {
+    color: var(--ink-3);
+  }
+
+  .v2-legacy-input:focus {
+    border-color: var(--pine);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      0 0 0 3px color-mix(in oklab, var(--pine) 18%, transparent);
+  }
+
+  .v2-legacy-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--ink);
+    padding: 0.8rem 1.15rem;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition:
+      transform 180ms ease,
+      opacity 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .v2-legacy-button:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-card);
+  }
+
+  .v2-legacy-button:disabled {
+    opacity: 0.55;
+  }
+
+  .v2-legacy-button-muted {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: color-mix(in oklab, white 72%, var(--paper-2));
+    padding: 0.75rem 1rem;
+    color: var(--ink-2);
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition:
+      background 180ms ease,
+      color 180ms ease;
+  }
+
+  .v2-legacy-button-muted:hover {
+    background: color-mix(in oklab, white 52%, var(--paper-3));
+    color: var(--ink);
+  }
+
+  .v2-legacy-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, white 52%, var(--paper-2));
+    padding: 0.35rem 0.7rem;
+    color: var(--ink-2);
+    font-size: 0.72rem;
+    font-weight: 500;
+  }
+
+  .v2-legacy-empty {
+    border: 1px dashed var(--rule);
+    border-radius: 10px;
+    background: color-mix(in oklab, white 32%, var(--paper-2));
+    padding: 2rem;
+    text-align: center;
+    color: var(--ink-3);
+    font-size: 0.9rem;
   }
 }

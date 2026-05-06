@@ -39,7 +39,7 @@ export function KakaoLoginButton({ next }: { next?: string }) {
       type="button"
       onClick={handleClick}
       disabled={loading}
-      className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#FEE500] px-5 py-3 text-base font-medium text-[#3C1E1E] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+      className="flex w-full items-center justify-center gap-2 rounded-full border border-[#E9D35B] bg-[#FEE500] px-5 py-4 text-base font-medium text-[#3C1E1E] transition hover:-translate-y-[1px] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
     >
       <KakaoIcon />
       <span>{loading ? "카카오로 이동 중…" : "카카오로 로그인"}</span>

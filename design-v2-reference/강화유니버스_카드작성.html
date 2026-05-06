@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>강화유니버스 · 카드 작성</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      color: #1A1A1A;
+      background: #F8F8F6;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    [data-anim] {
+      opacity: 0; transform: translateY(20px);
+      transition: opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1);
+    }
+    [data-anim].in { opacity: 1; transform: translateY(0); }
+    [data-delay="1"] { transition-delay: 0.08s; }
+    [data-delay="2"] { transition-delay: 0.16s; }
+    [data-delay="3"] { transition-delay: 0.24s; }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed; top: 0; width: 100%;
+      padding: 18px 60px;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 100;
+      background: rgba(248,248,246,0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      transition: box-shadow 0.3s;
+    }
+    nav.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,0.07); }
+    .nav-logo { font-size: 16px; font-weight: 700; letter-spacing: -0.5px; color: #1A1A1A; text-decoration: none; }
+    .nav-links { display: flex; gap: 32px; list-style: none; }
+    .nav-links a { font-size: 13px; font-weight: 400; color: #888; text-decoration: none; transition: color 0.2s; }
+    .nav-links a:hover { color: #1A1A1A; }
+    .nav-links a.active { color: #1A1A1A; font-weight: 500; }
+    .nav-login {
+      font-size: 12.5px; font-weight: 500; color: #fff;
+      background: #6BAF8A; border: none; border-radius: 980px;
+      padding: 8px 20px; cursor: pointer; font-family: inherit; transition: background 0.2s;
+    }
+    .nav-login:hover { background: #5A9B78; }
+
+    /* ── 브레드크럼 ── */
+    .breadcrumb {
+      max-width: 1280px; margin: 0 auto;
+      padding: 96px 60px 0;
+      font-size: 12px; color: #AEAEB2;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .breadcrumb span { color: #D0D0D0; }
+    .breadcrumb strong { color: #6E6E73; font-weight: 500; }
+
+    /* ── 메인 레이아웃 ── */
+    .layout {
+      max-width: 1280px; margin: 0 auto;
+      padding: 32px 60px 80px;
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 48px;
+      align-items: start;
+    }
+
+    /* ── 왼쪽: 작성 폼 ── */
+    .form-section {}
+
+    .form-header { margin-bottom: 32px; }
+    .form-label {
+      font-size: 10.5px; font-weight: 600;
+      letter-spacing: 3.5px; text-transform: uppercase;
+      color: #6BAF8A; margin-bottom: 10px;
+    }
+    .form-title {
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 700; letter-spacing: -1px; line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    .form-sub {
+      font-size: 13.5px; font-weight: 300; color: #6E6E73; line-height: 1.75;
+    }
+
+    /* QR 위치 태그 */
+    .qr-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; border: 1px solid #E6E5E0;
+      border-radius: 980px; padding: 8px 16px;
+      font-size: 12px; color: #1A1A1A; font-weight: 500;
+      margin-bottom: 28px;
+    }
+    .qr-dot { width: 6px; height: 6px; border-radius: 50%; background: #6BAF8A; }
+
+    /* 카테고리 선택 */
+    .field-group { margin-bottom: 24px; }
+    .field-label {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 2.5px; text-transform: uppercase;
+      color: #AEAEB2; margin-bottom: 10px;
+    }
+    .cat-btns {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .cat-btn {
+      padding: 8px 18px; border-radius: 980px;
+      font-size: 12.5px; font-weight: 500;
+      border: 1.5px solid #E6E5E0;
+      background: #fff; color: #6E6E73;
+      cursor: pointer; font-family: inherit;
+      transition: all 0.15s;
+    }
+    .cat-btn:hover { border-color: #C0C0B8; color: #1A1A1A; }
+    .cat-btn.active { background: #1A1A1A; color: #fff; border-color: #1A1A1A; }
+    .cat-btn.c-commons.active  { background: #C4956A; border-color: #C4956A; }
+    .cat-btn.c-network.active  { background: #6BAF8A; border-color: #6BAF8A; }
+    .cat-btn.c-world.active    { background: #7BA8D4; border-color: #7BA8D4; }
+    .cat-btn.c-policy.active   { background: #9A80C8; border-color: #9A80C8; }
+
+    /* 장소 입력 */
+    .place-input-wrap {
+      position: relative;
+    }
+    .place-input {
+      width: 100%; padding: 13px 16px;
+      font-size: 13.5px; font-family: inherit;
+      border: 1.5px solid #E6E5E0; border-radius: 10px;
+      background: #fff; color: #1A1A1A;
+      outline: none; transition: border-color 0.2s;
+    }
+    .place-input:focus { border-color: #6BAF8A; }
+    .place-suggestions {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;
+    }
+    .place-tag {
+      font-size: 11.5px; color: #6E6E73;
+      background: #EDECEA; border-radius: 980px;
+      padding: 4px 12px; cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .place-tag:hover { background: #6BAF8A; color: #fff; }
+
+    /* 메모 입력 */
+    .memo-wrap { position: relative; }
+    .memo-textarea {
+      width: 100%; height: 120px;
+      padding: 14px 16px;
+      font-size: 13.5px; font-family: inherit; font-weight: 400;
+      border: 1.5px solid #E6E5E0; border-radius: 10px;
+      background: #fff; color: #1A1A1A;
+      resize: none; outline: none; line-height: 1.75;
+      transition: border-color 0.2s;
+    }
+    .memo-textarea:focus { border-color: #6BAF8A; }
+    .memo-count {
+      position: absolute; bottom: 12px; right: 14px;
+      font-size: 11px; color: #AEAEB2;
+    }
+
+    /* 함께한 사람 */
+    .with-list {
+      display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    }
+    .with-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #F5F4F1; border: 1px solid #E6E5E0;
+      border-radius: 980px; padding: 5px 12px;
+      font-size: 12px; color: #1A1A1A;
+    }
+    .with-tag-del {
+      cursor: pointer; color: #AEAEB2; font-size: 14px; line-height: 1;
+    }
+    .with-tag-del:hover { color: #1A1A1A; }
+    .with-add {
+      font-size: 12px; color: #6BAF8A; font-weight: 500;
+      cursor: pointer; background: none; border: 1.5px dashed #C0DED0;
+      border-radius: 980px; padding: 5px 12px;
+      font-family: inherit; transition: border-color 0.15s;
+    }
+    .with-add:hover { border-color: #6BAF8A; }
+
+    /* 공개 토글 */
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #fff; border: 1px solid #E6E5E0;
+      border-radius: 12px; padding: 16px 20px;
+    }
+    .toggle-info p { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+    .toggle-info span { font-size: 11.5px; color: #AEAEB2; font-weight: 300; }
+    .toggle {
+      width: 44px; height: 26px; border-radius: 980px;
+      background: #E6E5E0; position: relative; cursor: pointer;
+      transition: background 0.25s; flex-shrink: 0;
+      border: none;
+    }
+    .toggle.on { background: #6BAF8A; }
+    .toggle::after {
+      content: ''; position: absolute;
+      top: 3px; left: 3px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: #fff; transition: transform 0.25s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .toggle.on::after { transform: translateX(18px); }
+
+    /* 저장 버튼 */
+    .save-btn {
+      width: 100%; padding: 16px;
+      background: #1A1A1A; color: #fff;
+      font-size: 14px; font-weight: 600;
+      border: none; border-radius: 12px;
+      cursor: pointer; font-family: inherit;
+      transition: background 0.2s, transform 0.15s;
+      margin-top: 8px;
+    }
+    .save-btn:hover { background: #333; transform: scale(1.01); }
+    .save-note {
+      font-size: 11px; color: #AEAEB2; text-align: center;
+      margin-top: 10px; font-weight: 300;
+    }
+
+    /* ── 오른쪽: 라이브 프리뷰 ── */
+    .preview-section { position: sticky; top: 88px; }
+
+    .preview-label {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 2.5px; text-transform: uppercase;
+      color: #AEAEB2; margin-bottom: 16px;
+    }
+
+    /* 카드 프리뷰 */
+    .preview-card-wrap { perspective: 1000px; margin-bottom: 20px; }
+    .preview-card {
+      border-radius: 16px; overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      transition: background 0.3s;
+      background: #fff;
+    }
+    .preview-card.cat-commons { background: linear-gradient(145deg, #C4956A, #A87850); }
+    .preview-card.cat-network { background: linear-gradient(145deg, #6BAF8A, #4E9070); }
+    .preview-card.cat-world   { background: linear-gradient(145deg, #7BA8D4, #5A88B8); }
+    .preview-card.cat-policy  { background: linear-gradient(145deg, #9A80C8, #7A60A8); }
+
+    .preview-card-top {
+      padding: 16px 20px 10px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .preview-no {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 2px; color: rgba(255,255,255,0.55);
+    }
+    .preview-no.dark { color: #AEAEB2; }
+    .preview-badge {
+      font-size: 9px; font-weight: 600; letter-spacing: 0.8px;
+      padding: 3px 9px; border-radius: 4px;
+      background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9);
+    }
+    .preview-badge.dark {
+      background: #F0F0EC; color: #888;
+    }
+    .preview-card-body { padding: 6px 20px 18px; }
+    .preview-memo {
+      font-size: 14px; font-weight: 500;
+      color: #fff; line-height: 1.7; min-height: 60px;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    .preview-memo.dark { color: #888; font-weight: 300; font-style: italic; }
+    .preview-card-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 16px; padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.15);
+    }
+    .preview-card-meta.dark { border-color: #E6E5E0; }
+    .preview-place { font-size: 11px; color: rgba(255,255,255,0.6); font-weight: 300; }
+    .preview-place.dark { color: #AEAEB2; }
+    .preview-date { font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 300; }
+    .preview-date.dark { color: #AEAEB2; }
+
+    /* 뒷면 프리뷰 */
+    .preview-back {
+      background: #1A1A1A; border-radius: 16px; overflow: hidden;
+      padding: 16px 20px 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    }
+    .preview-back-label {
+      font-size: 9px; font-weight: 600; letter-spacing: 2px;
+      color: rgba(255,255,255,0.3); margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+    .preview-back-quote {
+      font-size: 13.5px; font-weight: 300;
+      color: rgba(255,255,255,0.8); line-height: 1.8;
+      font-style: italic; min-height: 48px;
+    }
+    .preview-back-quote::before { content: '"'; }
+    .preview-back-quote::after  { content: '"'; }
+    .preview-back-meta {
+      display: flex; justify-content: space-between;
+      margin-top: 16px; padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 10.5px; color: rgba(255,255,255,0.3);
+    }
+
+    /* ── 공개 안내 ── */
+    .notice-strip {
+      background: #1A1A1A; padding: 18px 60px; text-align: center;
+    }
+    .notice-strip p { font-size: 12px; color: rgba(255,255,255,0.4); }
+    .notice-strip strong { color: rgba(255,255,255,0.7); font-weight: 500; }
+
+    /* ── Footer ── */
+    footer { background: #0F0F0F; padding: 40px 60px 32px; }
+    .footer-inner { max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+    .footer-logo { font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.7); }
+    .footer-copy { font-size: 11.5px; color: rgba(255,255,255,0.2); }
+
+    /* ── Responsive ── */
+    @media (max-width: 1024px) {
+      .layout { grid-template-columns: 1fr; padding: 32px 32px 60px; }
+      nav, .breadcrumb, .notice-strip, footer { padding-left: 32px; padding-right: 32px; }
+      .preview-section { position: static; }
+    }
+    @media (max-width: 768px) {
+      nav { padding: 16px 20px; }
+      .nav-links { display: none; }
+      nav, .breadcrumb, .layout, .notice-strip, footer { padding-left: 20px; padding-right: 20px; }
+      .footer-inner { flex-direction: column; gap: 10px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav id="nav">
+    <a href="강화유니버스_랜딩페이지_ver.1.html" class="nav-logo">강화유니버스</a>
+    <ul class="nav-links">
+      <li><a href="강화유니버스_임팩트.html">임팩트</a></li>
+      <li><a href="강화유니버스_프로젝트.html">프로젝트</a></li>
+      <li><a href="강화유니버스_피드.html">피드</a></li>
+      <li><a href="강화유니버스_도감.html">내 도감</a></li>
+    </ul>
+    <button class="nav-login">카카오 로그인</button>
+  </nav>
+
+  <div class="breadcrumb" data-anim>
+    <a href="강화유니버스_프로젝트.html" style="color:#AEAEB2;text-decoration:none;">← 시부야 교류</a>
+    <span>/</span>
+    <strong>카드 작성</strong>
+  </div>
+
+  <div class="layout">
+
+    <!-- ── 왼쪽: 폼 ── -->
+    <div class="form-section">
+
+      <div class="form-header" data-anim>
+        <p class="form-label">ENTRY · 카드 작성</p>
+        <h1 class="form-title">오늘, 이곳에서<br>무엇을 봤나요?</h1>
+        <p class="form-sub">한 줄이면 충분합니다. 잘 쓰지 않아도 됩니다.<br>짧은 메모가 다른 사람의 다음 발걸음이 될 수 있어요.</p>
+      </div>
+
+      <!-- QR 위치 -->
+      <div class="qr-tag" data-anim data-delay="1">
+        <span class="qr-dot"></span>
+        QR · r7f2a &nbsp;·&nbsp; 갯벌카페
+      </div>
+
+      <!-- 카테고리 -->
+      <div class="field-group" data-anim data-delay="1">
+        <p class="field-label">카테고리 · 어떤 결의 순간인가요</p>
+        <div class="cat-btns">
+          <button class="cat-btn c-commons" onclick="selectCat(this,'commons')">공유지</button>
+          <button class="cat-btn c-network active" onclick="selectCat(this,'network')">네트워크</button>
+          <button class="cat-btn c-world" onclick="selectCat(this,'world')">세계</button>
+          <button class="cat-btn c-policy" onclick="selectCat(this,'policy')">정책</button>
+        </div>
+      </div>
+
+      <!-- 장소 -->
+      <div class="field-group" data-anim data-delay="2">
+        <p class="field-label">장소</p>
+        <div class="place-input-wrap">
+          <input type="text" class="place-input" id="placeInput" placeholder="장소를 입력하세요" value="동막해변">
+        </div>
+        <div class="place-suggestions">
+          <span class="place-tag" onclick="setPlace('동막해변')">동막해변</span>
+          <span class="place-tag" onclick="setPlace('갯벌카페')">갯벌카페</span>
+          <span class="place-tag" onclick="setPlace('전등사')">전등사</span>
+          <span class="place-tag" onclick="setPlace('교동 대룡시장')">교동 대룡시장</span>
+        </div>
+      </div>
+
+      <!-- 메모 -->
+      <div class="field-group" data-anim data-delay="2">
+        <p class="field-label">메모 · 한 줄</p>
+        <div class="memo-wrap">
+          <textarea class="memo-textarea" id="memoInput" maxlength="120" placeholder="오늘 이곳에서 일어난 일을 짧게 적어주세요." oninput="updatePreview()">시부야에서 온 친구들과 갯벌을 함께 걸었다. 말은 잘 안 통해도, 진흙은 만국 공통이었다.</textarea>
+          <span class="memo-count" id="memoCount">88 / 120</span>
+        </div>
+      </div>
+
+      <!-- 함께한 사람 -->
+      <div class="field-group" data-anim data-delay="3">
+        <p class="field-label">함께한 사람</p>
+        <div class="with-list" id="withList">
+          <span class="with-tag">Yui <span class="with-tag-del" onclick="removeWith(this)">×</span></span>
+          <span class="with-tag">Taka <span class="with-tag-del" onclick="removeWith(this)">×</span></span>
+          <span class="with-tag">현주 <span class="with-tag-del" onclick="removeWith(this)">×</span></span>
+          <button class="with-add" onclick="addWith()">+ 사람 추가</button>
+        </div>
+      </div>
+
+      <!-- 공개 토글 -->
+      <div class="field-group" data-anim data-delay="3">
+        <p class="field-label">공개 설정</p>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <p>이 카드를 공개 피드에 보여도 좋습니다</p>
+            <span>언제든지 내 도감에서 변경할 수 있어요</span>
+          </div>
+          <button class="toggle on" id="toggleBtn" onclick="togglePublic()"></button>
+        </div>
+      </div>
+
+      <!-- 저장 버튼 -->
+      <div data-anim data-delay="3">
+        <button class="save-btn" onclick="saveCard()">도감에 저장 →</button>
+        <p class="save-note">카드는 도감에 자동 저장됩니다. 공개 여부는 작성 후 언제든 바꿀 수 있어요.</p>
+      </div>
+
+    </div>
+
+    <!-- ── 오른쪽: 라이브 프리뷰 ── -->
+    <div class="preview-section" data-anim data-delay="2">
+
+      <p class="preview-label">LIVE PREVIEW · 적는 동안 카드가 그려집니다</p>
+
+      <!-- 앞면 -->
+      <div class="preview-card-wrap">
+        <div class="preview-card cat-network" id="previewCard">
+          <div class="preview-card-top">
+            <span class="preview-no" id="previewNo">No.022</span>
+            <span class="preview-badge" id="previewBadge">네트워크</span>
+          </div>
+          <div class="preview-card-body">
+            <p class="preview-memo" id="previewMemo">시부야에서 온 친구들과 갯벌을 함께 걸었다. 말은 잘 안 통해도, 진흙은 만국 공통이었다.</p>
+            <div class="preview-card-meta">
+              <span class="preview-place" id="previewPlace">@ 동막해변</span>
+              <span class="preview-date" id="previewDate">2026.04.24</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 뒷면 -->
+      <div class="preview-back">
+        <p class="preview-back-label">뒷면 · BACK</p>
+        <p class="preview-back-quote" id="previewBackMemo">시부야에서 온 친구들과 갯벌을 함께 걸었다. 말은 잘 안 통해도, 진흙은 만국 공통이었다.</p>
+        <div class="preview-back-meta">
+          <span id="previewBackPlace">동막해변</span>
+          <span id="previewBackDate">2026.04.24</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="notice-strip">
+    <p><strong>카드는 기본 비공개입니다.</strong>&nbsp; 공개로 설정한 카드만 피드에 노출됩니다.</p>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <span class="footer-logo">강화유니버스</span>
+      <p class="footer-copy">© 2026 Ganghwa Universe · chungpung.app/entry</p>
+    </div>
+  </footer>
+
+  <script>
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.08 });
+    document.querySelectorAll('[data-anim]').forEach(el => io.observe(el));
+
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => { nav.classList.toggle('scrolled', window.scrollY > 20); }, { passive: true });
+
+    /* 카테고리 선택 */
+    const catMap = {
+      commons: { label: '공유지', cls: 'cat-commons' },
+      network: { label: '네트워크', cls: 'cat-network' },
+      world:   { label: '세계',    cls: 'cat-world'   },
+      policy:  { label: '정책',    cls: 'cat-policy'  },
+    };
+    let currentCat = 'network';
+    function selectCat(el, cat) {
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      currentCat = cat;
+      const card = document.getElementById('previewCard');
+      card.className = 'preview-card ' + catMap[cat].cls;
+      document.getElementById('previewBadge').textContent = catMap[cat].label;
+      document.getElementById('previewBadge').className = 'preview-badge';
+      document.getElementById('previewNo').className = 'preview-no';
+      document.querySelectorAll('.preview-memo, .preview-place, .preview-date, .preview-card-meta').forEach(el => {
+        el.classList.remove('dark');
+      });
+    }
+
+    /* 장소 자동완성 */
+    function setPlace(place) {
+      document.getElementById('placeInput').value = place;
+      document.getElementById('previewPlace').textContent = '@ ' + place;
+      document.getElementById('previewBackPlace').textContent = place;
+    }
+    document.getElementById('placeInput').addEventListener('input', function() {
+      document.getElementById('previewPlace').textContent = '@ ' + this.value;
+      document.getElementById('previewBackPlace').textContent = this.value;
+    });
+
+    /* 메모 실시간 반영 */
+    function updatePreview() {
+      const val = document.getElementById('memoInput').value;
+      document.getElementById('previewMemo').textContent = val || '오늘 이곳에서 일어난 일을 짧게 적어주세요.';
+      document.getElementById('previewBackMemo').textContent = val || '';
+      document.getElementById('memoCount').textContent = val.length + ' / 120';
+    }
+
+    /* 함께한 사람 */
+    function removeWith(el) { el.parentElement.remove(); }
+    function addWith() {
+      const name = prompt('이름을 입력하세요');
+      if (!name) return;
+      const tag = document.createElement('span');
+      tag.className = 'with-tag';
+      tag.innerHTML = name + ' <span class="with-tag-del" onclick="removeWith(this)">×</span>';
+      document.getElementById('withList').insertBefore(tag, document.querySelector('.with-add'));
+    }
+
+    /* 공개 토글 */
+    function togglePublic() {
+      document.getElementById('toggleBtn').classList.toggle('on');
+    }
+
+    /* 저장 */
+    function saveCard() {
+      alert('카드가 도감에 저장되었습니다! 🎉');
+    }
+
+    /* 오늘 날짜 */
+    const today = new Date();
+    const dateStr = today.getFullYear() + '.' + String(today.getMonth()+1).padStart(2,'0') + '.' + String(today.getDate()).padStart(2,'0');
+    document.getElementById('previewDate').textContent = dateStr;
+    document.getElementById('previewBackDate').textContent = dateStr;
+  </script>
+</body>
+</html>

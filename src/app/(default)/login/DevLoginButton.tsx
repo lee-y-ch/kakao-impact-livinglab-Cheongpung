@@ -36,13 +36,13 @@ export function DevLoginButton({ next }: { next?: string }) {
   }
 
   return (
-    <div className="flex w-full flex-col gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">
+    <div className="v2-legacy-panel-soft flex w-full flex-col gap-3 border-dashed border-amber-300 bg-amber-50/80 px-4 py-4 text-center text-sm text-amber-900">
       <span className="font-semibold">[DEV 전용] 테스트 로그인</span>
       <button
         type="button"
         onClick={handleClick}
         disabled={loading}
-        className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600 disabled:opacity-60"
+        className="v2-legacy-button !bg-amber-500 !py-3 text-sm hover:!bg-amber-600"
       >
         {loading ? "로그인 중..." : "개발용 참여자 계정으로 로그인"}
       </button>

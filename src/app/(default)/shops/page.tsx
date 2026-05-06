@@ -1,5 +1,11 @@
 import Link from "next/link";
 
+import {
+  LegacyContainer,
+  LegacyHeader,
+  LegacyPage,
+  LegacyPanel,
+} from "@/components/legacy-v2/PageChrome";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -46,60 +52,58 @@ export default async function ShopsPage() {
     .sort((a, b) => b.cardCount - a.cardCount);
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-8 px-6 py-10">
-      <header className="flex flex-col gap-2">
-        <span className="eyebrow">강화유니버스 가게</span>
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          환대가 오래 머무는 자리
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          청풍과 연결된 강화의 가게들. 가게를 누르면 그 공간에서 쌓인 공개
-          카드를 볼 수 있어요.
-        </p>
-      </header>
+    <LegacyPage>
+      <LegacyContainer>
+        <LegacyHeader
+          eyebrow="Shops"
+          title="환대가 오래 머무는 자리"
+          description="청풍과 연결된 강화의 가게들입니다. 각 가게 안에서 쌓인 공개 카드와 분위기를 이어서 살펴볼 수 있습니다."
+        />
 
-      {sorted.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border bg-muted/20 p-10 text-center text-sm text-muted-foreground">
-          아직 공개된 가게가 없어요.
-        </p>
-      ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {sorted.map((s) => (
-            <li key={s.id as string}>
-              <Link
-                href={`/shops/${s.id as string}`}
-                className="flex h-full flex-col gap-3 rounded-2xl border border-border bg-background p-5 transition hover:bg-muted/40"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <h2 className="truncate text-base font-semibold">
-                      {s.name as string}
-                    </h2>
-                    {s.address ? (
-                      <p className="truncate text-[11px] text-muted-foreground">
-                        {s.address as string}
+        {sorted.length === 0 ? (
+          <p className="v2-legacy-empty">아직 공개된 가게가 없어요.</p>
+        ) : (
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {sorted.map((s) => (
+              <li key={s.id as string}>
+                <Link
+                  href={`/shops/${s.id as string}`}
+                  className="block h-full"
+                >
+                  <LegacyPanel className="flex h-full flex-col gap-4 transition hover:-translate-y-[2px]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="v2-legacy-kicker mb-2">Shop</p>
+                        <h2 className="truncate text-lg font-semibold tracking-[-0.03em] text-v2-ink">
+                          {s.name as string}
+                        </h2>
+                        {s.address ? (
+                          <p className="mt-1 truncate text-[12px] text-v2-ink3">
+                            {s.address as string}
+                          </p>
+                        ) : null}
+                      </div>
+                      <span className="v2-legacy-pill shrink-0">
+                        카드 {s.cardCount}
+                      </span>
+                    </div>
+                    {s.slogan ? (
+                      <p className="serif text-sm text-v2-ink2">
+                        “{s.slogan as string}”
                       </p>
                     ) : null}
-                  </div>
-                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/80">
-                    카드 {s.cardCount}
-                  </span>
-                </div>
-                {s.slogan ? (
-                  <p className="text-xs italic text-muted-foreground">
-                    “{s.slogan as string}”
-                  </p>
-                ) : null}
-                {s.description ? (
-                  <p className="line-clamp-2 text-xs text-muted-foreground">
-                    {s.description as string}
-                  </p>
-                ) : null}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
+                    {s.description ? (
+                      <p className="line-clamp-3 text-sm leading-[1.8] text-v2-ink3">
+                        {s.description as string}
+                      </p>
+                    ) : null}
+                  </LegacyPanel>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </LegacyContainer>
+    </LegacyPage>
   );
 }

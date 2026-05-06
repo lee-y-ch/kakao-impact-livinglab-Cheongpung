@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import {
+  LegacyContainer,
+  LegacyHeader,
+  LegacyPage,
+  LegacyPanel,
+} from "@/components/legacy-v2/PageChrome";
 import { getCurrentActor } from "@/lib/auth/current-actor";
 import { UuidSchema } from "@/lib/schemas/common";
 import type { EpisodeStatus } from "@/lib/schemas/episode";
@@ -83,36 +89,33 @@ export default async function AdminProjectEditPage({ params }: Props) {
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
-      <header className="flex flex-col gap-2">
-        <Link
-          href="/admin/projects"
-          className="text-xs text-muted-foreground hover:underline"
-        >
-          ← 프로젝트 목록
-        </Link>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          프로젝트 편집
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          수정한 값은 저장 즉시 공개/검수 페이지에 반영됩니다.
-        </p>
-      </header>
+    <LegacyPage>
+      <LegacyContainer className="max-w-[960px]">
+        <LegacyHeader
+          eyebrow="Admin Project Detail"
+          title="프로젝트 편집"
+          description="수정한 값은 저장 즉시 공개 화면과 운영 화면에 반영됩니다."
+          backHref="/admin/projects"
+          backLabel="← 프로젝트 목록"
+        />
 
-      <section className="mt-6 rounded-2xl border border-border bg-background p-5">
-        <ProjectForm categories={categories} initial={initial} />
-      </section>
+        <LegacyPanel>
+          <ProjectForm categories={categories} initial={initial} />
+        </LegacyPanel>
 
-      <section className="mt-10 flex flex-col gap-3">
-        <header className="flex flex-col gap-1">
-          <h2 className="text-base font-semibold">에피소드(회차)</h2>
-          <p className="text-xs text-muted-foreground">
-            회차는 크루가 현장에서 상태(예정 → 진행 → 완료) 를 업데이트합니다.
-            관리자는 기본 정보와 공개 여부를 조정해요.
-          </p>
-        </header>
-        <EpisodeSection projectId={initial.id} episodes={episodes} />
-      </section>
-    </main>
+        <section className="mt-10 flex flex-col gap-3">
+          <header className="flex flex-col gap-1">
+            <h2 className="text-base font-semibold text-v2-ink">
+              에피소드(회차)
+            </h2>
+            <p className="text-xs text-v2-ink3">
+              회차는 크루가 현장에서 상태를 업데이트하고, 관리자는 기본 정보와
+              공개 여부를 조정합니다.
+            </p>
+          </header>
+          <EpisodeSection projectId={initial.id} episodes={episodes} />
+        </section>
+      </LegacyContainer>
+    </LegacyPage>
   );
 }

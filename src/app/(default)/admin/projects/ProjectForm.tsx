@@ -213,7 +213,7 @@ export function ProjectForm({ categories, initial, returnTo }: Props) {
         </label>
       </LabeledField>
 
-      <fieldset className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-3">
+      <fieldset className="v2-legacy-panel-soft flex flex-col gap-3 p-4">
         <legend className="px-1 text-sm font-medium">진척도 계산 기준</legend>
 
         <LabeledField label="기준 유형">
@@ -303,7 +303,7 @@ export function ProjectForm({ categories, initial, returnTo }: Props) {
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-60"
+          className="v2-legacy-button"
         >
           {submitting
             ? "저장 중..."
@@ -326,8 +326,7 @@ export function ProjectForm({ categories, initial, returnTo }: Props) {
   );
 }
 
-const inputClass =
-  "rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring w-full";
+const inputClass = "v2-legacy-input text-sm";
 
 function LabeledField({
   label,
@@ -338,7 +337,7 @@ function LabeledField({
 }) {
   return (
     <label className="flex flex-col gap-1 text-sm">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-xs text-v2-ink3">{label}</span>
       {children}
     </label>
   );

@@ -1,5 +1,11 @@
 import { redirect } from "next/navigation";
 
+import {
+  LegacyContainer,
+  LegacyHeader,
+  LegacyPage,
+  LegacyPanel,
+} from "@/components/legacy-v2/PageChrome";
 import { getCurrentActor } from "@/lib/auth/current-actor";
 import { AdminLoginForm } from "./AdminLoginForm";
 
@@ -8,17 +14,17 @@ export default async function AdminLoginPage() {
   if (actor.role === "admin") redirect("/admin");
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-8 p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          청풍 관리자 로그인
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          청풍 운영자 계정으로만 접근할 수 있습니다.
-        </p>
-      </div>
-
-      <AdminLoginForm />
-    </main>
+    <LegacyPage>
+      <LegacyContainer className="max-w-[880px]">
+        <LegacyHeader
+          eyebrow="Admin Login"
+          title="청풍 관리자 로그인"
+          description="운영 대시보드와 검수, 신고, 가게·프로젝트 관리 화면은 관리자 계정으로만 접근합니다."
+        />
+        <LegacyPanel className="mx-auto max-w-[540px]">
+          <AdminLoginForm />
+        </LegacyPanel>
+      </LegacyContainer>
+    </LegacyPage>
   );
 }

@@ -1,5 +1,11 @@
 import { redirect } from "next/navigation";
 
+import {
+  LegacyContainer,
+  LegacyHeader,
+  LegacyPage,
+  LegacyPanel,
+} from "@/components/legacy-v2/PageChrome";
 import { getCurrentActor } from "@/lib/auth/current-actor";
 
 import { CrewLoginForm } from "./CrewLoginForm";
@@ -12,23 +18,23 @@ export default async function CrewLoginPage() {
   if (actor.role === "admin") redirect("/admin");
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-8 p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          크루 로그인
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          강화 현장 운영을 함께하는 크루용 공용 코드를 입력해 주세요. 코드는
-          청풍이 현장에서 전달합니다.
-        </p>
-      </div>
-
-      <CrewLoginForm />
-
-      <p className="text-xs text-muted-foreground/70">
-        코드가 유출되었다고 판단되면 청풍에 알려 주세요. 코드는 주기적으로
-        교체됩니다.
-      </p>
-    </main>
+    <LegacyPage>
+      <LegacyContainer className="max-w-[880px]">
+        <LegacyHeader
+          eyebrow="Crew Login"
+          title="현장 크루 로그인"
+          description="현장 운영용 공용 코드로 접속해 에피소드 상태와 반응, 아카이브 흐름을 관리합니다."
+        />
+        <LegacyPanel className="mx-auto max-w-[540px]">
+          <div className="space-y-6">
+            <CrewLoginForm />
+            <p className="v2-legacy-copy !text-sm">
+              코드 유출이 의심되면 청풍에 바로 알려 주세요. 운영 코드는
+              주기적으로 교체됩니다.
+            </p>
+          </div>
+        </LegacyPanel>
+      </LegacyContainer>
+    </LegacyPage>
   );
 }

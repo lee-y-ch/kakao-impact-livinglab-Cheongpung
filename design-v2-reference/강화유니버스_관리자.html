@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>강화유니버스 · 관리자</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Noto Sans KR', sans-serif; color: #1A1A1A; background: #F0F0EC; line-height: 1.6; display: flex; min-height: 100vh; }
+
+    [data-anim] { opacity: 0; transform: translateY(16px); transition: opacity 0.5s cubic-bezier(0.16,1,0.3,1), transform 0.5s cubic-bezier(0.16,1,0.3,1); }
+    [data-anim].in { opacity: 1; transform: translateY(0); }
+    [data-delay="1"] { transition-delay: 0.06s; }
+    [data-delay="2"] { transition-delay: 0.12s; }
+    [data-delay="3"] { transition-delay: 0.18s; }
+    [data-delay="4"] { transition-delay: 0.24s; }
+
+    /* ── 사이드바 ── */
+    .sidebar {
+      width: 220px; flex-shrink: 0;
+      background: #1A1A1A;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0;
+      z-index: 50;
+    }
+    .sidebar-logo {
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .sidebar-logo-text { font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.85); }
+    .sidebar-logo-sub  { font-size: 10px; color: rgba(255,255,255,0.25); margin-top: 3px; letter-spacing: 1px; }
+
+    .sidebar-nav { padding: 16px 0; flex: 1; }
+    .sidebar-nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 24px;
+      font-size: 13px; color: rgba(255,255,255,0.45);
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+      position: relative; text-decoration: none;
+    }
+    .sidebar-nav-item:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.8); }
+    .sidebar-nav-item.active { color: #fff; background: rgba(255,255,255,0.08); }
+    .sidebar-nav-item.active::before {
+      content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
+      width: 3px; background: #6BAF8A; border-radius: 0 2px 2px 0;
+    }
+    .sidebar-badge {
+      margin-left: auto; font-size: 10px; font-weight: 700;
+      background: #C4956A; color: #fff; border-radius: 980px;
+      padding: 1px 7px; min-width: 18px; text-align: center;
+    }
+    .sidebar-badge.urgent { background: #E05555; }
+    .sidebar-footer {
+      padding: 20px 24px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      font-size: 11px; color: rgba(255,255,255,0.2);
+    }
+
+    /* ── 메인 영역 ── */
+    .main {
+      margin-left: 220px; flex: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    /* 상단 헤더 */
+    .topbar {
+      background: #F8F8F6;
+      border-bottom: 1px solid #E6E5E0;
+      padding: 16px 40px;
+      display: flex; justify-content: space-between; align-items: center;
+      position: sticky; top: 0; z-index: 40;
+    }
+    .topbar-left { font-size: 13px; color: #AEAEB2; }
+    .topbar-left strong { color: #1A1A1A; font-weight: 600; }
+    .topbar-right { display: flex; gap: 8px; }
+    .topbar-btn {
+      padding: 8px 18px; border-radius: 8px;
+      font-size: 12.5px; font-weight: 500; font-family: inherit;
+      cursor: pointer; border: none; transition: all 0.15s;
+    }
+    .topbar-btn-outline { background: #fff; color: #1A1A1A; border: 1px solid #E6E5E0; }
+    .topbar-btn-outline:hover { background: #EDECEA; }
+    .topbar-btn-primary { background: #6BAF8A; color: #fff; }
+    .topbar-btn-primary:hover { background: #5A9B78; }
+
+    .content { padding: 32px 40px 60px; flex: 1; }
+
+    /* 페이지 제목 */
+    .page-heading { margin-bottom: 28px; }
+    .page-heading h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 4px; }
+    .page-heading p { font-size: 12.5px; color: #AEAEB2; font-weight: 300; }
+
+    /* 알림 카드 4개 */
+    .alert-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 10px; margin-bottom: 32px;
+    }
+    .alert-card {
+      background: #fff; border: 1px solid #E6E5E0; border-radius: 12px;
+      padding: 18px 20px; cursor: pointer;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .alert-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); transform: translateY(-2px); }
+    .alert-card.urgent { border-color: rgba(224,85,85,0.3); background: rgba(224,85,85,0.03); }
+    .alert-num {
+      font-size: 32px; font-weight: 700; letter-spacing: -1px; line-height: 1;
+      margin-bottom: 6px;
+    }
+    .alert-num.green  { color: #6BAF8A; }
+    .alert-num.orange { color: #C4956A; }
+    .alert-num.red    { color: #E05555; }
+    .alert-num.gray   { color: #888; }
+    .alert-label { font-size: 12.5px; font-weight: 600; color: #1A1A1A; margin-bottom: 3px; }
+    .alert-sub   { font-size: 11px; color: #AEAEB2; font-weight: 300; }
+
+    /* 2단 그리드 */
+    .two-col { display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; }
+
+    /* 공개 검수 큐 */
+    .panel {
+      background: #fff; border: 1px solid #E6E5E0; border-radius: 14px; overflow: hidden;
+    }
+    .panel-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #E6E5E0;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .panel-title { font-size: 14px; font-weight: 600; }
+    .panel-link  { font-size: 12px; color: #6BAF8A; cursor: pointer; }
+
+    .review-item {
+      padding: 16px 20px;
+      border-bottom: 1px solid #F0F0EC;
+      transition: background 0.15s;
+    }
+    .review-item:last-child { border-bottom: none; }
+    .review-item:hover { background: #FAFAF8; }
+    .review-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 6px;
+    }
+    .review-no { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; color: #AEAEB2; }
+    .review-cat {
+      font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+    }
+    .cat-commons { background: rgba(180,110,40,0.1); color: #9B6020; }
+    .cat-network { background: rgba(107,175,138,0.12); color: #3A7A55; }
+    .cat-world   { background: rgba(49,130,246,0.1); color: #2060C8; }
+    .review-memo {
+      font-size: 12.5px; color: #1A1A1A; line-height: 1.65; margin-bottom: 10px;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .review-date { font-size: 10.5px; color: #AEAEB2; margin-bottom: 10px; }
+    .review-actions { display: flex; gap: 6px; }
+    .btn-approve {
+      flex: 1; padding: 7px; border-radius: 7px;
+      font-size: 12px; font-weight: 500; font-family: inherit;
+      background: rgba(107,175,138,0.1); color: #3A7A55;
+      border: 1px solid rgba(107,175,138,0.25); cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-approve:hover { background: rgba(107,175,138,0.2); }
+    .btn-reject {
+      flex: 1; padding: 7px; border-radius: 7px;
+      font-size: 12px; font-weight: 500; font-family: inherit;
+      background: rgba(224,85,85,0.07); color: #C04040;
+      border: 1px solid rgba(224,85,85,0.2); cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-reject:hover { background: rgba(224,85,85,0.14); }
+
+    /* 진행 중 에피소드 (오른쪽) */
+    .episode-mini {
+      padding: 14px 18px;
+      border-bottom: 1px solid #F0F0EC;
+    }
+    .episode-mini:last-child { border-bottom: none; }
+    .episode-mini-status { font-size: 10px; font-weight: 600; letter-spacing: 1px; margin-bottom: 4px; }
+    .s-active  { color: #3A7A55; }
+    .s-ready   { color: #9B6020; }
+    .s-planned { color: #888; }
+    .episode-mini-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+    .episode-mini-period { font-size: 11px; color: #AEAEB2; }
+
+    /* 운영 지표 */
+    .metrics-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      gap: 0;
+      border: 1px solid #E6E5E0; border-radius: 14px; overflow: hidden;
+      background: #fff; margin-top: 24px;
+    }
+    .metric-cell {
+      padding: 20px 16px; text-align: center;
+      border-right: 1px solid #E6E5E0;
+    }
+    .metric-cell:last-child { border-right: none; }
+    .metric-num { font-size: 26px; font-weight: 700; letter-spacing: -0.8px; color: #1A1A1A; line-height: 1; margin-bottom: 6px; }
+    .metric-label { font-size: 11px; color: #AEAEB2; font-weight: 400; }
+    .metric-unit { font-size: 12px; color: #6BAF8A; font-weight: 500; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+  <!-- ── 사이드바 ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <p class="sidebar-logo-text">강화유니버스</p>
+      <p class="sidebar-logo-sub">ADMIN CONSOLE</p>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="sidebar-nav-item active" href="강화유니버스_관리자.html">◉ 운영 홈</a>
+      <a class="sidebar-nav-item" href="#">⊞ 프로젝트·에피소드</a>
+      <a class="sidebar-nav-item" href="#">⚑ 가게·QR</a>
+      <a class="sidebar-nav-item" href="#">
+        ✓ 공개 검수 큐
+        <span class="sidebar-badge">7</span>
+      </a>
+      <a class="sidebar-nav-item" href="#">
+        ! 신고 대응
+        <span class="sidebar-badge urgent">2</span>
+      </a>
+      <a class="sidebar-nav-item" href="#">◎ 참여자</a>
+      <a class="sidebar-nav-item" href="#">◈ 크루 계정</a>
+    </nav>
+    <div class="sidebar-footer">
+      운영자 · 호영<br>Supabase Auth
+    </div>
+  </aside>
+
+  <!-- ── 메인 ── -->
+  <div class="main">
+
+    <div class="topbar">
+      <p class="topbar-left">DASHBOARD · <strong>2026.04.24</strong></p>
+      <div class="topbar-right">
+        <button class="topbar-btn topbar-btn-outline" onclick="location.href='강화유니버스_임팩트.html'">임팩트 페이지 보기</button>
+        <button class="topbar-btn topbar-btn-primary">+ 새 프로젝트</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <div class="page-heading" data-anim>
+        <h1>오늘 처리할 것들</h1>
+        <p>가장 오래된 검수 · 3일 전 · 긴급 1건 포함</p>
+      </div>
+
+      <!-- 알림 4개 -->
+      <div class="alert-grid">
+        <div class="alert-card" data-anim data-delay="1">
+          <p class="alert-num green">7</p>
+          <p class="alert-label">공개 검수 대기</p>
+          <p class="alert-sub">가장 오래된 · 3일 전</p>
+        </div>
+        <div class="alert-card urgent" data-anim data-delay="2">
+          <p class="alert-num red">2</p>
+          <p class="alert-label">신고 대기</p>
+          <p class="alert-sub">긴급 1건 포함</p>
+        </div>
+        <div class="alert-card" data-anim data-delay="3">
+          <p class="alert-num orange">1</p>
+          <p class="alert-label">가게 등록 대기</p>
+          <p class="alert-sub">처리 대기 없음</p>
+        </div>
+        <div class="alert-card" data-anim data-delay="4">
+          <p class="alert-num gray">0</p>
+          <p class="alert-label">사장님 코드 재발급</p>
+          <p class="alert-sub">처리 대기 없음</p>
+        </div>
+      </div>
+
+      <!-- 2단: 검수 큐 + 에피소드 -->
+      <div class="two-col">
+
+        <!-- 공개 검수 큐 -->
+        <div class="panel" data-anim data-delay="1">
+          <div class="panel-header">
+            <p class="panel-title">공개 검수 큐 · 7건</p>
+            <span class="panel-link">전체 보기 →</span>
+          </div>
+
+          <div class="review-item">
+            <div class="review-top">
+              <span class="review-no">💌 No.284 · 네트워크</span>
+              <span class="review-cat cat-network">네트워크</span>
+            </div>
+            <p class="review-memo">시부야에서 온 친구들과 갯벌을 함께 걸었다. 말은 잘 안 통해도, 진흙은 만국 공통이었다.</p>
+            <p class="review-date">2026.04.20 · 시부야 교류 3회차</p>
+            <div class="review-actions">
+              <button class="btn-approve" onclick="approve(this)">승인</button>
+              <button class="btn-reject" onclick="reject(this)">반려</button>
+            </div>
+          </div>
+
+          <div class="review-item">
+            <div class="review-top">
+              <span class="review-no">💌 No.281 · 공유지</span>
+              <span class="review-cat cat-commons">공유지</span>
+            </div>
+            <p class="review-memo">한달살기 2주차. 옆집 할머니가 쑥 한 바구니 주셨다.</p>
+            <p class="review-date">2026.04.18 · 한달살기</p>
+            <div class="review-actions">
+              <button class="btn-approve" onclick="approve(this)">승인</button>
+              <button class="btn-reject" onclick="reject(this)">반려</button>
+            </div>
+          </div>
+
+          <div class="review-item">
+            <div class="review-top">
+              <span class="review-no">No.279 · 세계</span>
+              <span class="review-cat cat-world">세계</span>
+            </div>
+            <p class="review-memo">폐교 된 초등학교에서 환대 아카이빙 워크숍. 낡은 책상에 앉아 편지를 썼다.</p>
+            <p class="review-date">2026.04.14 · 환대 아카이빙</p>
+            <div class="review-actions">
+              <button class="btn-approve" onclick="approve(this)">승인</button>
+              <button class="btn-reject" onclick="reject(this)">반려</button>
+            </div>
+          </div>
+
+          <div class="review-item">
+            <div class="review-top">
+              <span class="review-no">💌 No.276 · 공유지</span>
+              <span class="review-cat cat-commons">공유지</span>
+            </div>
+            <p class="review-memo">공유 주방에서 다 같이 바지락 칼국수. 재료는 전부 오늘 아침 바다에서.</p>
+            <p class="review-date">2026.04.12 · 공유 주방</p>
+            <div class="review-actions">
+              <button class="btn-approve" onclick="approve(this)">승인</button>
+              <button class="btn-reject" onclick="reject(this)">반려</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 진행 중 에피소드 -->
+        <div class="panel" data-anim data-delay="2">
+          <div class="panel-header">
+            <p class="panel-title">진행 중 에피소드</p>
+            <span class="panel-link" onclick="location.href='강화유니버스_크루.html'">크루 업데이트 →</span>
+          </div>
+          <div class="episode-mini">
+            <p class="episode-mini-status s-active">● 진행</p>
+            <p class="episode-mini-title">시부야 교류 3회차</p>
+            <p class="episode-mini-period">2026.04.20 – 04.24</p>
+          </div>
+          <div class="episode-mini">
+            <p class="episode-mini-status s-ready">준비</p>
+            <p class="episode-mini-title">한달살기 4월 입주</p>
+            <p class="episode-mini-period">2026.04.25 ~</p>
+          </div>
+          <div class="episode-mini">
+            <p class="episode-mini-status s-planned">예정</p>
+            <p class="episode-mini-title">공유 주방 7회차</p>
+            <p class="episode-mini-period">2026.04.27</p>
+          </div>
+          <div class="episode-mini">
+            <p class="episode-mini-status s-active">● 진행</p>
+            <p class="episode-mini-title">환대 아카이빙</p>
+            <p class="episode-mini-period">공모 진행</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 운영 지표 -->
+      <div class="metrics-grid" data-anim data-delay="3">
+        <div class="metric-cell">
+          <p class="metric-unit">최근 30일</p>
+          <p class="metric-num">94</p>
+          <p class="metric-label">검수 처리율 (%)</p>
+        </div>
+        <div class="metric-cell">
+          <p class="metric-unit">평균</p>
+          <p class="metric-num">11</p>
+          <p class="metric-label">평균 응답 (시간)</p>
+        </div>
+        <div class="metric-cell">
+          <p class="metric-unit">누적</p>
+          <p class="metric-num">3</p>
+          <p class="metric-label">신고 건수</p>
+        </div>
+        <div class="metric-cell">
+          <p class="metric-unit">이번 달</p>
+          <p class="metric-num">2</p>
+          <p class="metric-label">새 가게</p>
+        </div>
+        <div class="metric-cell">
+          <p class="metric-unit">이번 주</p>
+          <p class="metric-num">18</p>
+          <p class="metric-label">크루 활동</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.06 });
+    document.querySelectorAll('[data-anim]').forEach(el => io.observe(el));
+
+    function approve(btn) {
+      const item = btn.closest('.review-item');
+      item.style.opacity = '0.4';
+      item.style.pointerEvents = 'none';
+      btn.textContent = '✓ 승인됨';
+    }
+    function reject(btn) {
+      const item = btn.closest('.review-item');
+      item.style.opacity = '0.4';
+      item.style.pointerEvents = 'none';
+      btn.closest('.review-actions').querySelector('.btn-approve').textContent = '반려됨';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>강화유니버스 · 카드 No.284</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      color: #1A1A1A;
+      background: #F8F8F6;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── Scroll animations ── */
+    [data-anim] {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s cubic-bezier(0.16,1,0.3,1),
+                  transform 0.6s cubic-bezier(0.16,1,0.3,1);
+    }
+    [data-anim].in { opacity: 1; transform: translateY(0); }
+    [data-delay="1"] { transition-delay: 0.08s; }
+    [data-delay="2"] { transition-delay: 0.16s; }
+    [data-delay="3"] { transition-delay: 0.24s; }
+    [data-delay="4"] { transition-delay: 0.32s; }
+
+    /* ── Navigation ── */
+    nav {
+      position: fixed;
+      top: 0; width: 100%;
+      padding: 18px 60px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      background: rgba(248,248,246,0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      transition: box-shadow 0.3s;
+    }
+    nav.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,0.07); }
+    .nav-logo {
+      font-size: 16px; font-weight: 700;
+      letter-spacing: -0.5px; color: #1A1A1A; text-decoration: none;
+    }
+    .nav-links { display: flex; gap: 32px; list-style: none; }
+    .nav-links a {
+      font-size: 13px; font-weight: 400; color: #888;
+      text-decoration: none; transition: color 0.2s;
+    }
+    .nav-links a:hover { color: #1A1A1A; }
+    .nav-links a.active { color: #1A1A1A; font-weight: 500; }
+    .nav-login {
+      font-size: 12.5px; font-weight: 500; color: #fff;
+      background: #6BAF8A; border: none; border-radius: 980px;
+      padding: 8px 20px; cursor: pointer; font-family: inherit;
+      transition: background 0.2s;
+    }
+    .nav-login:hover { background: #5A9B78; }
+
+    /* ── 브레드크럼 ── */
+    .breadcrumb {
+      max-width: 1280px; margin: 0 auto;
+      padding: 96px 60px 0;
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: #AEAEB2;
+    }
+    .breadcrumb a { color: #AEAEB2; text-decoration: none; transition: color 0.15s; }
+    .breadcrumb a:hover { color: #1A1A1A; }
+    .breadcrumb-sep { color: #D0D0D0; }
+    .breadcrumb-current { color: #6E6E73; font-weight: 500; }
+
+    /* ── 메인 레이아웃 ── */
+    .layout {
+      max-width: 1280px; margin: 0 auto;
+      padding: 36px 60px 80px;
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 60px;
+      align-items: start;
+    }
+
+    /* ════════════════════════════════
+       왼쪽: 카드 플립 + 메타 + 편지
+    ════════════════════════════════ */
+    .card-section {}
+
+    /* 카드 플립 컨테이너 */
+    .card-flip-wrap {
+      perspective: 1400px;
+      margin-bottom: 28px;
+    }
+    .card-flip-inner {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      aspect-ratio: 3/2;
+      transform-style: preserve-3d;
+      transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+    .card-flip-inner.flipped { transform: rotateY(180deg); }
+
+    /* 카드 앞/뒷면 공통 */
+    .card-face {
+      position: absolute; inset: 0;
+      border-radius: 20px;
+      backface-visibility: hidden;
+      overflow: hidden;
+    }
+
+    /* 앞면 */
+    .card-front {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.07);
+      display: flex; flex-direction: column;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+    }
+    .card-front-header {
+      padding: 18px 22px 14px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid #F0F0EC;
+    }
+    .card-front-no {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 2px; color: #AEAEB2;
+    }
+    .card-front-badge {
+      font-size: 9.5px; font-weight: 600; letter-spacing: 0.5px;
+      padding: 4px 10px; border-radius: 4px;
+      background: rgba(107,175,138,0.12); color: #3A7A55;
+    }
+    .card-front-body {
+      flex: 1; padding: 22px 22px 18px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .card-front-memo {
+      font-size: 15px; font-weight: 400;
+      color: #1A1A1A; line-height: 1.8;
+      flex: 1;
+    }
+    .card-front-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 20px;
+    }
+    .card-front-place {
+      font-size: 11.5px; color: #AEAEB2; font-weight: 300;
+    }
+    .card-front-date {
+      font-size: 11.5px; color: #AEAEB2; font-weight: 300;
+    }
+    /* 공개 도장 */
+    .card-front-stamp {
+      position: absolute;
+      bottom: 18px; right: 20px;
+      font-size: 9px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      color: #6BAF8A; border: 1.5px solid #6BAF8A;
+      border-radius: 4px; padding: 3px 7px;
+      background: rgba(107,175,138,0.06);
+      transform: rotate(10deg);
+      opacity: 0.7;
+    }
+
+    /* 뒷면 */
+    .card-back {
+      background: #1A1A1A;
+      transform: rotateY(180deg);
+      display: flex; flex-direction: column;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    }
+    .card-back-header {
+      padding: 18px 22px 14px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .card-back-label {
+      font-size: 9.5px; font-weight: 600; letter-spacing: 2.5px;
+      text-transform: uppercase; color: rgba(255,255,255,0.35);
+    }
+    .card-back-badge {
+      font-size: 9.5px; font-weight: 600; letter-spacing: 0.5px;
+      padding: 4px 10px; border-radius: 4px;
+      background: rgba(107,175,138,0.2); color: #6BAF8A;
+    }
+    .card-back-body {
+      flex: 1; padding: 22px 22px 18px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .card-back-quote {
+      font-size: 15px; font-weight: 300;
+      color: rgba(255,255,255,0.85); line-height: 1.8;
+      font-style: italic;
+    }
+    .card-back-quote::before { content: '"'; }
+    .card-back-quote::after  { content: '"'; }
+    .card-back-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 20px;
+    }
+    .card-back-place {
+      font-size: 11.5px; color: rgba(255,255,255,0.3); font-weight: 300;
+    }
+    .card-back-date {
+      font-size: 11.5px; color: rgba(255,255,255,0.3); font-weight: 300;
+    }
+
+    /* 플립 버튼 영역 */
+    .card-actions {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 36px;
+    }
+    .btn-flip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 22px;
+      background: #1A1A1A; color: #fff;
+      font-size: 12.5px; font-weight: 500;
+      border: none; border-radius: 980px;
+      cursor: pointer; font-family: inherit;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-flip:hover { background: #333; transform: scale(1.02); }
+    .btn-share {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 22px;
+      background: transparent; color: #6E6E73;
+      font-size: 12.5px; font-weight: 500;
+      border: 1.5px solid #E6E5E0; border-radius: 980px;
+      cursor: pointer; font-family: inherit;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-share:hover { border-color: #1A1A1A; color: #1A1A1A; }
+
+    /* 카드 메타 테이블 */
+    .card-meta-table {
+      background: #fff;
+      border: 1px solid #E6E5E0;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+    .meta-row {
+      display: grid; grid-template-columns: 100px 1fr;
+      padding: 14px 20px;
+      border-bottom: 1px solid #F0F0EC;
+      align-items: center;
+    }
+    .meta-row:last-child { border-bottom: none; }
+    .meta-key {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: #AEAEB2;
+    }
+    .meta-val {
+      font-size: 13px; font-weight: 400; color: #1A1A1A;
+    }
+    .meta-val a {
+      color: #6BAF8A; text-decoration: none;
+      border-bottom: 1px solid rgba(107,175,138,0.3);
+      transition: border-color 0.15s;
+    }
+    .meta-val a:hover { border-color: #6BAF8A; }
+
+    /* 인용 섹션 */
+    .quoted-section { margin-bottom: 32px; }
+    .section-label {
+      font-size: 9.5px; font-weight: 600;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: #AEAEB2; margin-bottom: 14px;
+    }
+    .quoted-item {
+      background: #fff;
+      border: 1px solid #E6E5E0;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex; gap: 14px; align-items: flex-start;
+    }
+    .quoted-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #88AADD, #6BAF8A);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+    .quoted-body {}
+    .quoted-who {
+      font-size: 11.5px; font-weight: 600; color: #1A1A1A;
+      margin-bottom: 5px;
+    }
+    .quoted-who span { font-weight: 300; color: #AEAEB2; }
+    .quoted-text {
+      font-size: 13px; font-weight: 300; color: #6E6E73;
+      line-height: 1.75; font-style: italic;
+    }
+    .quoted-text::before { content: '"'; }
+    .quoted-text::after  { content: '"'; }
+
+    /* ════════════════════════════════
+       오른쪽: 편지
+    ════════════════════════════════ */
+    .letter-section {}
+
+    .letter-label {
+      font-size: 9.5px; font-weight: 600;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: #AEAEB2; margin-bottom: 16px;
+    }
+
+    .letter-card {
+      background: #fff;
+      border: 1px solid #E6E5E0;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+
+    /* 편지 헤더 */
+    .letter-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid #F0F0EC;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .letter-sender-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: linear-gradient(135deg, #C4956A, #E8C49A);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+    .letter-sender-info {}
+    .letter-from {
+      font-size: 13px; font-weight: 600; color: #1A1A1A;
+      margin-bottom: 2px;
+    }
+    .letter-date { font-size: 11px; color: #AEAEB2; font-weight: 300; }
+
+    /* 편지 본문 */
+    .letter-body {
+      padding: 22px 24px 20px;
+    }
+    .letter-text {
+      font-size: 14px; font-weight: 300;
+      color: #3A3A3A; line-height: 2;
+    }
+
+    /* 편지 서명 */
+    .letter-sign {
+      padding: 14px 24px 20px;
+      border-top: 1px solid #F0F0EC;
+    }
+    .letter-sign-name {
+      font-size: 13px; font-weight: 600; color: #1A1A1A;
+      margin-bottom: 2px;
+    }
+    .letter-sign-sub { font-size: 11px; color: #AEAEB2; font-weight: 300; }
+
+    /* 수신 뱃지 */
+    .letter-received-badge {
+      margin: 0 24px 20px;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 10.5px; font-weight: 500; color: #6BAF8A;
+      background: rgba(107,175,138,0.08);
+      border: 1px solid rgba(107,175,138,0.2);
+      border-radius: 980px; padding: 6px 14px;
+    }
+
+    /* 편지 없을 때 */
+    .letter-empty {
+      background: #fff;
+      border: 1.5px dashed #E6E5E0;
+      border-radius: 16px;
+      padding: 40px 24px;
+      text-align: center;
+    }
+    .letter-empty p {
+      font-size: 13px; color: #AEAEB2; font-weight: 300; line-height: 1.8;
+    }
+
+    /* 하이파이브 섹션 */
+    .hifive-section {
+      margin-top: 20px;
+    }
+    .hifive-card {
+      background: #fff;
+      border: 1px solid #E6E5E0;
+      border-radius: 14px;
+      padding: 18px 20px;
+    }
+    .hifive-top {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .hifive-title {
+      font-size: 12.5px; font-weight: 600; color: #1A1A1A;
+    }
+    .hifive-count {
+      font-size: 11px; color: #C4956A; font-weight: 600;
+    }
+    .hifive-list {
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .hifive-item {
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .hifive-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #EDECEA;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; color: #888;
+      flex-shrink: 0;
+    }
+    .hifive-body {}
+    .hifive-who { font-size: 11.5px; font-weight: 500; color: #1A1A1A; }
+    .hifive-note { font-size: 12px; font-weight: 300; color: #6E6E73; line-height: 1.65; }
+    .hifive-note-date { font-size: 10.5px; color: #AEAEB2; margin-top: 2px; }
+
+    /* ── 공개 안내 ── */
+    .notice-strip {
+      background: #1A1A1A; padding: 18px 60px; text-align: center;
+    }
+    .notice-strip p { font-size: 12px; color: rgba(255,255,255,0.4); letter-spacing: 0.3px; }
+    .notice-strip strong { color: rgba(255,255,255,0.7); font-weight: 500; }
+
+    /* ── Footer ── */
+    footer { background: #0F0F0F; padding: 40px 60px 32px; }
+    .footer-inner {
+      max-width: 1280px; margin: 0 auto;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .footer-logo { font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.7); }
+    .footer-copy { font-size: 11.5px; color: rgba(255,255,255,0.2); }
+
+    /* ── Responsive ── */
+    @media (max-width: 1024px) {
+      .layout { grid-template-columns: 1fr; gap: 40px; padding: 36px 32px 60px; }
+      nav, .breadcrumb, .notice-strip, footer { padding-left: 32px; padding-right: 32px; }
+      .card-flip-inner { max-width: 100%; }
+    }
+    @media (max-width: 768px) {
+      nav { padding: 16px 20px; }
+      .nav-links { display: none; }
+      nav, .breadcrumb, .layout, .notice-strip, footer { padding-left: 20px; padding-right: 20px; }
+      .footer-inner { flex-direction: column; gap: 10px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Navigation ── -->
+  <nav id="nav">
+    <a href="강화유니버스_랜딩페이지_ver.1.html" class="nav-logo">강화유니버스</a>
+    <ul class="nav-links">
+      <li><a href="강화유니버스_임팩트.html">임팩트</a></li>
+      <li><a href="강화유니버스_프로젝트.html">프로젝트</a></li>
+      <li><a href="강화유니버스_피드.html">피드</a></li>
+      <li><a href="강화유니버스_도감.html" class="active">내 도감</a></li>
+    </ul>
+    <button class="nav-login">카카오 로그인</button>
+  </nav>
+
+  <!-- ── 브레드크럼 ── -->
+  <div class="breadcrumb" data-anim>
+    <a href="강화유니버스_도감.html">← 내 도감</a>
+    <span class="breadcrumb-sep">/</span>
+    <span>네트워크</span>
+    <span class="breadcrumb-sep">/</span>
+    <span class="breadcrumb-current">No.284</span>
+  </div>
+
+  <!-- ── 메인 레이아웃 ── -->
+  <div class="layout">
+
+    <!-- ── 왼쪽: 카드 + 메타 ── -->
+    <div class="card-section">
+
+      <!-- 카드 플립 -->
+      <div class="card-flip-wrap" data-anim>
+        <div class="card-flip-inner" id="cardFlip" onclick="flipCard()">
+
+          <!-- 앞면 -->
+          <div class="card-face card-front">
+            <div class="card-front-header">
+              <span class="card-front-no">No.284</span>
+              <span class="card-front-badge">네트워크</span>
+            </div>
+            <div class="card-front-body">
+              <p class="card-front-memo">시부야에서 온 친구들과 갯벌을 함께 걸었다. 말은 잘 안 통해도, 진흙은 만국 공통이었다.</p>
+              <div class="card-front-meta">
+                <span class="card-front-place">@ 동막해변</span>
+                <span class="card-front-date">2026.04.20</span>
+              </div>
+            </div>
+            <span class="card-front-stamp">공개</span>
+          </div>
+
+          <!-- 뒷면 -->
+          <div class="card-face card-back">
+            <div class="card-back-header">
+              <span class="card-back-label">NETWORK · BACK</span>
+              <span class="card-back-badge">네트워크</span>
+            </div>
+            <div class="card-back-body">
+              <p class="card-back-quote">시부야에서 온 친구들과 갯벌을 함께 걸었다. 말은 잘 안 통해도, 진흙은 만국 공통이었다.</p>
+              <div class="card-back-meta">
+                <span class="card-back-place">동막해변</span>
+                <span class="card-back-date">2026.04.20</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 플립 버튼 -->
+      <div class="card-actions" data-anim data-delay="1">
+        <button class="btn-flip" onclick="flipCard()">
+          <span id="flipLabel">뒷면 보기</span> ↺
+        </button>
+        <button class="btn-share" onclick="toggleShare()">
+          공개 / 비공개
+        </button>
+      </div>
+
+      <!-- 카드 메타 -->
+      <div class="card-meta-table" data-anim data-delay="2">
+        <div class="meta-row">
+          <span class="meta-key">DATE</span>
+          <span class="meta-val">2026.04.20</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">PLACE</span>
+          <span class="meta-val">동막해변</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">PROJECT</span>
+          <span class="meta-val"><a href="강화유니버스_프로젝트.html">시부야 교류 3회차</a></span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">CATEGORY</span>
+          <span class="meta-val">네트워크</span>
+        </div>
+      </div>
+
+      <!-- 인용한 사람들 -->
+      <div class="quoted-section" data-anim data-delay="3">
+        <p class="section-label">QUOTED BY · 이 카드를 인용한 사람들</p>
+        <div class="quoted-item">
+          <div class="quoted-avatar">Y</div>
+          <div class="quoted-body">
+            <p class="quoted-who">Yui · 시부야 &nbsp;<span>카드 No.291</span></p>
+            <p class="quoted-text">한국 친구가 갯벌이 공통이라고 써준 게 자꾸 생각나. 도쿄에 오면 우리도 비슷한 풍경을 보여주고 싶다.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── 오른쪽: 편지 + 하이파이브 ── -->
+    <div class="letter-section">
+
+      <!-- 편지 -->
+      <p class="letter-label" data-anim>LETTER · 이 카드와 함께 받은 편지</p>
+
+      <div class="letter-card" data-anim data-delay="1">
+        <div class="letter-header">
+          <div class="letter-sender-avatar">갯</div>
+          <div class="letter-sender-info">
+            <p class="letter-from">갯벌카페 사장님</p>
+            <p class="letter-date">2026.04.22</p>
+          </div>
+        </div>
+        <div class="letter-body">
+          <p class="letter-text">풀잎님이 갯벌에서 사진을 찍을 때, 그 모습을 봤어요. 손님이 아니라 자주 오는 이웃처럼 보여서 반가웠습니다. 다음에 오시면 새로 들여온 차 한잔 대접할게요.</p>
+        </div>
+        <div class="letter-sign">
+          <p class="letter-sign-name">김영주</p>
+          <p class="letter-sign-sub">갯벌카페에서, 2026.04.22</p>
+        </div>
+        <div class="letter-received-badge">
+          💌 받은 편지 · 카카오 알림으로 도착
+        </div>
+      </div>
+
+      <!-- 하이파이브 -->
+      <div class="hifive-section" data-anim data-delay="2">
+        <div class="hifive-card">
+          <div class="hifive-top">
+            <span class="hifive-title">★ 하이파이브</span>
+            <span class="hifive-count">12개</span>
+          </div>
+          <div class="hifive-list">
+
+            <div class="hifive-item">
+              <div class="hifive-avatar">크</div>
+              <div class="hifive-body">
+                <p class="hifive-who">크루 · 호영</p>
+                <p class="hifive-note">갯벌에서 찍은 사진 봤어요. 진흙 묻은 신발이 제일 좋았습니다.</p>
+                <p class="hifive-note-date">2026.04.21</p>
+              </div>
+            </div>
+
+            <div class="hifive-item">
+              <div class="hifive-avatar">Y</div>
+              <div class="hifive-body">
+                <p class="hifive-who">Yui · 시부야</p>
+                <p class="hifive-note">진흙은 만국 공통 — 이 말 너무 좋아.</p>
+                <p class="hifive-note-date">2026.04.20</p>
+              </div>
+            </div>
+
+            <div class="hifive-item">
+              <div class="hifive-avatar">현</div>
+              <div class="hifive-body">
+                <p class="hifive-who">현주</p>
+                <p class="hifive-note">같이 있었는데 이 카드 보고 또 웃었어요.</p>
+                <p class="hifive-note-date">2026.04.20</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── 공개 안내 ── -->
+  <div class="notice-strip">
+    <p><strong>카드는 기본 비공개입니다.</strong>&nbsp; 공개로 설정한 카드만 피드에 노출되며, 언제든 변경할 수 있습니다.</p>
+  </div>
+
+  <!-- ── Footer ── */
+  <footer>
+    <div class="footer-inner">
+      <span class="footer-logo">강화유니버스</span>
+      <p class="footer-copy">© 2026 Ganghwa Universe · chungpung.app/collection/284</p>
+    </div>
+  </footer>
+
+  <script>
+    /* ── 스크롤 애니메이션 ── */
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -24px 0px' });
+    document.querySelectorAll('[data-anim]').forEach(el => io.observe(el));
+
+    /* ── 내비 스크롤 ── */
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 20);
+    }, { passive: true });
+
+    /* ── 카드 플립 ── */
+    let isFlipped = false;
+    function flipCard() {
+      isFlipped = !isFlipped;
+      document.getElementById('cardFlip').classList.toggle('flipped', isFlipped);
+      document.getElementById('flipLabel').textContent = isFlipped ? '앞면 보기' : '뒷면 보기';
+    }
+
+    /* ── 공개/비공개 토글 (시각 피드백) ── */
+    let isPublic = true;
+    function toggleShare() {
+      isPublic = !isPublic;
+      const stamp = document.querySelector('.card-front-stamp');
+      if (stamp) {
+        stamp.textContent = isPublic ? '공개' : '비공개';
+        stamp.style.color = isPublic ? '#6BAF8A' : '#AEAEB2';
+        stamp.style.borderColor = isPublic ? '#6BAF8A' : '#E6E5E0';
+      }
+    }
+  </script>
+</body>
+</html>

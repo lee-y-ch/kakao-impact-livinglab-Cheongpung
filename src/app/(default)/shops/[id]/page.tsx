@@ -3,6 +3,12 @@ import { notFound } from "next/navigation";
 
 import type { ActivityCardData } from "@/components/activities/ActivityCard";
 import { ActivityGrid } from "@/components/activities/ActivityGrid";
+import {
+  LegacyContainer,
+  LegacyHeader,
+  LegacyPage,
+  LegacyPanel,
+} from "@/components/legacy-v2/PageChrome";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -74,70 +80,62 @@ export default async function ShopDetailPage({ params }: Params) {
   const totalCards = countRes.count ?? 0;
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-8 px-6 py-10">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link href="/shops" className="hover:text-foreground">
-          가게
-        </Link>
-        <span>·</span>
-        <span>{shop.name as string}</span>
-      </div>
-
-      <header className="flex flex-col gap-3 rounded-2xl border border-border bg-background p-6">
-        <h1 className="text-3xl font-bold tracking-tight">
-          {shop.name as string}
-        </h1>
-        {shop.slogan ? (
-          <p className="text-sm italic text-muted-foreground">
-            “{shop.slogan as string}”
-          </p>
-        ) : null}
-        {shop.address ? (
-          <p className="text-xs text-muted-foreground">
-            {shop.address as string}
-          </p>
-        ) : null}
-        {shop.description ? (
-          <p className="whitespace-pre-wrap text-sm text-foreground/90">
-            {shop.description as string}
-          </p>
-        ) : null}
-        <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-foreground/80">
-            공개 카드 {totalCards}
-          </span>
-          <Link
-            href={`/feed?shop=${shop.id as string}`}
-            className="rounded-full border border-border px-2 py-0.5 transition hover:bg-muted/40"
-          >
-            피드에서 보기 →
-          </Link>
-        </div>
-      </header>
-
-      <section className="flex flex-col gap-3">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold">이 가게에서 쌓인 카드</h2>
-          {totalCards > cards.length ? (
-            <span className="text-xs text-muted-foreground">
-              최근 {cards.length}장 · 총 {totalCards}장
-            </span>
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              총 {totalCards}장
-            </span>
-          )}
-        </div>
-        <ActivityGrid
-          cards={cards}
-          interactive={false}
-          empty={
-            <p className="rounded-xl border border-dashed border-border bg-muted/20 p-10 text-center text-sm text-muted-foreground">
-              아직 공개된 카드가 없어요.
-            </p>
+    <LegacyPage>
+      <LegacyContainer className="max-w-[1040px]">
+        <LegacyHeader
+          eyebrow="Shop Detail"
+          title={shop.name as string}
+          description={
+            shop.description
+              ? (shop.description as string)
+              : "이 공간에서 쌓인 공개 카드를 통해 가게의 분위기와 참여 흔적을 볼 수 있습니다."
+          }
+          backHref="/shops"
+          backLabel="← 가게 목록"
+          actions={
+            <>
+              <span className="v2-legacy-pill">공개 카드 {totalCards}</span>
+              <Link
+                href={`/feed?shop=${shop.id as string}`}
+                className="v2-legacy-button-muted"
+              >
+                피드에서 보기
+              </Link>
+            </>
           }
         />
-      </section>
-    </main>
+
+        <LegacyPanel className="mb-6">
+          <div className="flex flex-wrap gap-3 text-sm text-v2-ink3">
+            {shop.slogan ? (
+              <p className="serif text-base text-v2-ink2">
+                “{shop.slogan as string}”
+              </p>
+            ) : null}
+            {shop.address ? <p>{shop.address as string}</p> : null}
+          </div>
+        </LegacyPanel>
+
+        <section className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-lg font-semibold text-v2-ink">
+              이 가게에서 쌓인 카드
+            </h2>
+            <span className="text-xs text-v2-ink3">
+              {totalCards > cards.length
+                ? `최근 ${cards.length}장 · 총 ${totalCards}장`
+                : `총 ${totalCards}장`}
+            </span>
+          </div>
+          <ActivityGrid
+            cards={cards}
+            interactive={false}
+            empty={
+              <p className="v2-legacy-empty">아직 공개된 카드가 없어요.</p>
+            }
+          />
+        </section>
+      </LegacyContainer>
+    </LegacyPage>
   );
 }

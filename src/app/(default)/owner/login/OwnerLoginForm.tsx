@@ -55,7 +55,7 @@ export function OwnerLoginForm() {
           autoComplete="username"
           value={shopSlug}
           onChange={(e) => setShopSlug(e.target.value)}
-          className="rounded-md border border-input px-3 py-2 text-base"
+          className="v2-legacy-input text-base"
           placeholder="예: sunset-cafe"
           required
         />
@@ -68,7 +68,7 @@ export function OwnerLoginForm() {
           autoComplete="current-password"
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          className="rounded-md border border-input px-3 py-2 text-base tracking-widest"
+          className="v2-legacy-input text-base tracking-widest"
           placeholder="8자리"
           required
           minLength={8}
@@ -92,7 +92,7 @@ export function OwnerLoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="mt-2 rounded-md bg-[#1e3a8a] px-4 py-3 text-base font-medium text-white transition hover:brightness-105 disabled:opacity-60"
+        className="v2-legacy-button mt-2 w-full text-base"
       >
         {loading ? "확인 중…" : "로그인"}
       </button>

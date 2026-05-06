@@ -1,908 +1,568 @@
-import Image from "next/image";
 import Link from "next/link";
 
-import { GhWordmark } from "@/components/claude/primitives";
+import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-const FEED_LIMIT = 60;
-const TOP_PROJECTS = 4;
-const TOP_PLACES = 5;
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const CATEGORY_COLOR: Record<string, string> = {
-  commons: "var(--cat-commons)",
-  network: "var(--cat-network)",
-  world: "var(--cat-world)",
-  policy: "var(--cat-policy)",
-};
-
-type SearchParams = {
-  category?: string;
-  project?: string;
-  shop?: string;
-};
-
 /**
- * /feed — Claude editorial 톤의 공개 카드 피드.
+ * v2 redesign — `/feed` 공개 피드.
+ * 시안: design-v2-reference/강화유니버스_피드.html.
  *
- * 출처: Claude artifact pages/FeedDesktop.jsx (2026-04-29).
- * 시각: 시안 그대로 (3-col 240/1fr/300 · 좌 필터 · 중앙 그리드 · 우 큐레이션)
- * 기능: 우리 기존 URL 기반 필터 (?category | ?project | ?shop) 그대로 유지.
- *
- * Claude 시안의 useState 필터는 server-side URL 필터로 대체 — share-friendly.
- * THIS WEEK 큐레이션 카피는 schema 데이터로 자동 생성 어려워 정적 placeholder.
+ * 공개 페이지 (auth 가드 없음). 시간 역순 공개 카드만, query param 으로
+ * 카테고리·기간 필터. 좋아요/팔로우/댓글/랭킹 금지 (CLAUDE.md 게임 규칙 ④).
  */
+
+const FEED_LIMIT = 50;
+
+type CategorySlug = "commons" | "network" | "world" | "policy";
+type CategoryLabel = "공유지" | "네트워크" | "세계" | "정책";
+
+const SLUG_TO_LABEL: Record<CategorySlug, CategoryLabel> = {
+  commons: "공유지",
+  network: "네트워크",
+  world: "세계",
+  policy: "정책",
+};
+
+const CATEGORY_BADGE: Record<CategoryLabel, string> = {
+  공유지: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
+  네트워크: "bg-[rgba(107,175,138,0.12)] text-[#3A7A55]",
+  세계: "bg-[rgba(49,130,246,0.1)] text-[#2060C8]",
+  정책: "bg-[rgba(130,90,180,0.1)] text-[#6040A0]",
+};
+
+const CATEGORY_DOT: Record<CategoryLabel, string> = {
+  공유지: "#C4956A",
+  네트워크: "#6BAF8A",
+  세계: "#88AADD",
+  정책: "#A080CC",
+};
+
+const PERIODS: {
+  value: "all" | "7d" | "30d" | "90d" | "year";
+  label: string;
+}[] = [
+  { value: "all", label: "전체" },
+  { value: "7d", label: "7일" },
+  { value: "30d", label: "30일" },
+  { value: "90d", label: "90일" },
+  { value: "year", label: "올해" },
+];
+
+type Period = (typeof PERIODS)[number]["value"];
+
+type FeedActivity = {
+  id: string;
+  body: string | null;
+  created_at: string;
+  episode: {
+    seq: number | null;
+    title: string | null;
+    location: string | null;
+    project: {
+      title: string | null;
+      category: { slug: string | null } | null;
+    } | null;
+  } | null;
+  project: {
+    title: string | null;
+    category: { slug: string | null } | null;
+  } | null;
+  shop: { name: string | null } | null;
+};
+
 export default async function FeedPage({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams?: { cat?: string; period?: string };
 }) {
   const admin = createAdminClient();
 
-  const filter = await resolveFilter(admin, searchParams);
+  const activeCategory = parseCategory(searchParams?.cat);
+  const activePeriod = parsePeriod(searchParams?.period);
+  const periodCutoff = periodCutoffIso(activePeriod);
 
-  // ─────────────────────────────────────────────────────────────
-  // 메인 카드 쿼리 (필터 적용)
-  // ─────────────────────────────────────────────────────────────
+  // 본 조회 — 모든 공개 카드 fetch (필터 후 limit). 카테고리 필터는 JS 단에서 적용
+  // (embed 된 카테고리 슬러그 기반이라 SQL 필터로 깔끔히 표현되지 않음).
   let query = admin
     .from("activities")
     .select(
-      `id, type, body, title, photo_url, is_public, created_at, shop_id,
-       shop:shop_id (id, name),
-       episode:episode_id (id, title),
-       project:project_id (id, title, slug, category_id)`
+      `
+      id, body, created_at,
+      episode:episodes (
+        seq, title, location,
+        project:projects ( title, category:categories ( slug ) )
+      ),
+      project:projects ( title, category:categories ( slug ) ),
+      shop:shops ( name )
+    `
     )
     .eq("is_public", true)
     .is("removed_at", null)
-    .order("created_at", { ascending: false })
-    .limit(FEED_LIMIT);
+    .order("created_at", { ascending: false });
 
-  if (filter?.kind === "shop") {
-    query = query.eq("shop_id", filter.shopId);
-  } else if (filter?.kind === "project") {
-    if (filter.episodeIds.length > 0) {
-      query = query.or(
-        `project_id.eq.${filter.projectId},episode_id.in.(${filter.episodeIds.join(",")})`
-      );
-    } else {
-      query = query.eq("project_id", filter.projectId);
-    }
-  } else if (filter?.kind === "category") {
-    const projectClause =
-      filter.projectIds.length > 0
-        ? `project_id.in.(${filter.projectIds.join(",")})`
-        : null;
-    const episodeClause =
-      filter.episodeIds.length > 0
-        ? `episode_id.in.(${filter.episodeIds.join(",")})`
-        : null;
-    const clauses = [projectClause, episodeClause].filter(
-      (c): c is string => c !== null
-    );
-    if (clauses.length > 0) {
-      query = query.or(clauses.join(","));
-    } else {
-      // 카테고리에 해당 프로젝트·에피소드가 없음 — 빈 결과 강제
-      query = query.eq("id", "00000000-0000-0000-0000-000000000000");
-    }
+  if (periodCutoff) {
+    query = query.gte("created_at", periodCutoff);
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // 좌측 패널 카운트 / 우측 큐레이션 데이터
-  // ─────────────────────────────────────────────────────────────
-  const [
-    cardsRes,
-    categoriesRes,
-    catCountsRes,
-    topProjectsRes,
-    topShopsRes,
-    totalPublicRes,
-  ] = await Promise.all([
-    query,
-    admin
-      .from("categories")
-      .select("id, slug, name, sort_order")
-      .order("sort_order", { ascending: true }),
-    // 카테고리별 카드 수: activities.project.category_id 기준
-    admin
-      .from("activities")
-      .select("project:project_id (category_id)")
-      .eq("is_public", true)
-      .is("removed_at", null),
-    // 진행 중 프로젝트 (좌측 BY PROJECT)
-    admin
-      .from("projects")
-      .select(
-        "id, slug, title, category_id, progress_type, progress_target, updated_at"
-      )
-      .eq("is_public", true)
-      .order("updated_at", { ascending: false })
-      .limit(TOP_PROJECTS),
-    // 가장 카드 많은 가게 — 카드 수 group by 는 client side 에서 집계
-    admin
-      .from("activities")
-      .select("shop_id, shop:shop_id (id, name)")
-      .eq("is_public", true)
-      .is("removed_at", null)
-      .not("shop_id", "is", null),
-    // 전체 공개 카드 수
-    admin
-      .from("activities")
-      .select("id", { count: "exact", head: true })
-      .eq("is_public", true)
-      .is("removed_at", null),
-  ]);
+  const { data: rawActivities } = await query.limit(
+    activeCategory ? 500 : FEED_LIMIT
+  );
+  const allInPeriod = (rawActivities ?? []) as unknown as FeedActivity[];
 
-  const categories = categoriesRes.data ?? [];
-  const cards = cardsRes.data ?? [];
-  const totalPublic = totalPublicRes.count ?? 0;
+  const filtered = activeCategory
+    ? allInPeriod.filter((a) => labelOf(a) === activeCategory)
+    : allInPeriod;
+  const visible = filtered.slice(0, FEED_LIMIT);
 
-  // 카테고리별 카드 수
-  const catCounts = new Map<string, number>();
-  for (const r of catCountsRes.data ?? []) {
-    const cat = r.project as { category_id: string } | null;
-    if (!cat?.category_id) continue;
-    catCounts.set(cat.category_id, (catCounts.get(cat.category_id) ?? 0) + 1);
-  }
-
-  // 가게별 카드 수 → 상위 5개
-  type ShopRow = {
-    shop_id: string | null;
-    shop: { id: string; name: string } | null;
+  // 카테고리별 카운트 (현재 기간 한정)
+  const categoryCounts: Record<CategoryLabel, number> = {
+    공유지: 0,
+    네트워크: 0,
+    세계: 0,
+    정책: 0,
   };
-  const shopMap = new Map<string, { name: string; count: number }>();
-  for (const r of (topShopsRes.data ?? []) as ShopRow[]) {
-    if (!r.shop_id || !r.shop) continue;
-    const cur = shopMap.get(r.shop_id) ?? { name: r.shop.name, count: 0 };
-    cur.count += 1;
-    shopMap.set(r.shop_id, cur);
+  for (const a of allInPeriod) {
+    const label = labelOf(a);
+    if (label) categoryCounts[label] += 1;
   }
-  const topShops = [...shopMap.entries()]
-    .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, TOP_PLACES);
+  const totalInPeriod = allInPeriod.length;
+
+  // 자주 등장한 장소 — shop.name 기준 top 5
+  const shopFrequency = new Map<string, number>();
+  for (const a of allInPeriod) {
+    const name = a.shop?.name;
+    if (!name) continue;
+    shopFrequency.set(name, (shopFrequency.get(name) ?? 0) + 1);
+  }
+  const topShops = [...shopFrequency.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const maxShopCount = topShops[0]?.[1] ?? 1;
 
   return (
-    <div
-      className="gh-scroll"
-      style={{
-        background: "var(--paper)",
-        color: "var(--ink)",
-        fontFamily: "var(--ui-font)",
-        minHeight: "100vh",
-        display: "grid",
-        gridTemplateColumns: "240px 1fr 300px",
-      }}
-    >
-      {/* LEFT — filters */}
-      <aside
-        style={{
-          borderRight: "1px solid var(--rule)",
-          padding: "40px 28px",
-          background: "var(--paper-2)",
-        }}
-      >
-        <Link href="/" style={{ textDecoration: "none" }}>
-          <GhWordmark size={13} mono />
-        </Link>
+    <>
+      <FeedLayout
+        cards={visible}
+        totalInPeriod={totalInPeriod}
+        categoryCounts={categoryCounts}
+        activeCategory={activeCategory}
+        activePeriod={activePeriod}
+        topShops={topShops.map(([name, count]) => ({
+          name,
+          pct: Math.round((count / Math.max(1, maxShopCount)) * 100),
+        }))}
+      />
+      <NoticeStrip />
+    </>
+  );
+}
 
-        <RailLabel style={{ marginTop: 32 }}>CATEGORY</RailLabel>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 0,
-            marginTop: 14,
-          }}
-        >
-          <FilterRow
-            href="/feed"
-            label="전체"
-            count={totalPublic}
-            color="var(--ink-3)"
-            active={!filter}
-          />
-          {categories.map((c) => {
-            const active =
-              filter?.kind === "category" && filter.slug === c.slug;
-            return (
-              <FilterRow
-                key={c.id as string}
-                href={`/feed?category=${c.slug as string}`}
-                label={c.name as string}
-                count={catCounts.get(c.id as string) ?? 0}
-                color={CATEGORY_COLOR[c.slug as string] ?? "var(--ink-3)"}
-                active={active}
-              />
-            );
-          })}
-        </div>
+// ── helpers ────────────────────────────────────────────────────
 
-        <RailLabel style={{ marginTop: 32 }}>BY PROJECT</RailLabel>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            marginTop: 14,
-          }}
-        >
-          {(topProjectsRes.data ?? []).map((p) => {
-            const active = filter?.kind === "project" && filter.slug === p.slug;
-            return (
-              <Link
-                key={p.id as string}
-                href={`/feed?project=${p.slug as string}`}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: "4px 0",
-                  textAlign: "left",
-                  fontSize: 12,
-                  color: "var(--ink-2)",
-                  fontFamily: "var(--ui-font)",
-                  textDecoration: "none",
-                }}
-              >
-                <span
-                  className="serif"
-                  style={{
-                    fontWeight: active ? 700 : 600,
-                    color: "var(--ink)",
-                  }}
-                >
-                  {p.title as string}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
+function parseCategory(cat: string | undefined): CategoryLabel | null {
+  if (!cat) return null;
+  const allowed: CategoryLabel[] = ["공유지", "네트워크", "세계", "정책"];
+  return (allowed as string[]).includes(cat) ? (cat as CategoryLabel) : null;
+}
 
-        <RailLabel style={{ marginTop: 32 }}>PERIOD</RailLabel>
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            flexWrap: "wrap",
-            marginTop: 14,
-          }}
-        >
-          {(["전체", "7일", "30일", "90일", "올해"] as const).map((t, i) => (
-            <span
-              key={t}
-              style={{
-                fontSize: 11,
-                fontFamily: "var(--mono-font)",
-                color: i === 0 ? "var(--ink)" : "var(--ink-3)",
-                padding: "4px 8px",
-                border: `1px solid ${i === 0 ? "var(--ink)" : "var(--rule)"}`,
-                cursor: "default",
-              }}
-              title="기간 필터는 곧 추가됩니다"
-            >
-              {t}
-            </span>
-          ))}
-        </div>
+function parsePeriod(p: string | undefined): Period {
+  if (!p) return "all";
+  return (PERIODS.map((x) => x.value) as string[]).includes(p)
+    ? (p as Period)
+    : "all";
+}
 
-        {filter ? (
-          <Link
-            href="/feed"
-            style={{
-              display: "inline-block",
-              marginTop: 32,
-              padding: "8px 12px",
-              background: "var(--paper)",
-              border: "1px solid var(--rule)",
-              fontSize: 11,
-              fontFamily: "var(--mono-font)",
-              color: "var(--ink-2)",
-              textDecoration: "none",
-              letterSpacing: "0.06em",
-            }}
-          >
-            필터 지우기 ×
-          </Link>
-        ) : null}
-      </aside>
+function periodCutoffIso(period: Period): string | null {
+  if (period === "all") return null;
+  const d = new Date();
+  if (period === "year") {
+    return new Date(d.getFullYear(), 0, 1).toISOString();
+  }
+  const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+  const cutoff = new Date(d.getTime() - days * 24 * 60 * 60 * 1000);
+  return cutoff.toISOString();
+}
 
-      {/* CENTER — feed */}
-      <main style={{ padding: "40px 56px" }}>
-        <div
-          style={{
-            fontSize: 10.5,
-            fontFamily: "var(--mono-font)",
-            color: "var(--ink-3)",
-            letterSpacing: "0.18em",
-            marginBottom: 8,
-          }}
-        >
-          PUBLIC FEED · 공개로 표시된 카드만
-        </div>
-        <h1
-          className="serif"
-          style={{
-            fontSize: 44,
-            fontWeight: 700,
-            letterSpacing: "-0.035em",
-            margin: "0 0 8px",
-            lineHeight: 1.1,
-          }}
-        >
-          {filter ? (
-            <>
-              {filterTitle(filter)}
-              <br />
-              에서 모인 환대
-            </>
-          ) : (
-            <>
-              오늘 강화도에서
-              <br />
-              일어난 순간들
-            </>
-          )}
-        </h1>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: 14,
-            color: "var(--ink-3)",
-            fontSize: 12,
-            marginBottom: 32,
-          }}
-        >
-          <span style={{ fontFamily: "var(--mono-font)" }}>
-            {cards.length}장
-          </span>
-          <span style={{ color: "var(--rule)" }}>·</span>
-          <span>경쟁 없음 · 좋아요 없음 · 시간순</span>
-          <span
-            style={{
-              marginLeft: "auto",
-              fontFamily: "var(--mono-font)",
-              fontSize: 11,
-            }}
-          >
-            SORT ↓ 최근
-          </span>
-        </div>
+function labelOf(a: FeedActivity): CategoryLabel | null {
+  const slug =
+    a.episode?.project?.category?.slug ?? a.project?.category?.slug ?? null;
+  if (!slug || !(slug in SLUG_TO_LABEL)) return null;
+  return SLUG_TO_LABEL[slug as CategorySlug];
+}
 
-        {cards.length === 0 ? (
-          <p
-            style={{
-              border: "1px dashed var(--rule)",
-              padding: "60px 24px",
-              textAlign: "center",
-              fontSize: 14,
-              color: "var(--ink-3)",
-              background: "var(--paper-2)",
-              fontFamily: "var(--serif-font)",
-              lineHeight: 1.7,
-            }}
-          >
-            조건에 맞는 공개 카드가 아직 없어요.
-            <br />
-            필터를 지우거나 다른 카테고리를 둘러보세요.
-          </p>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 16,
-            }}
-          >
-            {cards.map((c, i) => (
-              <FeedCard
-                key={c.id as string}
-                card={{
-                  id: c.id as string,
-                  body: (c.body as string | null) ?? null,
-                  photo_url: (c.photo_url as string | null) ?? null,
-                  created_at: c.created_at as string,
-                  shop: c.shop as { id: string; name: string } | null,
-                  episode: c.episode as { id: string; title: string } | null,
-                  project: c.project as {
-                    id: string;
-                    title: string;
-                    slug: string;
-                    category_id: string;
-                  } | null,
-                }}
-                position={i}
-                categories={categories.map((cat) => ({
-                  id: cat.id as string,
-                  slug: cat.slug as string,
-                  name: cat.name as string,
-                }))}
-              />
-            ))}
-          </div>
-        )}
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
 
-        <div
-          style={{
-            marginTop: 48,
-            padding: "18px 24px",
-            border: "1px solid var(--rule)",
-            textAlign: "center",
-            fontSize: 12,
-            color: "var(--ink-3)",
-            fontFamily: "var(--serif-font)",
-            lineHeight: 1.8,
-          }}
-        >
-          여기까지 보고 있다면 — 이 도시의 한 장면을 같이 본 셈입니다.
-        </div>
-      </main>
+function feedNo(id: string): string {
+  return `No.${id.slice(0, 4).toUpperCase()}`;
+}
 
-      {/* RIGHT — curation */}
-      <aside
-        style={{
-          borderLeft: "1px solid var(--rule)",
-          padding: "40px 28px",
-          background: "var(--paper-2)",
-        }}
-      >
-        <RailLabel>THIS WEEK · 이번 주 모이는 풍경</RailLabel>
-        <div
-          style={{
-            paddingBottom: 18,
-            borderBottom: "1px solid var(--rule)",
-            marginTop: 14,
-          }}
-        >
-          <div
-            className="serif"
-            style={{
-              fontSize: 18,
-              fontWeight: 700,
-              lineHeight: 1.4,
-              letterSpacing: "-0.015em",
-              marginBottom: 8,
-            }}
-          >
-            공개로 모인 카드를
-            <br />
-            시간순으로 흐르게 두었어요.
-          </div>
-          <div
-            style={{ fontSize: 11.5, color: "var(--ink-2)", lineHeight: 1.7 }}
-          >
-            좋아요·랭킹 없이 한 장씩 보세요. 마음에 닿는 카드는 남겨둔 사람이
-            언젠가 알게 됩니다.
-          </div>
-        </div>
+function projectLine(a: FeedActivity): string {
+  const projectTitle = a.episode?.project?.title ?? a.project?.title ?? "";
+  const seq = a.episode?.seq;
+  const epTitle = a.episode?.title;
+  if (projectTitle && seq != null) return `${projectTitle} · ${seq}회차`;
+  if (projectTitle && epTitle) return `${projectTitle} · ${epTitle}`;
+  if (projectTitle) return projectTitle;
+  return "프로젝트 미연결";
+}
 
-        <RailLabel style={{ marginTop: 24 }}>
-          PLACES · 자주 등장한 장소
-        </RailLabel>
-        <div style={{ marginTop: 8 }}>
-          {topShops.length === 0 ? (
-            <p
-              style={{
-                fontSize: 11,
-                color: "var(--ink-3)",
-                fontFamily: "var(--serif-font)",
-                padding: "10px 0",
-              }}
-            >
-              아직 데이터가 부족해요.
-            </p>
-          ) : (
-            topShops.map(([id, info]) => (
-              <Link
-                key={id}
-                href={`/feed?shop=${id}`}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "baseline",
-                  padding: "10px 0",
-                  borderBottom: "1px solid var(--rule-2)",
-                  textDecoration: "none",
-                  color: "var(--ink)",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontFamily: "var(--serif-font)",
-                  }}
-                >
-                  {info.name}
-                </span>
-                <span
-                  style={{
-                    fontSize: 10.5,
-                    fontFamily: "var(--mono-font)",
-                    color: "var(--ink-3)",
-                  }}
-                >
-                  {info.count}장
-                </span>
-              </Link>
-            ))
-          )}
-        </div>
+function feedPlace(a: FeedActivity): string {
+  if (a.shop?.name) return `@ ${a.shop.name}`;
+  if (a.episode?.location) return `@ ${a.episode.location}`;
+  return "";
+}
 
-        <div
-          style={{
-            marginTop: 32,
-            padding: 14,
-            border: "1px solid var(--ink)",
-            fontSize: 11,
-            lineHeight: 1.7,
-            color: "var(--ink-2)",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "var(--mono-font)",
-              fontSize: 10,
-              color: "var(--ink)",
-              letterSpacing: "0.12em",
-              marginBottom: 4,
-            }}
-          >
-            NOTE
-          </div>
-          좋아요·팔로우·랭킹은 없습니다. 카드는 시간순으로만 흐르고, 공개로
-          동의한 글만 보입니다.
-        </div>
-      </aside>
+function buildHref(category: CategoryLabel | null, period: Period): string {
+  const params = new URLSearchParams();
+  if (category) params.set("cat", category);
+  if (period !== "all") params.set("period", period);
+  const qs = params.toString();
+  return qs ? `/feed?${qs}` : "/feed";
+}
+
+// ── presentation ───────────────────────────────────────────────
+
+function FeedLayout({
+  cards,
+  totalInPeriod,
+  categoryCounts,
+  activeCategory,
+  activePeriod,
+  topShops,
+}: {
+  cards: FeedActivity[];
+  totalInPeriod: number;
+  categoryCounts: Record<CategoryLabel, number>;
+  activeCategory: CategoryLabel | null;
+  activePeriod: Period;
+  topShops: { name: string; pct: number }[];
+}) {
+  return (
+    <div className="mx-auto max-w-[1280px] px-6 pb-20 pt-[100px] lg:px-[60px]">
+      <div className="grid items-start gap-8 pt-8 lg:grid-cols-[220px_1fr] lg:gap-12">
+        <Sidebar
+          totalInPeriod={totalInPeriod}
+          categoryCounts={categoryCounts}
+          activeCategory={activeCategory}
+          activePeriod={activePeriod}
+          topShops={topShops}
+        />
+        <Main
+          cards={cards}
+          activeCategory={activeCategory}
+          activePeriod={activePeriod}
+        />
+      </div>
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
- * Filter resolver — URL search params → typed filter
- * ───────────────────────────────────────────────────────────── */
-
-type ResolvedFilter =
-  | {
-      kind: "category";
-      slug: string;
-      name: string;
-      projectIds: string[];
-      episodeIds: string[];
-    }
-  | {
-      kind: "project";
-      slug: string;
-      title: string;
-      projectId: string;
-      episodeIds: string[];
-    }
-  | { kind: "shop"; shopId: string; name: string }
-  | null;
-
-async function resolveFilter(
-  admin: ReturnType<typeof createAdminClient>,
-  params: SearchParams
-): Promise<ResolvedFilter> {
-  if (params.project) {
-    const { data: p } = await admin
-      .from("projects")
-      .select("id, title, slug, is_public")
-      .eq("slug", params.project)
-      .maybeSingle();
-    if (!p || !p.is_public) return null;
-    const { data: eps } = await admin
-      .from("episodes")
-      .select("id")
-      .eq("project_id", p.id as string)
-      .eq("is_public", true);
-    return {
-      kind: "project",
-      slug: p.slug as string,
-      title: p.title as string,
-      projectId: p.id as string,
-      episodeIds: (eps ?? []).map((e) => e.id as string),
-    };
-  }
-
-  if (params.shop && UUID_RE.test(params.shop)) {
-    const { data: s } = await admin
-      .from("shops")
-      .select("id, name, is_public")
-      .eq("id", params.shop)
-      .maybeSingle();
-    if (!s || !s.is_public) return null;
-    return { kind: "shop", shopId: s.id as string, name: s.name as string };
-  }
-
-  if (params.category) {
-    const { data: c } = await admin
-      .from("categories")
-      .select("id, slug, name")
-      .eq("slug", params.category)
-      .maybeSingle();
-    if (!c) return null;
-    const { data: projects } = await admin
-      .from("projects")
-      .select("id")
-      .eq("category_id", c.id as string)
-      .eq("is_public", true);
-    const projectIds = (projects ?? []).map((p) => p.id as string);
-    let episodeIds: string[] = [];
-    if (projectIds.length > 0) {
-      const { data: eps } = await admin
-        .from("episodes")
-        .select("id")
-        .in("project_id", projectIds)
-        .eq("is_public", true);
-      episodeIds = (eps ?? []).map((e) => e.id as string);
-    }
-    return {
-      kind: "category",
-      slug: c.slug as string,
-      name: c.name as string,
-      projectIds,
-      episodeIds,
-    };
-  }
-
-  return null;
-}
-
-function filterTitle(filter: NonNullable<ResolvedFilter>): string {
-  if (filter.kind === "project") return filter.title;
-  if (filter.kind === "shop") return filter.name;
-  return filter.name;
-}
-
-/* ─────────────────────────────────────────────────────────────
- * Sub-components
- * ───────────────────────────────────────────────────────────── */
-
-function RailLabel({
-  children,
-  style,
+function Sidebar({
+  totalInPeriod,
+  categoryCounts,
+  activeCategory,
+  activePeriod,
+  topShops,
 }: {
+  totalInPeriod: number;
+  categoryCounts: Record<CategoryLabel, number>;
+  activeCategory: CategoryLabel | null;
+  activePeriod: Period;
+  topShops: { name: string; pct: number }[];
+}) {
+  const allLabels: CategoryLabel[] = ["공유지", "네트워크", "세계", "정책"];
+
+  return (
+    <aside className="lg:sticky lg:top-[88px]">
+      <AnimateOnScroll>
+        <SidebarBlock label="CATEGORY">
+          <ul className="flex flex-col gap-0.5">
+            <li>
+              <Link
+                href={buildHref(null, activePeriod)}
+                className={`flex select-none items-center justify-between rounded-lg px-3 py-2 text-[13px] transition-colors ${
+                  !activeCategory
+                    ? "bg-v2-ink font-medium text-white"
+                    : "text-v2-ink3 hover:bg-[#EDECEA] hover:text-v2-ink"
+                }`}
+              >
+                <span>전체</span>
+                <span className="text-[11px] opacity-50">{totalInPeriod}</span>
+              </Link>
+            </li>
+            {allLabels.map((label) => (
+              <li key={label}>
+                <Link
+                  href={buildHref(label, activePeriod)}
+                  className={`flex select-none items-center justify-between rounded-lg px-3 py-2 text-[13px] transition-colors ${
+                    activeCategory === label
+                      ? "bg-v2-ink font-medium text-white"
+                      : "text-v2-ink3 hover:bg-[#EDECEA] hover:text-v2-ink"
+                  }`}
+                >
+                  <span className="flex items-center">
+                    <span
+                      className="mr-2 h-[7px] w-[7px] flex-shrink-0 rounded-full"
+                      style={{ background: CATEGORY_DOT[label] }}
+                    />
+                    {label === "공유지" ? "환대의 공유지" : label}
+                  </span>
+                  <span className="text-[11px] opacity-50">
+                    {categoryCounts[label]}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </SidebarBlock>
+      </AnimateOnScroll>
+
+      <AnimateOnScroll delay={0.07}>
+        <SidebarBlock label="PERIOD">
+          <ul className="flex flex-col gap-0.5">
+            {PERIODS.map((p) => {
+              const active = activePeriod === p.value;
+              return (
+                <li key={p.value}>
+                  <Link
+                    href={buildHref(activeCategory, p.value)}
+                    className={`block select-none rounded-lg px-3 py-[7px] text-[13px] transition-colors ${
+                      active
+                        ? "bg-[#EDECEA] font-medium text-v2-ink"
+                        : "text-v2-ink3 hover:bg-[#EDECEA] hover:text-v2-ink"
+                    }`}
+                  >
+                    {p.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </SidebarBlock>
+      </AnimateOnScroll>
+
+      <AnimateOnScroll delay={0.14}>
+        <SidebarBlock label="PLACES">
+          {topShops.length === 0 ? (
+            <p className="text-[12px] font-light leading-[1.6] text-[#AEAEB2]">
+              아직 등장한 가게가 없어요.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-1.5">
+              {topShops.map((p) => (
+                <li
+                  key={p.name}
+                  className="flex items-center justify-between py-1 text-[12.5px] text-v2-ink3"
+                >
+                  <span className="truncate">{p.name}</span>
+                  <div className="ml-2 h-[3px] w-[60px] flex-shrink-0 overflow-hidden rounded-full bg-v2-rule">
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${p.pct}%`, background: "#6BAF8A" }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SidebarBlock>
+      </AnimateOnScroll>
+    </aside>
+  );
+}
+
+function SidebarBlock({
+  label,
+  children,
+}: {
+  label: string;
   children: React.ReactNode;
-  style?: React.CSSProperties;
 }) {
   return (
-    <div
-      style={{
-        fontSize: 10.5,
-        fontFamily: "var(--mono-font)",
-        color: "var(--ink-3)",
-        letterSpacing: "0.18em",
-        ...style,
-      }}
-    >
+    <div className="mb-9 last:mb-0">
+      <p className="mb-3.5 text-[9.5px] font-semibold uppercase tracking-[3px] text-[#AEAEB2]">
+        {label}
+      </p>
       {children}
     </div>
   );
 }
 
-function FilterRow({
-  href,
-  label,
-  count,
-  color,
-  active,
+function Main({
+  cards,
+  activeCategory,
+  activePeriod,
 }: {
-  href: string;
-  label: string;
-  count: number;
-  color: string;
-  active: boolean;
+  cards: FeedActivity[];
+  activeCategory: CategoryLabel | null;
+  activePeriod: Period;
 }) {
+  const periodLabel =
+    PERIODS.find((p) => p.value === activePeriod)?.label ?? "전체";
+
   return (
-    <Link
-      href={href}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 0",
-        textDecoration: "none",
-        fontSize: 13,
-        fontFamily: "var(--serif-font)",
-        fontWeight: active ? 700 : 400,
-        color: active ? "var(--ink)" : "var(--ink-2)",
-        borderBottom: "1px solid var(--rule-2)",
-      }}
-    >
-      <span
-        style={{
-          width: 10,
-          height: 10,
-          background: color,
-          flexShrink: 0,
-        }}
-      />
-      <span style={{ flex: 1 }}>{label}</span>
-      <span
-        style={{
-          fontFamily: "var(--mono-font)",
-          fontSize: 10,
-          color: "var(--ink-3)",
-        }}
-      >
-        {count}
-      </span>
-    </Link>
+    <main>
+      <AnimateOnScroll>
+        <div className="mb-8">
+          <p className="mb-3 text-[10.5px] font-semibold uppercase tracking-[3.5px] text-[#6BAF8A]">
+            PUBLIC FEED · 공개로 표시된 카드만
+          </p>
+          <h1
+            className="mb-2.5 font-bold leading-[1.15] tracking-[-1.2px] text-v2-ink"
+            style={{ fontSize: "clamp(28px, 3.5vw, 42px)" }}
+          >
+            오늘 강화도에서
+            <br />
+            일어난 순간들
+          </h1>
+          <div className="flex flex-wrap items-center gap-3 text-[12px] text-[#AEAEB2]">
+            <span>{cards.length}장</span>
+            <Dot />
+            <span>경쟁 없음</span>
+            <Dot />
+            <span>좋아요 없음</span>
+            <Dot />
+            <span>시간순</span>
+            {(activeCategory || activePeriod !== "all") && (
+              <>
+                <Dot />
+                <span className="font-medium text-v2-ink3">
+                  필터: {activeCategory ?? "전체"}
+                  {activePeriod !== "all" ? ` · ${periodLabel}` : ""}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      </AnimateOnScroll>
+
+      <AnimateOnScroll delay={0.14}>
+        <div className="mb-5 flex items-center justify-between border-b border-v2-rule pb-4">
+          <span className="text-[12px] text-[#AEAEB2]">
+            카드{" "}
+            <strong className="font-semibold text-v2-ink">
+              {cards.length}
+            </strong>
+            장
+          </span>
+          <span className="text-[12px] text-v2-ink3">최근순 ↓</span>
+        </div>
+      </AnimateOnScroll>
+
+      {cards.length === 0 ? (
+        <EmptyState
+          activeCategory={activeCategory}
+          activePeriod={activePeriod}
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {cards.map((card, i) => (
+            <AnimateOnScroll key={card.id} delay={((i % 3) + 1) * 0.07}>
+              <FeedCardView card={card} />
+            </AnimateOnScroll>
+          ))}
+        </div>
+      )}
+
+      {cards.length === FEED_LIMIT ? (
+        <p className="mt-10 text-center text-[11.5px] font-light text-[#AEAEB2]">
+          최근 {FEED_LIMIT}장만 보여드려요. 더 많은 기록은 카테고리·기간 필터로
+          좁혀보세요.
+        </p>
+      ) : null}
+    </main>
   );
 }
 
-type FeedCardData = {
-  id: string;
-  body: string | null;
-  photo_url: string | null;
-  created_at: string;
-  shop: { id: string; name: string } | null;
-  episode: { id: string; title: string } | null;
-  project: {
-    id: string;
-    title: string;
-    slug: string;
-    category_id: string;
-  } | null;
-};
+function Dot() {
+  return <span className="h-[3px] w-[3px] rounded-full bg-[#D0D0D0]" />;
+}
 
-function FeedCard({
-  card,
-  position,
-  categories,
-}: {
-  card: FeedCardData;
-  position: number;
-  categories: Array<{ id: string; slug: string; name: string }>;
-}) {
-  const cat = card.project
-    ? (categories.find((c) => c.id === card.project?.category_id) ?? null)
-    : null;
-  const color = CATEGORY_COLOR[cat?.slug ?? ""] ?? "var(--ink-2)";
-  const dateText = new Date(card.created_at).toLocaleDateString("ko-KR", {
-    year: "2-digit",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const place =
-    card.shop?.name ??
-    card.episode?.title ??
-    card.project?.title ??
-    "강화 어딘가";
-  const serial = card.id.slice(-3).toUpperCase();
-  const recencyTag = position < 3 ? "오늘" : position < 6 ? "어제" : "이번 주";
+function FeedCardView({ card }: { card: FeedActivity }) {
+  const label = labelOf(card);
+  const badge = label ? CATEGORY_BADGE[label] : "bg-[#EDECEA] text-[#888]";
 
   return (
-    <div>
-      <article
-        style={{
-          width: "100%",
-          aspectRatio: "188/264",
-          background: "var(--paper)",
-          borderRadius: 14,
-          overflow: "hidden",
-          boxShadow: "var(--shadow-card)",
-          border: "1px solid var(--rule)",
-          display: "flex",
-          flexDirection: "column",
-          position: "relative",
-        }}
-      >
-        <div
-          style={{
-            height: "52%",
-            position: "relative",
-            background:
-              "linear-gradient(135deg, oklch(0.82 0.04 60), oklch(0.72 0.06 45))",
-          }}
+    <div className="overflow-hidden rounded-[14px] border border-black/[0.06] bg-white transition-all duration-[220ms] hover:-translate-y-1 hover:shadow-[0_14px_36px_rgba(0,0,0,0.09)]">
+      <div className="flex items-center justify-between border-b border-[#F4F4F2] px-4 pb-2.5 pt-3">
+        <span className="text-[10px] font-semibold tracking-[1.5px] text-[#AEAEB2]">
+          {feedNo(card.id)}
+        </span>
+        <span
+          className={`rounded px-2 py-[3px] text-[9.5px] font-semibold tracking-[0.5px] ${badge}`}
         >
-          {card.photo_url ? (
-            <Image
-              src={card.photo_url}
-              alt={card.body ?? place}
-              fill
-              sizes="(max-width: 1100px) 33vw, 188px"
-              style={{ objectFit: "cover" }}
-            />
-          ) : null}
-          <div
-            style={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              background: "var(--paper)",
-              padding: "3px 7px",
-              borderRadius: 4,
-              fontFamily: "var(--mono-font)",
-              fontSize: 9,
-              fontWeight: 600,
-              letterSpacing: "0.06em",
-              color: "var(--ink-2)",
-              border: "1px solid var(--rule)",
-            }}
-          >
-            No.{serial}
-          </div>
-          {cat ? (
-            <div
-              style={{
-                position: "absolute",
-                bottom: 8,
-                left: 8,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                background: "var(--paper)",
-                padding: "3px 7px",
-                borderRadius: 4,
-                fontSize: 10,
-                fontWeight: 600,
-                color: "var(--ink)",
-              }}
-            >
-              <span
-                style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: 1,
-                  background: color,
-                }}
-              />
-              {cat.name}
-            </div>
-          ) : null}
-        </div>
-        <div
-          style={{
-            padding: "11px 13px",
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            gap: 5,
-          }}
-        >
-          <div
-            className="serif"
-            style={{
-              fontSize: 12.5,
-              lineHeight: 1.5,
-              color: "var(--ink)",
-              display: "-webkit-box",
-              WebkitLineClamp: 4,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {card.body ?? "—"}
-          </div>
-          <div
-            style={{
-              marginTop: "auto",
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: 9.5,
-              fontFamily: "var(--mono-font)",
-              color: "var(--ink-3)",
-            }}
-          >
-            <span>@ {place}</span>
-            <span>{dateText}</span>
-          </div>
-        </div>
-      </article>
-      <div
-        style={{
-          fontSize: 11,
-          fontFamily: "var(--mono-font)",
-          color: "var(--ink-3)",
-          marginTop: 10,
-          letterSpacing: "0.05em",
-        }}
-      >
-        No.{serial} · {place} · {recencyTag}
+          {label ?? "미분류"}
+        </span>
       </div>
+      <div className="px-4 pb-3 pt-3.5">
+        <p className="mb-2 text-[10.5px] font-normal text-[#AEAEB2]">
+          {projectLine(card)}
+        </p>
+        <p className="mb-3.5 line-clamp-3 text-[13px] leading-[1.7] text-v2-ink">
+          {card.body || "(메모 없음)"}
+        </p>
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-light text-[#AEAEB2]">
+            {feedPlace(card)}
+          </span>
+          <span className="text-[11px] font-light text-[#AEAEB2]">
+            {formatDate(card.created_at)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({
+  activeCategory,
+  activePeriod,
+}: {
+  activeCategory: CategoryLabel | null;
+  activePeriod: Period;
+}) {
+  const filtered = activeCategory || activePeriod !== "all";
+  return (
+    <div className="rounded-2xl border border-dashed border-v2-rule bg-white/60 px-8 py-16 text-center">
+      <p className="mb-1 text-[13.5px] font-semibold text-v2-ink">
+        {filtered
+          ? "이 조건에 해당하는 카드가 없어요."
+          : "아직 공개된 카드가 없어요."}
+      </p>
+      <p className="text-[12px] font-light leading-[1.7] text-v2-ink3">
+        {filtered ? (
+          <>
+            <Link href="/feed" className="text-[#6BAF8A] hover:underline">
+              필터를 풀고
+            </Link>{" "}
+            다른 카드를 둘러봐도 좋아요.
+          </>
+        ) : (
+          "첫 공개 카드가 도착하면 여기 자동으로 모입니다."
+        )}
+      </p>
+    </div>
+  );
+}
+
+function NoticeStrip() {
+  return (
+    <div
+      className="flex items-center justify-center px-6 py-5 lg:px-[60px]"
+      style={{ background: "#1A1A1A" }}
+    >
+      <p className="text-center text-[12px] leading-[1.7] tracking-[0.5px] text-white/50">
+        <strong className="font-medium text-white/80">
+          좋아요 / 팔로우 / 랭킹은 없습니다.
+        </strong>
+        &nbsp;카드는 시간순으로만 흐르고, 공개로 동의한 글만 보입니다.
+      </p>
     </div>
   );
 }

@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>강화유니버스</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      color: #1A1A1A;
+      background: #F9FAFB;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── Scroll animations ── */
+    [data-anim] {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.75s cubic-bezier(0.16,1,0.3,1),
+                  transform 0.75s cubic-bezier(0.16,1,0.3,1);
+    }
+    [data-anim="fade"] { transform: translateY(0) scale(0.96); }
+    [data-anim].in { opacity: 1; transform: translateY(0) scale(1); }
+    [data-delay="1"] { transition-delay: 0.1s; }
+    [data-delay="2"] { transition-delay: 0.2s; }
+    [data-delay="3"] { transition-delay: 0.3s; }
+    [data-delay="4"] { transition-delay: 0.4s; }
+    [data-delay="5"] { transition-delay: 0.5s; }
+
+    /* ── Navigation ── */
+    nav {
+      position: fixed;
+      top: 0; width: 100%;
+      padding: 20px 60px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      background: rgba(248, 248, 246, 0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    nav.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,0.07); }
+    .nav-logo {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #1A1A1A;
+      text-decoration: none;
+    }
+    .nav-links {
+      display: flex;
+      gap: 36px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 13.5px;
+      font-weight: 400;
+      color: #666;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: #1A1A1A; }
+    .nav-cta {
+      font-size: 13px;
+      font-weight: 500;
+      color: #2ECC8E !important;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      height: 100vh;
+      min-height: 680px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: linear-gradient(160deg, #F9FAFB 0%, #F4F5F7 50%, #EDEEF0 100%);
+    }
+    .hero-content {
+      position: relative; z-index: 10;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 60px;
+    }
+    .hero-eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 4px;
+      color: #2ECC8E;
+      margin-bottom: 28px;
+      text-transform: uppercase;
+      opacity: 0; animation: fadeUpHero 0.8s 0.3s forwards;
+    }
+    .hero-title {
+      font-size: clamp(44px, 6.5vw, 80px);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -2px;
+      color: #1A1A1A;
+      margin-bottom: 24px;
+      opacity: 0; animation: fadeUpHero 0.9s 0.45s forwards;
+    }
+    .hero-sub {
+      font-size: clamp(15px, 1.8vw, 19px);
+      font-weight: 300;
+      color: #6E6E73;
+      line-height: 1.75;
+      margin-bottom: 48px;
+      max-width: 420px;
+      opacity: 0; animation: fadeUpHero 0.9s 0.6s forwards;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 14px 32px;
+      background: #2ECC8E;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      border-radius: 980px;
+      letter-spacing: 0.2px;
+      transition: background 0.22s, transform 0.15s;
+      opacity: 0; animation: fadeUpHero 0.9s 0.75s forwards;
+    }
+    .btn-primary:hover { background: #1DB87A; transform: scale(1.02); }
+    .btn-primary:active { transform: scale(0.98); }
+    .hero-scroll {
+      position: absolute;
+      bottom: 44px; left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      color: rgba(0,0,0,0.25);
+      font-size: 10px;
+      letter-spacing: 3px;
+    }
+    .hero-scroll-line {
+      width: 1px; height: 44px;
+      background: rgba(0,0,0,0.15);
+      animation: lineDown 2.2s ease infinite;
+    }
+    @keyframes fadeUpHero {
+      from { opacity: 0; transform: translateY(36px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes lineDown {
+      0%   { transform: scaleY(0); transform-origin: top;    opacity: 1; }
+      50%  { transform: scaleY(1); transform-origin: top;    opacity: 1; }
+      51%  { transform: scaleY(1); transform-origin: bottom; opacity: 1; }
+      100% { transform: scaleY(0); transform-origin: bottom; opacity: 0; }
+    }
+
+    /* ── Intro Strip ── */
+    .intro-strip {
+      background: #1A1A1A;
+      padding: 28px 60px;
+      display: flex;
+      align-items: center;
+      gap: 48px;
+      overflow-x: auto;
+    }
+    .intro-strip span {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      white-space: nowrap;
+      letter-spacing: 0.5px;
+    }
+    .intro-strip strong {
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .intro-dot {
+      width: 3px; height: 3px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Common ── */
+    .label {
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 3.5px;
+      text-transform: uppercase;
+      color: #2ECC8E;
+      margin-bottom: 14px;
+    }
+
+    /* ── Element 1: 잠시섬 ── */
+    .jamsiseo {
+      padding: 130px 60px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .jamsiseo-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 100px;
+      align-items: center;
+    }
+    .jamsiseo-visual {
+      position: relative;
+      aspect-ratio: 5/4;
+      overflow: hidden;
+      border-radius: 4px;
+    }
+    .jamsiseo-visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      transition: transform 0.5s ease;
+    }
+    .jamsiseo-visual:hover img { transform: scale(1.03); }
+    .jamsiseo-visual-badge {
+      position: absolute;
+      bottom: 28px; left: 28px;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 6px;
+      padding: 10px 18px;
+      color: #1A1A1A;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 2px;
+    }
+    .jamsiseo-text h2 {
+      font-size: clamp(28px, 3.8vw, 44px);
+      font-weight: 700;
+      letter-spacing: -1.2px;
+      line-height: 1.2;
+      margin-bottom: 22px;
+    }
+    .jamsiseo-text p {
+      font-size: 14.5px;
+      font-weight: 300;
+      color: #5A5A5A;
+      line-height: 1.9;
+      margin-bottom: 36px;
+    }
+    .text-link {
+      font-size: 13px;
+      font-weight: 500;
+      color: #2ECC8E;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid #2ECC8E;
+      padding-bottom: 2px;
+      transition: gap 0.2s, opacity 0.2s;
+    }
+    .text-link:hover { gap: 14px; opacity: 0.75; }
+
+    .btn-join {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 24px;
+      background: #2ECC8E;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      border-radius: 980px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.22s, transform 0.15s;
+    }
+    .btn-join:hover { background: #1DB87A; transform: scale(1.02); }
+    .btn-join:active { transform: scale(0.98); }
+
+    .link-group {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Element 2: 2026 프로젝트 ── */
+    .projects-outer {
+      background: #F9FAFB;
+    }
+    .projects {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 130px 60px;
+    }
+    .projects-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 64px;
+      gap: 40px;
+    }
+    .projects-top h2 {
+      font-size: clamp(28px, 3.8vw, 44px);
+      font-weight: 700;
+      letter-spacing: -1.2px;
+      line-height: 1.2;
+    }
+    .projects-top-desc {
+      font-size: 14px;
+      color: #888;
+      max-width: 300px;
+      text-align: right;
+      line-height: 1.8;
+      font-weight: 300;
+      flex-shrink: 0;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .card {
+      border-radius: 20px;
+      padding: 40px 40px 36px;
+      min-height: 340px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94),
+                  box-shadow 0.25s;
+      cursor: default;
+      overflow: hidden;
+    }
+    .card:hover {
+      transform: scale(1.015);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+    }
+
+    .card-1 { background: #FDF4EC; }
+    .card-2 { background: #EAF5EE; }
+    .card-3 { background: #EEF3FF; }
+    .card-4 { background: #E8F0F5; }
+
+    .card-top { display: flex; justify-content: flex-start; margin-bottom: 0; }
+    .card-badge {
+      display: inline-block;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 980px;
+    }
+    .card-1 .card-badge { background: rgba(180,110,40,0.12); color: #9B6020; }
+    .card-2 .card-badge { background: rgba(80,150,100,0.12); color: #3A7A55; }
+    .card-3 .card-badge { background: rgba(49,130,246,0.12); color: #2060C8; }
+    .card-4 .card-badge { background: rgba(50,100,160,0.12); color: #2060A0; }
+
+    .card-body { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding-top: 24px; }
+    .card-title {
+      font-size: clamp(22px, 2.8vw, 32px);
+      font-weight: 700;
+      letter-spacing: -0.8px;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+    .card-1 .card-title, .card-2 .card-title, .card-3 .card-title { color: #1A1A1A; }
+    .card-4 .card-title { color: #1A1A1A; }
+
+    .card-desc {
+      font-size: 13px;
+      font-weight: 300;
+      line-height: 1.75;
+      margin-bottom: 28px;
+    }
+    .card-1 .card-desc, .card-2 .card-desc, .card-3 .card-desc { color: #6E6E73; }
+    .card-4 .card-desc { color: #6E6E73; }
+
+    .card-actions { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+
+    .card-link {
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: gap 0.18s;
+      position: relative;
+    }
+    .card-link::after {
+      content: '';
+      position: absolute;
+      bottom: -2px; left: 0; right: 0;
+      height: 1px;
+      transform: scaleX(0); transform-origin: left;
+      transition: transform 0.18s;
+    }
+    .card-link:hover { gap: 8px; }
+    .card-link:hover::after { transform: scaleX(1); }
+
+    .card-1 .card-link, .card-2 .card-link { color: #1A1A1A; }
+    .card-1 .card-link::after, .card-2 .card-link::after { background: #1A1A1A; }
+    .card-3 .card-link { color: #2060C8; }
+    .card-3 .card-link::after { background: #2060C8; }
+    .card-4 .card-link { color: #2060A0; }
+    .card-4 .card-link::after { background: #2060A0; }
+
+    .card-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 18px;
+      border-radius: 980px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      text-decoration: none;
+      transition: opacity 0.18s, transform 0.15s;
+    }
+    .card-btn:hover { opacity: 0.85; transform: scale(1.02); }
+    .card-btn:active { transform: scale(0.98); }
+
+    .card-1 .card-btn { background: rgba(180,110,40,0.12); color: #9B6020; }
+    .card-2 .card-btn { background: rgba(80,150,100,0.12); color: #3A7A55; }
+    .card-3 .card-btn { background: rgba(49,130,246,0.14); color: #2060C8; }
+    .card-4 .card-btn { background: rgba(50,100,160,0.12); color: #2060A0; }
+
+    /* ── Manifesto Quote ── */
+    .manifesto {
+      background: #F9FAFB;
+      padding: 120px 60px;
+      text-align: center;
+    }
+    .manifesto blockquote {
+      max-width: 700px;
+      margin: 0 auto 28px;
+      font-size: clamp(22px, 3.5vw, 38px);
+      font-weight: 700;
+      color: #1A1A1A;
+      letter-spacing: -0.8px;
+      line-height: 1.45;
+    }
+    .manifesto cite {
+      font-size: 11px;
+      color: #AEAEB2;
+      letter-spacing: 3px;
+      font-style: normal;
+    }
+
+    /* ── Stats ── */
+    .stats-outer {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 120px 60px 80px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      margin-top: 56px;
+      border: 1px solid #E6E5E0;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .stat {
+      padding: 52px 44px;
+      text-align: center;
+      border-right: 1px solid #E6E5E0;
+    }
+    .stat:last-child { border-right: none; }
+    .stat-num {
+      font-size: 52px;
+      font-weight: 700;
+      color: #2ECC8E;
+      letter-spacing: -2px;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+    .stat-unit {
+      font-size: 28px;
+      font-weight: 700;
+      color: #2ECC8E;
+    }
+    .stat-desc {
+      font-size: 12.5px;
+      color: #999;
+      font-weight: 300;
+    }
+
+    /* ── FAQ ── */
+    .faq-outer {
+      background: #F9FAFB;
+      padding: 80px 0 130px;
+    }
+    .faq-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 60px;
+    }
+    .faq-item {
+      border-top: 1px solid #E6E5E0;
+      cursor: pointer;
+    }
+    .faq-item:last-child { border-bottom: 1px solid #E6E5E0; }
+    .faq-q {
+      padding: 26px 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14.5px;
+      font-weight: 500;
+      user-select: none;
+    }
+    .faq-icon {
+      width: 28px; height: 28px;
+      flex-shrink: 0;
+      margin-left: 20px;
+      border-radius: 50%;
+      background: #fff;
+      border: 1.5px solid #E6E5E0;
+      position: relative;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .faq-item.open .faq-icon {
+      background: #2ECC8E;
+      border-color: #2ECC8E;
+    }
+    .faq-icon::before,
+    .faq-icon::after {
+      content: '';
+      position: absolute;
+      background: #aaa;
+      transition: transform 0.3s, opacity 0.3s, background 0.2s;
+    }
+    .faq-icon::before { width: 11px; height: 1.5px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+    .faq-icon::after  { width: 1.5px; height: 11px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+    .faq-item.open .faq-icon::before,
+    .faq-item.open .faq-icon::after { background: #fff; }
+    .faq-item.open .faq-icon::after { transform: translate(-50%,-50%) rotate(90deg); opacity: 0; }
+    .faq-a {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease;
+      font-size: 13.5px;
+      color: #777;
+      line-height: 1.85;
+      font-weight: 300;
+    }
+    .faq-a-inner { padding: 0 4px 28px; }
+    .faq-item.open .faq-a { max-height: 240px; }
+
+    /* ── CTA 참여하기 섹션 ── */
+    .cta-section {
+      background: #1DB87A;
+      padding: 120px 60px;
+      text-align: center;
+    }
+    .cta-inner {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .cta-section h2 {
+      font-size: clamp(28px, 4.5vw, 52px);
+      font-weight: 700;
+      letter-spacing: -1.5px;
+      line-height: 1.2;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+    .cta-section p {
+      font-size: 16px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.8);
+      line-height: 1.85;
+      margin-bottom: 44px;
+    }
+    .btn-white {
+      display: inline-block;
+      padding: 16px 40px;
+      background: #fff;
+      color: #1DB87A;
+      border-radius: 980px;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-white:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+    }
+
+    /* ── Footer (다크 멀티컬럼) ── */
+    footer {
+      background: #0F0F0F;
+      padding: 64px 60px 48px;
+    }
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 48px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .footer-brand .footer-logo-text {
+      font-size: 17px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.85);
+      letter-spacing: -0.5px;
+    }
+    .footer-brand p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+      margin-top: 12px;
+      line-height: 1.8;
+      font-weight: 300;
+    }
+    .footer-links {
+      display: flex;
+      gap: 60px;
+    }
+    .footer-col h4 {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+    .footer-col ul { list-style: none; }
+    .footer-col li {
+      font-size: 13.5px;
+      color: rgba(255,255,255,0.55);
+      font-weight: 300;
+      line-height: 2.2;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .footer-col li:hover { color: rgba(255,255,255,0.9); }
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 32px;
+    }
+    .footer-bottom p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.2);
+    }
+    .footer-tags {
+      display: flex;
+      gap: 8px;
+    }
+    .footer-tags span {
+      font-size: 11px;
+      padding: 4px 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      color: rgba(255,255,255,0.25);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .footer-tags span:hover {
+      color: rgba(255,255,255,0.6);
+      border-color: rgba(255,255,255,0.25);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      nav { padding: 16px 24px; }
+      .nav-links { display: none; }
+      .hero-content { padding: 0 24px; }
+      .intro-strip { padding: 20px 24px; }
+      .jamsiseo { padding: 80px 24px; }
+      .jamsiseo-grid { grid-template-columns: 1fr; gap: 44px; }
+      .projects { padding: 80px 24px; }
+      .projects-top { flex-direction: column; align-items: flex-start; }
+      .projects-top-desc { text-align: left; }
+      .cards { grid-template-columns: 1fr; }
+      .card { min-height: 280px; }
+      .manifesto { padding: 80px 24px; }
+      .stats-outer { padding: 80px 24px 60px; }
+      .stats-grid { grid-template-columns: 1fr; border-radius: 12px; }
+      .stat { border-right: none; border-bottom: 1px solid #E6E5E0; }
+      .stat:last-child { border-bottom: none; }
+      .faq-inner { padding: 0 24px; }
+      .cta-section { padding: 90px 24px; }
+      footer { padding: 48px 24px 36px; }
+      .footer-top { flex-direction: column; gap: 40px; }
+      .footer-links { gap: 36px; flex-wrap: wrap; }
+      .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+    }
+    @media (max-width: 560px) {
+      .card { padding: 28px 24px 28px; min-height: 260px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Navigation ── -->
+  <nav id="nav">
+    <a href="#" class="nav-logo">강화유니버스</a>
+    <ul class="nav-links">
+      <li><a href="강화유니버스_임팩트.html">임팩트</a></li>
+      <li><a href="강화유니버스_프로젝트.html">프로젝트</a></li>
+      <li><a href="강화유니버스_피드.html">피드</a></li>
+      <li><a href="강화유니버스_도감.html">내 도감</a></li>
+      <li><a href="#cta" class="nav-cta">참여하기 →</a></li>
+    </ul>
+  </nav>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-content">
+      <p class="hero-eyebrow">Ganghwa Universe &nbsp;·&nbsp; 2026</p>
+      <h1 class="hero-title">환대로<br>만들어가는 <span style="color:#1DB87A;">세계</span></h1>
+      <p class="hero-sub">우리가 살고 싶은 세계를<br>강화에서 함께 실험합니다.</p>
+      <a href="#jamsiseo" class="btn-primary">시작하기</a>
+    </div>
+    <div class="hero-scroll">
+      SCROLL
+      <div class="hero-scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- ── Intro Strip ── -->
+  <div class="intro-strip">
+    <strong>잠시섬</strong>
+    <div class="intro-dot"></div>
+    <span>베이스캠프 · 체류형 환대 플랫폼</span>
+    <div class="intro-dot"></div>
+    <strong>2026 프로젝트</strong>
+    <div class="intro-dot"></div>
+    <span>액티브 라이프 &nbsp;/&nbsp; 로컬 문화 공동 창작 &nbsp;/&nbsp; 글로벌 네트워크 &nbsp;/&nbsp; 테크 & 솔루션</span>
+    <div class="intro-dot"></div>
+    <span>소비자에서 시민으로</span>
+  </div>
+
+  <!-- ── Element 01: 잠시섬 ── -->
+  <div id="jamsiseo" class="jamsiseo">
+    <div class="jamsiseo-grid">
+      <div class="jamsiseo-visual" data-anim data-delay="1">
+        <img src="잠시섬 메인 사진.png" alt="잠시섬 — 강화유니버스 베이스캠프">
+      </div>
+      <div class="jamsiseo-text">
+        <p class="label" data-anim>Element 01 &nbsp;·&nbsp; 베이스캠프</p>
+        <h2 data-anim data-delay="1">강화유니버스의<br>출입구, 잠시섬</h2>
+        <p data-anim data-delay="2">잠시섬은 모든 여정이 시작되는 곳입니다.<br>단순한 체류를 넘어, 지역 문화를 함께 만들고<br>환대의 감각을 확장하는 시민이 되는 경험을<br>제공하는 환대의 플랫폼입니다.</p>
+        <div class="link-group" data-anim data-delay="3">
+          <a href="#" class="text-link">더 알아보기 →</a>
+          <a href="#cta" class="btn-join">참여하기</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Element 02: 2026 프로젝트 ── -->
+  <div class="projects-outer" id="projects">
+    <div class="projects">
+      <div class="projects-top">
+        <div>
+          <p class="label" data-anim>Element 02 &nbsp;·&nbsp; 2026 프로젝트</p>
+          <h2 data-anim data-delay="1">강화에서 펼치는<br>작은 실험들</h2>
+        </div>
+        <p class="projects-top-desc" data-anim data-delay="2">정답이 없는 곳에서 시작하는 실험들.<br>강화의 삶을 함께 만들어갑니다.</p>
+      </div>
+      <div class="cards">
+
+        <div class="card card-1" data-anim data-delay="1">
+          <div class="card-top">
+            <span class="card-badge">클럽형</span>
+          </div>
+          <div class="card-body">
+            <h3 class="card-title">액티브 라이프</h3>
+            <p class="card-desc">강화의 자연 속에서 몸으로 경험하는 활동적 회복.<br>위캔드 요가 클럽, 강화 팜 라이프 클럽</p>
+            <div class="card-actions">
+              <a href="#" class="card-link">더 알아보기 ›</a>
+              <a href="#cta" class="card-btn">참여하기</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-2" data-anim data-delay="2">
+          <div class="card-top">
+            <span class="card-badge">아카이브형</span>
+          </div>
+          <div class="card-body">
+            <h3 class="card-title">로컬 문화 공동 창작</h3>
+            <p class="card-desc">강화의 색깔을 담은 IP를 함께 만드는 프로젝트.<br>윤슬 앨범 같이 만들기, 강화도 차 만들기</p>
+            <div class="card-actions">
+              <a href="#" class="card-link">더 알아보기 ›</a>
+              <a href="#cta" class="card-btn">참여하기</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-3" data-anim data-delay="3">
+          <div class="card-top">
+            <span class="card-badge">관계형</span>
+          </div>
+          <div class="card-body">
+            <h3 class="card-title">글로벌 & 로컬 네트워크</h3>
+            <p class="card-desc">강화의 환대를 세계와 연결하는 롱텀 프로젝트.<br>시부야대학 교류, 가미야마 협력 파트너십</p>
+            <div class="card-actions">
+              <a href="#" class="card-link">더 알아보기 ›</a>
+              <a href="#cta" class="card-btn">참여하기</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-4" data-anim data-delay="4">
+          <div class="card-top">
+            <span class="card-badge">인프라형</span>
+          </div>
+          <div class="card-body">
+            <h3 class="card-title">테크 & 솔루션</h3>
+            <p class="card-desc">세계관을 지속 가능하게 만드는 기술적 시도.<br>로컬 유니버스 앱, AI Top 100, 테크포임팩트 캠퍼스</p>
+            <div class="card-actions">
+              <a href="#" class="card-link">더 알아보기 ›</a>
+              <a href="#cta" class="card-btn">참여하기</a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Manifesto Quote ── -->
+  <div class="manifesto">
+    <blockquote data-anim>"여러분은 어떤 세상에서<br>살고 싶나요?"</blockquote>
+    <cite data-anim data-delay="1">GANGHWA UNIVERSE &nbsp;·&nbsp; MANIFESTO 2026</cite>
+  </div>
+
+  <!-- ── Stats ── -->
+  <div class="stats-outer">
+    <p class="label" data-anim>강화유니버스 현황</p>
+    <div class="stats-grid">
+      <div class="stat" data-anim data-delay="1">
+        <p class="stat-num"><span class="count" data-target="2022" data-nofmt>0</span></p>
+        <p class="stat-desc">잠시섬 시작 연도</p>
+      </div>
+      <div class="stat" data-anim data-delay="2">
+        <p class="stat-num"><span class="count" data-target="1240">0</span><span class="stat-unit">+</span></p>
+        <p class="stat-desc">누적 방문자</p>
+      </div>
+      <div class="stat" data-anim data-delay="3">
+        <p class="stat-num"><span class="count" data-target="284">0</span><span class="stat-unit">+</span></p>
+        <p class="stat-desc">강화유니버스 주민</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FAQ ── -->
+  <div class="faq-outer" id="faq">
+    <div class="faq-inner">
+      <p class="label" style="margin-bottom:48px;" data-anim>자주 묻는 질문</p>
+      <div class="faq-item" data-anim data-delay="1">
+        <div class="faq-q">
+          강화유니버스는 어떤 곳인가요?
+          <div class="faq-icon"></div>
+        </div>
+        <div class="faq-a">
+          <div class="faq-a-inner">강화유니버스는 체류형 관광을 넘어 지역 문화를 함께 만들고 세계관을 공동으로 확장하는 커뮤니티 플랫폼입니다. 여행자가 소비자가 아닌 지역의 시민(Citizen)이 되는 경험을 제공합니다.</div>
+        </div>
+      </div>
+      <div class="faq-item" data-anim data-delay="2">
+        <div class="faq-q">
+          잠시섬은 무엇인가요?
+          <div class="faq-icon"></div>
+        </div>
+        <div class="faq-a">
+          <div class="faq-a-inner">잠시섬은 강화유니버스의 출입구이자 베이스캠프입니다. 기수제로 운영되는 체류형 환대 플랫폼으로, 강화유니버스의 모든 프로젝트가 담기는 그릇이자 OS 역할을 합니다.</div>
+        </div>
+      </div>
+      <div class="faq-item" data-anim data-delay="3">
+        <div class="faq-q">
+          2026 프로젝트에 참여하려면 어떻게 하나요?
+          <div class="faq-icon"></div>
+        </div>
+        <div class="faq-a">
+          <div class="faq-a-inner">액티브 라이프, 로컬 문화 공동 창작, 글로벌 네트워크, 테크 & 솔루션 4개 분류 중 관심 있는 프로젝트에 신청하실 수 있습니다. 하단의 '참여하기' 버튼을 통해 문의해 주세요.</div>
+        </div>
+      </div>
+      <div class="faq-item" data-anim data-delay="4">
+        <div class="faq-q">
+          강화유니버스는 누구나 참여할 수 있나요?
+          <div class="faq-icon"></div>
+        </div>
+        <div class="faq-a">
+          <div class="faq-a-inner">네, 강화에서 새로운 삶을 실험해보고 싶은 분이라면 누구나 참여하실 수 있습니다. 여행자, 창작자, 기술자, 활동가 모두 환영합니다. 환대의 감각을 함께 나눌 수 있는 분이라면 충분합니다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CTA 참여하기 ── -->
+  <div class="cta-section" id="cta">
+    <div class="cta-inner">
+      <h2 data-anim>여러분의 실험을<br>강화에서 시작하세요</h2>
+      <p data-anim data-delay="1">
+        강화유니버스에서 함께 실험해요.<br>
+        작은 시도들이 모여 세계를 만듭니다.
+      </p>
+      <a href="#" class="btn-white" data-anim data-delay="2">강화유니버스 참여하기</a>
+    </div>
+  </div>
+
+  <!-- ── Footer (다크 멀티컬럼) ── -->
+  <footer>
+    <div class="footer-top">
+      <div class="footer-brand">
+        <p class="footer-logo-text">강화유니버스</p>
+        <p>환대로 만들어가는 세계,<br>우리가 살고 싶은 세계를 실험합니다.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>강화유니버스</h4>
+          <ul>
+            <li>소개</li>
+            <li>잠시섬</li>
+            <li>2026 프로젝트</li>
+            <li>활동 프로그램</li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>프로젝트</h4>
+          <ul>
+            <li>액티브 라이프</li>
+            <li>로컬 문화 공동 창작</li>
+            <li>글로벌 네트워크</li>
+            <li>테크 & 솔루션</li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>참여</h4>
+          <ul>
+            <li>참여하기</li>
+            <li>FAQ</li>
+            <li>문의하기</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Ganghwa Universe. All rights reserved.</p>
+      <div class="footer-tags">
+        <span>이용약관</span>
+        <span>개인정보처리방침</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    /* ── Scroll animation (IntersectionObserver) ── */
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -48px 0px' });
+    document.querySelectorAll('[data-anim]').forEach(el => io.observe(el));
+
+    /* ── Number counter animation ── */
+    const counterObserver = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          const el = e.target;
+          const target = +el.dataset.target;
+          const duration = 1800;
+          const start = performance.now();
+          const update = (now) => {
+            const p = Math.min((now - start) / duration, 1);
+            const ease = 1 - Math.pow(1 - p, 4);
+            el.textContent = el.hasAttribute('data-nofmt') ? Math.floor(ease * target) : Math.floor(ease * target).toLocaleString();
+            if (p < 1) requestAnimationFrame(update);
+          };
+          requestAnimationFrame(update);
+          counterObserver.unobserve(el);
+        }
+      });
+    }, { threshold: 0.5 });
+    document.querySelectorAll('.count').forEach(el => counterObserver.observe(el));
+
+    /* ── Nav scroll effect ── */
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 20);
+    }, { passive: true });
+
+    /* ── FAQ accordion ── */
+    document.querySelectorAll('.faq-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const isOpen = item.classList.contains('open');
+        document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+        if (!isOpen) item.classList.add('open');
+      });
+    });
+
+    /* ── Smooth anchor scroll ── */
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        const target = document.querySelector(a.getAttribute('href'));
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
