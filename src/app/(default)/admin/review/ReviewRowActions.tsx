@@ -65,7 +65,7 @@ export function ReviewRowActions({ activityId, removed }: Props) {
           type="button"
           disabled={busy}
           onClick={() => run("restore")}
-          className="font-medium text-emerald-700 underline underline-offset-4 disabled:opacity-60"
+          className="v2-legacy-button-muted !px-3 !py-2 !text-xs !text-emerald-700 disabled:opacity-60"
         >
           {LABELS.restore}
         </button>
@@ -75,7 +75,7 @@ export function ReviewRowActions({ activityId, removed }: Props) {
             type="button"
             disabled={busy}
             onClick={() => run("unpublish")}
-            className="font-medium underline underline-offset-4 disabled:opacity-60"
+            className="v2-legacy-button-muted !px-3 !py-2 !text-xs disabled:opacity-60"
           >
             {LABELS.unpublish}
           </button>
@@ -83,7 +83,7 @@ export function ReviewRowActions({ activityId, removed }: Props) {
             type="button"
             disabled={busy}
             onClick={() => run("remove")}
-            className="font-medium text-destructive underline underline-offset-4 disabled:opacity-60"
+            className="v2-legacy-button-muted !px-3 !py-2 !text-xs !text-destructive disabled:opacity-60"
           >
             {LABELS.remove}
           </button>
