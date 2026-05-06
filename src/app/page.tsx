@@ -4,24 +4,40 @@ import Link from "next/link";
 import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
 import { CountUp } from "@/components/v2/CountUp";
 import { FaqAccordion } from "@/components/v2/FaqAccordion";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
 
 /**
  * v2 redesign — 강화유니버스 메인 (`/`).
- * 시안: design-v2-reference/index.html.
+ * 시안: design-v2-reference/강화유니버스_랜딩페이지_ver.1_공유패키지 2/
+ *       강화유니버스_랜딩페이지_ver.1.html (팀원 ver.1).
  *
  * 섹션:
- *  1. Hero — 그라디언트 배경 풀스크린
- *  2. Intro Strip — 다크 가로 스트립
- *  3. Element 01: 잠시섬
- *  4. Element 02: 2026 프로젝트 (4 카드)
- *  5. Manifesto
- *  6. Stats — 3 카운터
+ *  1. Hero — 전면 사진 배경 + 다크 오버레이 + 흰 텍스트
+ *  2. Intro Strip — 다크 가로 스트립 (잠시섬 / 2026 프로젝트)
+ *  3. Element 01: 잠시섬 — 사진 + 텍스트 그리드
+ *  4. Element 02: 2026 프로젝트 — 2x2 카드 4종 (3D 배치 이미지)
+ *  5. Manifesto Collage — 인용 + 12열 인스타 6장
+ *  6. Stats — 3 카운터 (시작 연도 / 누적 방문자 / 주민 — 실데이터)
  *  7. FAQ — 4 아코디언
  *  8. CTA
  *
- * 데이터는 시안의 하드코딩 카피. Stats 만 추후 Supabase 집계로 교체 예정.
+ * 자산은 public/v2/landing/ 에 ASCII 이름으로 정리. Footer 는 root layout 글로벌 사용.
  */
-export default function HomePage() {
+export default async function HomePage() {
+  const admin = createAdminClient();
+
+  const [pageViewsRes, usersRes] = await Promise.all([
+    admin.from("page_views").select("id", { count: "exact", head: true }),
+    admin.from("users").select("id", { count: "exact", head: true }),
+  ]);
+
+  const stats = {
+    visitors: pageViewsRes.count ?? 0,
+    residents: usersRes.count ?? 0,
+  };
+
   return (
     <>
       <Hero />
@@ -29,7 +45,7 @@ export default function HomePage() {
       <Jamsiseom />
       <ProjectsGrid />
       <Manifesto />
-      <Stats />
+      <Stats visitors={stats.visitors} residents={stats.residents} />
       <Faq />
       <CtaSection />
     </>
@@ -41,27 +57,32 @@ export default function HomePage() {
 function Hero() {
   return (
     <section
-      className="relative flex min-h-[680px] items-center"
+      id="hero"
+      className="relative flex min-h-[680px] items-center bg-cover bg-center bg-no-repeat"
       style={{
         height: "100vh",
-        background:
-          "linear-gradient(160deg, #F9FAFB 0%, #F4F5F7 50%, #EDEEF0 100%)",
+        backgroundImage: "url('/v2/landing/hero-bg.png')",
       }}
     >
-      <div className="relative z-10 mx-auto w-full max-w-[1200px] px-6 lg:px-[60px]">
-        <p className="mb-7 text-[11px] font-semibold uppercase tracking-[4px] text-v2-brand">
+      <div
+        className="absolute inset-0 z-[1]"
+        style={{ background: "rgba(0, 0, 0, 0.35)" }}
+        aria-hidden
+      />
+      <div className="relative z-[2] mx-auto w-full max-w-[1200px] px-6 lg:px-[60px]">
+        <p className="mb-7 text-[11px] font-semibold uppercase tracking-[4px] text-white/70">
           Ganghwa Universe &nbsp;·&nbsp; 2026
         </p>
         <h1
-          className="mb-6 font-bold leading-[1.1] tracking-[-2px] text-v2-ink"
+          className="mb-6 font-bold leading-[1.1] tracking-[-2px] text-white"
           style={{ fontSize: "clamp(44px, 6.5vw, 80px)" }}
         >
           환대로
           <br />
-          만들어가는 <span style={{ color: "#1DB87A" }}>세계</span>
+          만들어가는 <span style={{ color: "#2ECC8E" }}>세계</span>
         </h1>
         <p
-          className="mb-12 max-w-[420px] font-light leading-[1.75] text-v2-ink3"
+          className="mb-12 max-w-[420px] font-light leading-[1.75] text-white/80"
           style={{ fontSize: "clamp(15px, 1.8vw, 19px)" }}
         >
           우리가 살고 싶은 세계를
@@ -76,11 +97,14 @@ function Hero() {
         </Link>
       </div>
       <div
-        className="absolute bottom-11 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2.5 text-[10px] tracking-[3px] sm:flex"
-        style={{ color: "rgba(0,0,0,0.25)" }}
+        className="absolute bottom-11 left-1/2 z-[2] hidden -translate-x-1/2 flex-col items-center gap-2.5 text-[10px] tracking-[3px] sm:flex"
+        style={{ color: "rgba(255,255,255,0.45)" }}
       >
         SCROLL
-        <div className="h-11 w-px" style={{ background: "rgba(0,0,0,0.15)" }} />
+        <div
+          className="h-11 w-px"
+          style={{ background: "rgba(255,255,255,0.3)" }}
+        />
       </div>
     </section>
   );
@@ -107,8 +131,7 @@ function IntroStrip() {
       </strong>
       <IntroDot />
       <span className="whitespace-nowrap text-[12px] tracking-[0.5px] text-white/40">
-        액티브 라이프 &nbsp;/&nbsp; 로컬 문화 공동 창작 &nbsp;/&nbsp; 글로벌
-        네트워크 &nbsp;/&nbsp; 테크 &amp; 솔루션
+        액티브 라이프 / 로컬 문화 공동 창작 / 글로벌 네트워크 / 테크 & 솔루션
       </span>
       <IntroDot />
       <span className="whitespace-nowrap text-[12px] tracking-[0.5px] text-white/40">
@@ -120,7 +143,10 @@ function IntroStrip() {
 
 function IntroDot() {
   return (
-    <div className="h-[3px] w-[3px] flex-shrink-0 rounded-full bg-white/20" />
+    <span
+      className="h-[3px] w-[3px] flex-shrink-0 rounded-full"
+      style={{ background: "rgba(255,255,255,0.2)" }}
+    />
   );
 }
 
@@ -130,37 +156,28 @@ function Jamsiseom() {
   return (
     <section
       id="jamsiseom"
-      className="mx-auto max-w-[1200px] px-6 py-[80px] lg:px-[60px] lg:py-[130px]"
+      className="mx-auto max-w-[1200px] px-6 py-[90px] lg:px-[60px] lg:py-[130px]"
     >
-      <div className="grid items-center gap-11 lg:grid-cols-[1.05fr_0.95fr] lg:gap-[100px]">
-        <AnimateOnScroll delay={0.1}>
-          <div className="group relative aspect-[5/4] overflow-hidden rounded">
+      <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-[100px]">
+        <AnimateOnScroll delay={0.07}>
+          <div className="relative aspect-[5/4] overflow-hidden rounded-[4px] bg-[#EDECEA]">
             <Image
-              src="/v2/guniverse_images/guniverse_01.jpg"
+              src="/v2/landing/jamsi-hero.jpg"
               alt="잠시섬 — 강화유니버스 베이스캠프"
               fill
-              sizes="(max-width: 900px) 100vw, 60vw"
-              className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
-              priority
+              sizes="(max-width: 1024px) 100vw, 600px"
+              className="object-cover object-bottom transition-transform duration-500 hover:scale-[1.03]"
+              priority={false}
             />
-            <div
-              className="absolute bottom-7 left-7 rounded-md border border-white/40 px-[18px] py-2.5 text-[11px] font-medium tracking-[2px] text-v2-ink"
-              style={{
-                background: "rgba(255,255,255,0.88)",
-                backdropFilter: "blur(8px)",
-              }}
-            >
-              JAMSISEOM
-            </div>
           </div>
         </AnimateOnScroll>
         <div>
           <AnimateOnScroll>
-            <p className="mb-3.5 text-[10.5px] font-medium uppercase tracking-[3.5px] text-v2-brand">
+            <p className="mb-3.5 text-[13px] font-semibold uppercase tracking-[3.5px] text-[#555]">
               Element 01 &nbsp;·&nbsp; 베이스캠프
             </p>
           </AnimateOnScroll>
-          <AnimateOnScroll delay={0.1}>
+          <AnimateOnScroll delay={0.07}>
             <h2
               className="mb-[22px] font-bold leading-[1.2] tracking-[-1.2px] text-v2-ink"
               style={{ fontSize: "clamp(28px, 3.8vw, 44px)" }}
@@ -170,8 +187,8 @@ function Jamsiseom() {
               출입구, 잠시섬
             </h2>
           </AnimateOnScroll>
-          <AnimateOnScroll delay={0.2}>
-            <p className="mb-9 text-[14.5px] font-light leading-[1.9] text-v2-ink2">
+          <AnimateOnScroll delay={0.14}>
+            <p className="mb-9 text-[14.5px] font-light leading-[1.9] text-[#5A5A5A]">
               잠시섬은 모든 여정이 시작되는 곳입니다.
               <br />
               단순한 체류를 넘어, 지역 문화를 함께 만들고
@@ -181,20 +198,24 @@ function Jamsiseom() {
               제공하는 환대의 플랫폼입니다.
             </p>
           </AnimateOnScroll>
-          <AnimateOnScroll delay={0.3}>
+          <AnimateOnScroll delay={0.21}>
             <div className="flex flex-wrap items-center gap-5">
-              <Link
-                href="#jamsiseom"
-                className="inline-flex items-center gap-2 border-b border-v2-brand pb-0.5 text-[13px] font-medium text-v2-brand transition-all hover:gap-3.5 hover:opacity-75"
+              <a
+                href="https://www.guniverse.net/jamsiisland?reviewPage=1&reviewCategory=null"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 border-b border-v2-brand pb-0.5 text-[13px] font-medium text-v2-brand transition-all hover:gap-3.5 hover:opacity-80"
               >
                 더 알아보기 →
-              </Link>
-              <Link
-                href="#cta"
+              </a>
+              <a
+                href="https://www.guniverse.net/jamsiisland/stay?reviewPage=1&reviewCategory=null"
+                target="_blank"
+                rel="noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-full bg-v2-brand px-6 py-2.5 text-[13px] font-medium text-white transition-all hover:scale-[1.02] hover:bg-v2-brandDeep active:scale-[0.98]"
               >
                 참여하기
-              </Link>
+              </a>
             </div>
           </AnimateOnScroll>
         </div>
@@ -205,138 +226,139 @@ function Jamsiseom() {
 
 /* ─────────────────────────── 4. Element 02: 2026 프로젝트 ─────────────────────────── */
 
-type ProjectCard = {
+type ProjectCardSpec = {
   badge: string;
   title: string;
-  desc: React.ReactNode;
+  desc: string;
   bg: string;
   badgeBg: string;
   badgeColor: string;
   linkColor: string;
   btnBg: string;
   btnColor: string;
+  imageStyle: "nukki" | "single" | "local";
+  image: { src: string; alt: string };
+  links: { more: string; join: string };
 };
 
-const PROJECT_CARDS: ProjectCard[] = [
+const PROJECT_CARDS: ProjectCardSpec[] = [
   {
     badge: "클럽형",
     title: "액티브 라이프",
-    desc: (
-      <>
-        강화의 자연 속에서 몸으로 경험하는 활동적 회복.
-        <br />
-        위캔드 요가 클럽, 강화 팜 라이프 클럽
-      </>
-    ),
+    desc: "강화의 자연 속에서 몸으로 경험하는 활동적 회복.\n위캔드 요가 클럽, 강화 팜 라이프 클럽",
     bg: "#FDF4EC",
     badgeBg: "rgba(180,110,40,0.12)",
     badgeColor: "#9B6020",
     linkColor: "#1A1A1A",
     btnBg: "rgba(180,110,40,0.12)",
     btnColor: "#9B6020",
+    imageStyle: "nukki",
+    image: { src: "/v2/landing/card-active.png", alt: "강화 팜 라이프" },
+    links: {
+      more: "https://www.guniverse.net/program/all?page=1",
+      join: "https://www.guniverse.net/program/all?page=1",
+    },
   },
   {
     badge: "아카이브형",
     title: "로컬 문화 공동 창작",
-    desc: (
-      <>
-        강화의 색깔을 담은 IP를 함께 만드는 프로젝트.
-        <br />
-        윤슬 앨범 같이 만들기, 강화도 차 만들기
-      </>
-    ),
+    desc: "강화의 색깔을 담은 IP를 함께 만드는 프로젝트.\n윤슬 앨범 같이 만들기, 강화도 차 만들기",
     bg: "#EAF5EE",
     badgeBg: "rgba(80,150,100,0.12)",
     badgeColor: "#3A7A55",
     linkColor: "#1A1A1A",
     btnBg: "rgba(80,150,100,0.12)",
     btnColor: "#3A7A55",
+    imageStyle: "local",
+    image: { src: "/v2/landing/card-local.jpg", alt: "강화도 차 만들기" },
+    links: {
+      more: "https://www.guniverse.net/program/all?page=1",
+      join: "https://www.guniverse.net/program/all?page=1",
+    },
   },
   {
     badge: "관계형",
     title: "글로벌 & 로컬 네트워크",
-    desc: (
-      <>
-        강화의 환대를 세계와 연결하는 롱텀 프로젝트.
-        <br />
-        시부야대학 교류, 가미야마 협력 파트너십
-      </>
-    ),
+    desc: "강화의 환대를 세계와 연결하는 롱텀 프로젝트.\n시부야대학 교류, 가미야마 협력 파트너십",
     bg: "#EEF3FF",
     badgeBg: "rgba(49,130,246,0.12)",
     badgeColor: "#2060C8",
     linkColor: "#2060C8",
     btnBg: "rgba(49,130,246,0.14)",
     btnColor: "#2060C8",
+    imageStyle: "single",
+    image: { src: "/v2/landing/card-network.jpg", alt: "시부야대학 교류" },
+    links: {
+      more: "https://jindalrae.kr/contact",
+      join: "https://jindalrae.kr/contact",
+    },
   },
   {
     badge: "인프라형",
     title: "테크 & 솔루션",
-    desc: (
-      <>
-        세계관을 지속 가능하게 만드는 기술적 시도.
-        <br />
-        로컬 유니버스 앱, AI Top 100, 테크포임팩트 캠퍼스
-      </>
-    ),
+    desc: "세계관을 지속 가능하게 만드는 기술적 시도.\n로컬 유니버스 앱, AI Top 100, 테크포임팩트 캠퍼스",
     bg: "#E8F0F5",
     badgeBg: "rgba(50,100,160,0.12)",
     badgeColor: "#2060A0",
     linkColor: "#2060A0",
     btnBg: "rgba(50,100,160,0.12)",
     btnColor: "#2060A0",
+    imageStyle: "single",
+    image: { src: "/v2/landing/card-tech.png", alt: "로컬 유니버스 앱" },
+    links: {
+      more: "https://local-universe.framer.website/",
+      join: "https://techforimpact.io/",
+    },
   },
 ];
 
 function ProjectsGrid() {
   return (
-    <div id="projects" className="bg-v2-paper">
-      <div className="mx-auto max-w-[1200px] px-6 py-[80px] lg:px-[60px] lg:py-[130px]">
-        <div className="mb-12 flex flex-col items-start justify-between gap-8 lg:mb-16 lg:flex-row lg:items-end lg:gap-10">
-          <div>
-            <AnimateOnScroll>
-              <p className="mb-3.5 text-[10.5px] font-medium uppercase tracking-[3.5px] text-v2-brand">
-                Element 02 &nbsp;·&nbsp; 2026 프로젝트
-              </p>
-            </AnimateOnScroll>
-            <AnimateOnScroll delay={0.1}>
-              <h2
-                className="font-bold leading-[1.2] tracking-[-1.2px] text-v2-ink"
-                style={{ fontSize: "clamp(28px, 3.8vw, 44px)" }}
-              >
-                강화에서 펼치는
-                <br />
-                작은 실험들
-              </h2>
-            </AnimateOnScroll>
-          </div>
-          <AnimateOnScroll delay={0.2}>
-            <p className="max-w-[300px] text-left text-[14px] font-light leading-[1.8] text-[#888] lg:text-right">
+    <section id="projects" className="bg-v2-paper">
+      <div className="mx-auto max-w-[1200px] px-6 py-[90px] lg:px-[60px] lg:py-[130px]">
+        <div className="mb-10 flex flex-col justify-between gap-6 lg:mb-16 lg:flex-row lg:items-end">
+          <AnimateOnScroll>
+            <p className="mb-3.5 text-[13px] font-semibold uppercase tracking-[3.5px] text-[#555]">
+              Element 02 &nbsp;·&nbsp; 2026 프로젝트
+            </p>
+            <h2
+              className="font-bold leading-[1.2] tracking-[-1.2px] text-v2-ink"
+              style={{ fontSize: "clamp(28px, 3.8vw, 44px)" }}
+            >
+              강화에서 펼치는
+              <br />
+              작은 실험들
+            </h2>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.14}>
+            <p className="max-w-[300px] text-[14px] font-light leading-[1.8] text-[#888] lg:text-right">
               정답이 없는 곳에서 시작하는 실험들.
               <br />
               강화의 삶을 함께 만들어갑니다.
             </p>
           </AnimateOnScroll>
         </div>
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {PROJECT_CARDS.map((c, i) => (
-            <AnimateOnScroll key={c.title} delay={(i + 1) * 0.1}>
-              <ProjectCardView card={c} />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {PROJECT_CARDS.map((card, i) => (
+            <AnimateOnScroll key={card.title} delay={(i + 1) * 0.08}>
+              <ProjectCardView card={card} />
             </AnimateOnScroll>
           ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
-function ProjectCardView({ card }: { card: ProjectCard }) {
+function ProjectCardView({ card }: { card: ProjectCardSpec }) {
   return (
     <div
-      className="group flex min-h-[280px] cursor-default flex-col justify-between overflow-hidden rounded-[20px] p-7 transition-all duration-[250ms] hover:scale-[1.015] hover:shadow-[0_12px_40px_rgba(0,0,0,0.1)] sm:p-10 lg:min-h-[340px]"
+      className="group relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-[20px] p-[36px_36px_32px] transition-all duration-[250ms] hover:scale-[1.015] hover:shadow-[0_12px_40px_rgba(0,0,0,0.1)] lg:p-[40px_40px_36px]"
       style={{ background: card.bg }}
     >
-      <div className="flex justify-start">
+      <CardImageBackdrop card={card} />
+
+      <div className="relative z-[1] flex justify-start">
         <span
           className="inline-block rounded-full px-3 py-[5px] text-[10.5px] font-semibold uppercase tracking-[1.5px]"
           style={{ background: card.badgeBg, color: card.badgeColor }}
@@ -344,126 +366,331 @@ function ProjectCardView({ card }: { card: ProjectCard }) {
           {card.badge}
         </span>
       </div>
-      <div className="flex flex-1 flex-col justify-end pt-6">
+
+      <div className="relative z-[1] mt-6 flex flex-1 flex-col justify-end">
         <h3
           className="mb-3 font-bold leading-[1.2] tracking-[-0.8px] text-v2-ink"
           style={{ fontSize: "clamp(22px, 2.8vw, 32px)" }}
         >
           {card.title}
         </h3>
-        <p className="mb-7 text-[13px] font-light leading-[1.75] text-v2-ink3">
+        <p className="mb-7 whitespace-pre-line text-[13px] font-light leading-[1.75] text-[#6E6E73]">
           {card.desc}
         </p>
         <div className="flex flex-wrap items-center gap-5">
-          <Link
-            href="#projects"
-            className="group/lk relative inline-flex items-center gap-1 text-[13px] font-medium transition-all hover:gap-2"
+          <a
+            href={card.links.more}
+            target="_blank"
+            rel="noreferrer"
+            className="group/link inline-flex items-center gap-1 text-[13px] font-medium transition-all hover:gap-2"
             style={{ color: card.linkColor }}
           >
-            <span>더 알아보기 ›</span>
-            <span
-              className="absolute -bottom-0.5 left-0 right-0 h-px origin-left scale-x-0 transition-transform group-hover/lk:scale-x-100"
-              style={{ background: card.linkColor }}
-            />
-          </Link>
-          <Link
-            href="#cta"
+            더 알아보기 ›
+          </a>
+          <a
+            href={card.links.join}
+            target="_blank"
+            rel="noreferrer"
             className="inline-flex items-center gap-1 rounded-full px-[18px] py-2 text-[13px] font-medium transition-all hover:scale-[1.02] hover:opacity-85 active:scale-[0.98]"
             style={{ background: card.btnBg, color: card.btnColor }}
           >
             참여하기
-          </Link>
+          </a>
         </div>
       </div>
     </div>
   );
 }
 
-/* ─────────────────────────── 5. Manifesto ─────────────────────────── */
+function CardImageBackdrop({ card }: { card: ProjectCardSpec }) {
+  // 시안의 3D 배치 — 스타일별 width/height/transform 다르게.
+  // pointer-events:none, z-index 0 으로 텍스트 뒤에 배치.
+  if (card.imageStyle === "nukki") {
+    return (
+      <div className="pointer-events-none absolute inset-0 z-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={card.image.src}
+          alt={card.image.alt}
+          className="absolute right-0 top-0 opacity-20 transition-opacity duration-300 group-hover:opacity-30"
+          style={{
+            width: "75%",
+            height: "95%",
+            objectFit: "contain",
+            objectPosition: "top right",
+            transform: "perspective(700px) rotateY(-8deg) rotateX(2deg)",
+            transformOrigin: "top right",
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (card.imageStyle === "local") {
+    return (
+      <div className="pointer-events-none absolute inset-0 z-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={card.image.src}
+          alt={card.image.alt}
+          className="absolute right-0 top-0 opacity-20 transition-opacity duration-300 group-hover:opacity-30"
+          style={{
+            width: "65%",
+            height: "80%",
+            objectFit: "cover",
+            objectPosition: "center top",
+            borderRadius: "0 20px 0 14px",
+            transform: "perspective(600px) rotateY(-10deg) rotateX(3deg)",
+            transformOrigin: "top right",
+          }}
+        />
+      </div>
+    );
+  }
+
+  // single
+  return (
+    <div className="pointer-events-none absolute inset-0 z-0">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={card.image.src}
+        alt={card.image.alt}
+        className="absolute right-0 top-0 opacity-20 transition-opacity duration-300 group-hover:opacity-30"
+        style={{
+          width: "60%",
+          height: "75%",
+          objectFit: "cover",
+          objectPosition: "center",
+          borderRadius: "0 20px 0 14px",
+          transform: "perspective(600px) rotateY(-14deg) rotateX(5deg)",
+          transformOrigin: "top right",
+        }}
+      />
+    </div>
+  );
+}
+
+/* ─────────────────────────── 5. Manifesto Collage ─────────────────────────── */
+
+type CollageItem = {
+  src: string;
+  desc: string;
+  title: string;
+  /** Tailwind grid-column / grid-row utility 인라인 클래스 */
+  area: { col: string; row: string };
+  imgPosition?: string;
+};
+
+const COLLAGE_ITEMS: CollageItem[] = [
+  {
+    src: "/v2/landing/collage-1.jpg",
+    desc: "나만의 그림책 만들기",
+    title: "<잠시섬>",
+    area: { col: "col-start-1 col-end-4", row: "row-start-1 row-end-3" },
+  },
+  {
+    src: "/v2/landing/collage-2.jpg",
+    desc: "걱정이들의 백업 토크",
+    title: "<잠시섬>",
+    area: { col: "col-start-4 col-end-9", row: "row-start-1 row-end-3" },
+    imgPosition: "center 55%",
+  },
+  {
+    src: "/v2/landing/collage-4.jpg",
+    desc: "자연속 힐링요가",
+    title: "<잠시섬>",
+    area: { col: "col-start-9 col-end-13", row: "row-start-1 row-end-3" },
+    imgPosition: "center 70%",
+  },
+  {
+    src: "/v2/landing/collage-3.jpg",
+    desc: "산-뜻 하이킹",
+    title: "<잠시섬>",
+    area: { col: "col-start-1 col-end-4", row: "row-start-3 row-end-5" },
+    imgPosition: "center 70%",
+  },
+  {
+    src: "/v2/landing/collage-6.jpg",
+    desc: "차 한잔의 환대",
+    title: "<잠시섬>",
+    area: { col: "col-start-4 col-end-7", row: "row-start-3 row-end-5" },
+    imgPosition: "center 70%",
+  },
+  {
+    src: "/v2/landing/collage-8.jpg",
+    desc: "강화 나들길 걷기",
+    title: "<잠시섬>",
+    area: { col: "col-start-7 col-end-13", row: "row-start-3 row-end-5" },
+    imgPosition: "center 70%",
+  },
+];
 
 function Manifesto() {
   return (
-    <div className="bg-v2-paper px-6 py-[80px] text-center lg:py-[120px]">
-      <AnimateOnScroll>
-        <blockquote
-          className="mx-auto mb-7 max-w-[700px] font-bold leading-[1.45] tracking-[-0.8px] text-v2-ink"
-          style={{ fontSize: "clamp(22px, 3.5vw, 38px)" }}
+    <section className="bg-v2-paper">
+      <div className="mx-auto max-w-[1200px] px-6 py-20 lg:px-[60px]">
+        <div className="mb-8">
+          <AnimateOnScroll>
+            <p className="mb-3.5 text-[13px] font-semibold uppercase tracking-[3.5px] text-[#555]">
+              Manifesto &nbsp;·&nbsp; 2026
+            </p>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.08}>
+            <blockquote
+              className="relative inline-block whitespace-nowrap font-bold leading-[1.2] tracking-[-0.8px] text-v2-ink"
+              style={{ fontSize: "clamp(18px, 2.2vw, 28px)" }}
+            >
+              <span
+                aria-hidden
+                className="absolute -left-1 top-0 -z-[1] h-full"
+                style={{
+                  width: "calc(100% + 8px)",
+                  background: "rgba(255, 245, 100, 0.45)",
+                }}
+              />
+              &ldquo;여러분은 어떤 세상에서 살고 싶나요?&rdquo;
+            </blockquote>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={0.16}>
+            <cite className="mt-3.5 block text-[10px] not-italic tracking-[3px] text-[#AEAEB2]">
+              GANGHWA UNIVERSE &nbsp;·&nbsp; MANIFESTO 2026
+            </cite>
+          </AnimateOnScroll>
+        </div>
+
+        <div
+          className="grid gap-[5px]"
+          style={{
+            gridTemplateColumns: "repeat(12, 1fr)",
+            gridTemplateRows: "130px 130px 110px 110px",
+          }}
         >
-          &ldquo;여러분은 어떤 세상에서
-          <br />
-          살고 싶나요?&rdquo;
-        </blockquote>
-      </AnimateOnScroll>
-      <AnimateOnScroll delay={0.1}>
-        <cite
-          className="text-[11px] not-italic tracking-[3px]"
-          style={{ color: "#AEAEB2" }}
-        >
-          GANGHWA UNIVERSE &nbsp;·&nbsp; MANIFESTO 2026
-        </cite>
-      </AnimateOnScroll>
-    </div>
+          {COLLAGE_ITEMS.map((item, i) => (
+            <AnimateOnScroll
+              key={item.src}
+              delay={(i + 1) * 0.06}
+              className={`${item.area.col} ${item.area.row}`}
+            >
+              <CollageItemView item={item} />
+            </AnimateOnScroll>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CollageItemView({ item }: { item: CollageItem }) {
+  return (
+    <a
+      href="https://www.instagram.com/ganghwauniverse/"
+      target="_blank"
+      rel="noreferrer"
+      className="group/collage relative block h-full w-full overflow-hidden"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={item.src}
+        alt=""
+        className="block h-full w-full object-cover transition-transform duration-300 group-hover/collage:scale-[1.04]"
+        style={{
+          objectPosition: item.imgPosition ?? "center top",
+        }}
+      />
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-black/55 p-4 text-center opacity-0 transition-opacity duration-300 group-hover/collage:opacity-100">
+        <p className="text-[16px] font-semibold leading-[1.6] text-white">
+          {item.desc}
+        </p>
+        <p className="mt-2 text-[15px] font-light leading-[1.4] tracking-[1px] text-white/85">
+          {item.title}
+        </p>
+      </div>
+    </a>
   );
 }
 
 /* ─────────────────────────── 6. Stats ─────────────────────────── */
 
-function Stats() {
+function Stats({
+  visitors,
+  residents,
+}: {
+  visitors: number;
+  residents: number;
+}) {
   return (
-    <div className="mx-auto max-w-[1200px] px-6 py-[80px] lg:px-[60px] lg:pb-20 lg:pt-[120px]">
+    <section className="mx-auto max-w-[1200px] px-6 pb-20 pt-[120px] lg:px-[60px]">
       <AnimateOnScroll>
-        <p className="mb-3.5 text-[10.5px] font-medium uppercase tracking-[3.5px] text-v2-brand">
+        <p className="mb-14 text-[17px] font-semibold tracking-[3.5px] text-[#555]">
           강화유니버스 현황
         </p>
       </AnimateOnScroll>
-      <div className="mt-14 grid grid-cols-1 overflow-hidden rounded-2xl border border-v2-rule lg:grid-cols-3">
-        <StatCell delay={0.1}>
-          <p className="mb-2.5 text-[52px] font-bold leading-none tracking-[-2px] text-v2-brand">
-            <CountUp target={2022} format={false} />
-          </p>
-          <p className="text-[12.5px] font-light text-v2-ink4">
-            잠시섬 시작 연도
-          </p>
-        </StatCell>
-        <StatCell delay={0.2} divider>
-          <p className="mb-2.5 text-[52px] font-bold leading-none tracking-[-2px] text-v2-brand">
-            <CountUp target={1240} />
-            <span className="text-[28px] font-bold text-v2-brand">+</span>
-          </p>
-          <p className="text-[12.5px] font-light text-v2-ink4">누적 방문자</p>
-        </StatCell>
-        <StatCell delay={0.3} divider>
-          <p className="mb-2.5 text-[52px] font-bold leading-none tracking-[-2px] text-v2-brand">
-            <CountUp target={284} />
-            <span className="text-[28px] font-bold text-v2-brand">+</span>
-          </p>
-          <p className="text-[12.5px] font-light text-v2-ink4">
-            강화유니버스 주민
-          </p>
-        </StatCell>
+      <div className="grid grid-cols-1 overflow-hidden rounded-2xl border border-v2-rule sm:grid-cols-3">
+        <StatCell
+          target={2016}
+          format={false}
+          label="잠시섬 시작 연도"
+          hoverColor="rgba(204, 75, 55, 0.22)"
+          showPlus={false}
+        />
+        <StatCell
+          target={visitors}
+          format
+          label="누적 방문자"
+          hoverColor="rgba(76, 153, 76, 0.22)"
+          showPlus
+          rightBorder={false}
+        />
+        <StatCell
+          target={residents}
+          format
+          label="강화유니버스 주민"
+          hoverColor="rgba(66, 120, 190, 0.22)"
+          showPlus
+          rightBorder={false}
+        />
       </div>
-    </div>
+    </section>
   );
 }
 
 function StatCell({
-  children,
-  delay,
-  divider,
+  target,
+  format,
+  label,
+  hoverColor,
+  showPlus,
+  rightBorder = true,
 }: {
-  children: React.ReactNode;
-  delay: number;
-  divider?: boolean;
+  target: number;
+  format: boolean;
+  label: string;
+  hoverColor: string;
+  showPlus: boolean;
+  rightBorder?: boolean;
 }) {
   return (
-    <AnimateOnScroll
-      delay={delay}
-      className={`px-11 py-[52px] text-center ${
-        divider ? "border-t border-v2-rule lg:border-l lg:border-t-0" : ""
+    <div
+      className={`group/stat px-11 py-[52px] text-center transition-colors duration-300 ${
+        rightBorder
+          ? "border-b border-v2-rule sm:border-b-0 sm:border-r"
+          : "border-b border-v2-rule sm:border-b-0"
       }`}
+      style={{
+        ["--hover-bg" as string]: hoverColor,
+      }}
     >
-      {children}
-    </AnimateOnScroll>
+      <style>{`
+        .group\\/stat:hover { background: ${hoverColor}; }
+      `}</style>
+      <p className="mb-2.5 text-[52px] font-bold leading-none tracking-[-2px] text-v2-brand">
+        <CountUp target={target} format={format} />
+        {showPlus ? (
+          <span className="text-[28px] font-bold text-v2-brand">+</span>
+        ) : null}
+      </p>
+      <p className="text-[15px] font-normal text-[#777]">{label}</p>
+    </div>
   );
 }
 
@@ -490,16 +717,22 @@ const FAQ_ITEMS = [
 
 function Faq() {
   return (
-    <div id="faq" className="bg-v2-paper px-6 pb-[80px] pt-20 lg:pb-[130px]">
-      <div className="mx-auto max-w-[1200px] lg:px-[60px]">
+    <section id="faq" className="bg-v2-paper py-20 lg:py-[130px]">
+      <div className="mx-auto max-w-[1200px] px-6 lg:px-[60px]">
         <AnimateOnScroll>
-          <p className="mb-12 text-[10.5px] font-medium uppercase tracking-[3.5px] text-v2-brand">
+          <p
+            className="mb-12 font-semibold uppercase text-[#555]"
+            style={{
+              fontSize: "22px",
+              letterSpacing: "2px",
+            }}
+          >
             자주 묻는 질문
           </p>
         </AnimateOnScroll>
         <FaqAccordion items={FAQ_ITEMS} />
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -507,9 +740,9 @@ function Faq() {
 
 function CtaSection() {
   return (
-    <div
+    <section
       id="cta"
-      className="px-6 py-[90px] text-center lg:py-[120px]"
+      className="px-6 py-[90px] text-center lg:px-[60px] lg:py-[120px]"
       style={{ background: "#1DB87A" }}
     >
       <div className="mx-auto max-w-[700px]">
@@ -523,22 +756,24 @@ function CtaSection() {
             강화에서 시작하세요
           </h2>
         </AnimateOnScroll>
-        <AnimateOnScroll delay={0.1}>
+        <AnimateOnScroll delay={0.08}>
           <p className="mb-11 text-[16px] font-light leading-[1.85] text-white/80">
             강화유니버스에서 함께 실험해요.
             <br />
             작은 시도들이 모여 세계를 만듭니다.
           </p>
         </AnimateOnScroll>
-        <AnimateOnScroll delay={0.2}>
-          <Link
-            href="/login"
-            className="inline-block rounded-full bg-white px-10 py-4 text-[15px] font-semibold text-[#1DB87A] transition-all hover:-translate-y-[3px] hover:shadow-[0_12px_32px_rgba(0,0,0,0.15)]"
+        <AnimateOnScroll delay={0.16}>
+          <a
+            href="https://www.guniverse.net/"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block rounded-full bg-white px-10 py-4 text-[15px] font-semibold text-v2-brandDeep transition-all hover:-translate-y-[3px] hover:shadow-[0_12px_32px_rgba(0,0,0,0.15)]"
           >
             강화유니버스 참여하기
-          </Link>
+          </a>
         </AnimateOnScroll>
       </div>
-    </div>
+    </section>
   );
 }
