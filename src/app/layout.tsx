@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
@@ -19,21 +20,37 @@ export const viewport: Viewport = {
 };
 
 /**
+ * 자체 chrome (sidebar 등) 으로 운영되는 경로 prefix — 글로벌 Navbar/Footer 미노출.
+ * `x-pathname` 헤더는 supabase middleware 가 주입한다 (src/lib/supabase/middleware.ts).
+ */
+const NO_CHROME_PREFIXES = ["/admin"];
+
+function shouldShowChrome(pathname: string | null): boolean {
+  if (!pathname) return true;
+  return !NO_CHROME_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+}
+
+/**
  * Root shell — v2 redesign.
- * Navbar + Footer 를 모든 페이지에 자동 적용. login 등 chrome 미노출이 필요한
- * 페이지는 자체 layout 으로 override 한다.
+ * Navbar + Footer 를 기본 적용하되, /admin* 처럼 자체 sidebar 셸이 있는 라우트는
+ * 미노출. login 등 chrome 미노출이 필요한 페이지는 자체 layout 으로 override.
  */
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = headers().get("x-pathname");
+  const showChrome = shouldShowChrome(pathname);
+
   return (
     <html lang="ko">
       <body className="flex min-h-screen flex-col bg-v2-paper font-sans text-v2-ink antialiased">
-        <Navbar />
+        {showChrome ? <Navbar /> : null}
         <main className="flex-1">{children}</main>
-        <Footer />
+        {showChrome ? <Footer /> : null}
       </body>
     </html>
   );
