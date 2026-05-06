@@ -18,4 +18,5 @@ public/
 docs/
 assets/
 prototyping/
+design-v2-reference/
 src/lib/supabase/types.ts
