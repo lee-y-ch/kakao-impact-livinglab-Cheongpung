@@ -1,8 +1,50 @@
 import Link from "next/link";
 
+type FooterItem = {
+  label: string;
+  href: string;
+  external?: boolean;
+};
+
+const FOOTER_COLUMNS: ReadonlyArray<{
+  title: string;
+  items: FooterItem[];
+}> = [
+  {
+    title: "강화유니버스",
+    items: [
+      { label: "소개", href: "/#hero" },
+      { label: "잠시섬", href: "/#jamsiseom" },
+      { label: "2026 프로젝트", href: "/#projects" },
+      { label: "활동 프로그램", href: "/projects" },
+    ],
+  },
+  {
+    title: "프로젝트",
+    items: [
+      { label: "액티브 라이프", href: "/projects" },
+      { label: "로컬 문화 공동 창작", href: "/projects" },
+      { label: "글로벌 네트워크", href: "/projects" },
+      { label: "테크 & 솔루션", href: "/projects" },
+    ],
+  },
+  {
+    title: "참여",
+    items: [
+      { label: "참여하기", href: "/login" },
+      { label: "FAQ", href: "/#faq" },
+      {
+        label: "문의하기",
+        href: "https://jindalrae.kr/contact",
+        external: true,
+      },
+    ],
+  },
+];
+
 /**
  * v2 redesign — dark multi-column footer.
- * 시안의 footer.dark 멀티컬럼. 모든 페이지 공통.
+ * 시안의 footer.dark 멀티컬럼. 모든 페이지 공통, 링크는 실제 경로로 연결.
  */
 export function Footer() {
   return (
@@ -20,20 +62,9 @@ export function Footer() {
             </p>
           </div>
           <div className="flex flex-wrap gap-x-9 gap-y-10 lg:gap-x-[60px]">
-            <FooterCol
-              title="강화유니버스"
-              items={["소개", "잠시섬", "2026 프로젝트", "활동 프로그램"]}
-            />
-            <FooterCol
-              title="프로젝트"
-              items={[
-                "액티브 라이프",
-                "로컬 문화 공동 창작",
-                "글로벌 네트워크",
-                "테크 & 솔루션",
-              ]}
-            />
-            <FooterCol title="참여" items={["참여하기", "FAQ", "문의하기"]} />
+            {FOOTER_COLUMNS.map((col) => (
+              <FooterCol key={col.title} title={col.title} items={col.items} />
+            ))}
           </div>
         </div>
         <div className="flex flex-col items-center gap-3 pt-8 text-center lg:flex-row lg:justify-between lg:text-left">
@@ -41,8 +72,8 @@ export function Footer() {
             © 2026 Ganghwa Universe. All rights reserved.
           </p>
           <div className="flex gap-2">
-            <FooterTag>이용약관</FooterTag>
-            <FooterTag>개인정보처리방침</FooterTag>
+            <FooterTag href="/legal/terms">이용약관</FooterTag>
+            <FooterTag href="/legal/privacy">개인정보처리방침</FooterTag>
           </div>
         </div>
       </div>
@@ -50,7 +81,7 @@ export function Footer() {
   );
 }
 
-function FooterCol({ title, items }: { title: string; items: string[] }) {
+function FooterCol({ title, items }: { title: string; items: FooterItem[] }) {
   return (
     <div>
       <h4 className="mb-[18px] text-[11px] font-semibold uppercase tracking-[2.5px] text-white/35">
@@ -58,11 +89,24 @@ function FooterCol({ title, items }: { title: string; items: string[] }) {
       </h4>
       <ul className="space-y-0">
         {items.map((it) => (
-          <li
-            key={it}
-            className="cursor-pointer text-[13.5px] font-light leading-[2.2] text-white/55 transition-colors hover:text-white/90"
-          >
-            {it}
+          <li key={`${it.href}-${it.label}`}>
+            {it.external ? (
+              <a
+                href={it.href}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[13.5px] font-light leading-[2.2] text-white/55 transition-colors hover:text-white/90"
+              >
+                {it.label}
+              </a>
+            ) : (
+              <Link
+                href={it.href}
+                className="text-[13.5px] font-light leading-[2.2] text-white/55 transition-colors hover:text-white/90"
+              >
+                {it.label}
+              </Link>
+            )}
           </li>
         ))}
       </ul>
@@ -70,10 +114,19 @@ function FooterCol({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-function FooterTag({ children }: { children: React.ReactNode }) {
+function FooterTag({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
   return (
-    <span className="cursor-pointer rounded border border-white/10 px-3 py-1 text-[11px] text-white/25 transition-colors hover:border-white/25 hover:text-white/60">
+    <Link
+      href={href}
+      className="rounded border border-white/10 px-3 py-1 text-[11px] text-white/25 transition-colors hover:border-white/25 hover:text-white/60"
+    >
       {children}
-    </span>
+    </Link>
   );
 }
