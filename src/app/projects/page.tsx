@@ -1,112 +1,172 @@
 import Link from "next/link";
 
 import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
+import { calculateProgress } from "@/lib/progress/calculator";
+import type { ProgressType } from "@/lib/schemas/project";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
 
 /**
  * v2 redesign — `/projects` 프로젝트 인덱스.
- * 시안에는 단일 프로젝트 상세(`강화유니버스_프로젝트.html`) 만 있어
- * 이 인덱스는 같은 톤의 placeholder 카드 그리드로 구성한다.
- * 카드 클릭 시 `/projects/[slug]` 상세로 이동.
+ * 시안: design-v2-reference/강화유니버스_프로젝트.html (단일 상세) 의 카드 그리드 변형.
+ *
+ * 공개 페이지 (auth 가드 없음). categories + projects(is_public=true) 를 SELECT 해
+ * 카테고리 4종 그리드로 렌더. 진척도 라벨은 calculator 가 progress_type 별로 계산.
  */
-type ProjectListItem = {
-  slug: string;
-  category: "공유지" | "네트워크" | "세계" | "정책";
-  badgeBg: string;
-  badgeColor: string;
-  period: string;
-  title: string;
-  desc: string;
-  cards: number;
-  participants: number;
-  chapters: string;
+
+type CategoryLabel = "공유지" | "네트워크" | "세계" | "정책";
+
+const CATEGORY_BADGE: Record<CategoryLabel, { bg: string; color: string }> = {
+  공유지: { bg: "rgba(180,110,40,0.1)", color: "#9B6020" },
+  네트워크: { bg: "rgba(107,175,138,0.12)", color: "#3A7A55" },
+  세계: { bg: "rgba(49,130,246,0.1)", color: "#2060C8" },
+  정책: { bg: "rgba(130,90,180,0.1)", color: "#6040A0" },
 };
 
-const PROJECTS: ProjectListItem[] = [
-  {
-    slug: "shibuya-exchange",
-    category: "네트워크",
-    badgeBg: "rgba(107,175,138,0.12)",
-    badgeColor: "#3A7A55",
-    period: "2024 – 2028",
-    title: "시부야 교류",
-    desc: "강화와 시부야, 두 도시의 사람들이 매년 서로를 방문하며 일상을 겹쳐갑니다.",
-    cards: 22,
-    participants: 31,
-    chapters: "3 / 5",
-  },
-  {
-    slug: "monthly-life",
-    category: "공유지",
-    badgeBg: "rgba(180,110,40,0.1)",
-    badgeColor: "#9B6020",
-    period: "2024 – 진행 중",
-    title: "한달살기",
-    desc: "한 달 동안 강화에 머물며 옆집 할머니의 쑥 한 바구니까지 이웃이 되어가는 과정.",
-    cards: 18,
-    participants: 22,
-    chapters: "18회차 진행",
-  },
-  {
-    slug: "haenyeo-school",
-    category: "세계",
-    badgeBg: "rgba(49,130,246,0.1)",
-    badgeColor: "#2060C8",
-    period: "2025 – 2027",
-    title: "해녀 학교",
-    desc: '"고향이 하나 더 생긴 것 같다"는 한 줄을 만든 6회차의 기록.',
-    cards: 14,
-    participants: 18,
-    chapters: "6 / 10",
-  },
-  {
-    slug: "shared-kitchen",
-    category: "공유지",
-    badgeBg: "rgba(180,110,40,0.1)",
-    badgeColor: "#9B6020",
-    period: "2024 – 진행 중",
-    title: "공유 주방",
-    desc: "오늘 아침 바다에서 온 재료로 다 같이 칼국수를 끓여 먹는 동네 부엌.",
-    cards: 11,
-    participants: 24,
-    chapters: "7회차",
-  },
-  {
-    slug: "empty-house-policy",
-    category: "정책",
-    badgeBg: "rgba(130,90,180,0.1)",
-    badgeColor: "#6040A0",
-    period: "2025 – 2028",
-    title: "빈집 정책 연구",
-    desc: "빈집 주인 할아버지의 마음과 군청 데이터를 함께 모아 만드는 정책 제안.",
-    cards: 9,
-    participants: 7,
-    chapters: "14회차",
-  },
-  {
-    slug: "hospitality-archive",
-    category: "세계",
-    badgeBg: "rgba(49,130,246,0.1)",
-    badgeColor: "#2060C8",
-    period: "2024 – 진행 중",
-    title: "환대 아카이빙",
-    desc: "폐교의 책상 위에 쓴 편지처럼, 강화의 환대를 기록으로 남기는 워크숍.",
-    cards: 16,
-    participants: 28,
-    chapters: "12회차",
-  },
-];
+type ProjectRow = {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+  description: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  progress_type: ProgressType;
+  progress_target: unknown;
+  category: { slug: string | null; name: string | null } | null;
+};
 
-export default function ProjectsPage() {
+type StatRow = {
+  cards: number;
+  participants: number;
+  episodesTotal: number;
+  episodesCompleted: number;
+};
+
+export default async function ProjectsPage() {
+  const admin = createAdminClient();
+
+  const [projectsRes, activitiesRes, episodesRes] = await Promise.all([
+    admin
+      .from("projects")
+      .select(
+        `id, slug, title, summary, description, started_at, ended_at,
+         progress_type, progress_target,
+         category:categories ( slug, name )`
+      )
+      .eq("is_public", true)
+      .order("started_at", { ascending: false, nullsFirst: false }),
+    // 모든 프로젝트의 공개 카드 + 작성자 — 인덱스 페이지에서 한 번에 모아서 group-by
+    admin
+      .from("activities")
+      .select("project_id, user_id, episode_id")
+      .eq("is_public", true)
+      .is("removed_at", null),
+    admin.from("episodes").select("id, project_id, status"),
+  ]);
+
+  const projects = (projectsRes.data ?? []) as unknown as ProjectRow[];
+  const activities = (activitiesRes.data ?? []) as unknown as {
+    project_id: string | null;
+    user_id: string;
+    episode_id: string | null;
+  }[];
+  const episodes = (episodesRes.data ?? []) as unknown as {
+    id: string;
+    project_id: string;
+    status: string;
+  }[];
+
+  // 에피소드 → 프로젝트 매핑 + project_id 별 통계
+  const episodeToProject = new Map<string, string>();
+  const episodesByProject = new Map<
+    string,
+    { total: number; completed: number }
+  >();
+  for (const ep of episodes) {
+    episodeToProject.set(ep.id, ep.project_id);
+    const m = episodesByProject.get(ep.project_id) ?? {
+      total: 0,
+      completed: 0,
+    };
+    m.total += 1;
+    if (ep.status === "completed") m.completed += 1;
+    episodesByProject.set(ep.project_id, m);
+  }
+
+  // 프로젝트별 활동 집계
+  const stats = new Map<string, StatRow>();
+  const participantsByProject = new Map<string, Set<string>>();
+  for (const a of activities) {
+    const projectId =
+      a.project_id ??
+      (a.episode_id ? (episodeToProject.get(a.episode_id) ?? null) : null);
+    if (!projectId) continue;
+    const s = stats.get(projectId) ?? {
+      cards: 0,
+      participants: 0,
+      episodesTotal: 0,
+      episodesCompleted: 0,
+    };
+    s.cards += 1;
+    stats.set(projectId, s);
+
+    const pset = participantsByProject.get(projectId) ?? new Set<string>();
+    pset.add(a.user_id);
+    participantsByProject.set(projectId, pset);
+  }
+
+  // 카테고리별 그룹화
+  const grouped = new Map<CategoryLabel, ProjectRow[]>();
+  const order: CategoryLabel[] = ["공유지", "네트워크", "세계", "정책"];
+  for (const label of order) grouped.set(label, []);
+  for (const p of projects) {
+    const slug = p.category?.slug;
+    const label = labelFromSlug(slug);
+    if (!label) continue;
+    grouped.get(label)!.push(p);
+  }
+
   return (
     <>
-      <PageHeader />
-      <ProjectsGrid />
+      <PageHeader totalCount={projects.length} />
+      <ProjectsGroupedGrid
+        grouped={grouped}
+        order={order}
+        stats={stats}
+        episodesByProject={episodesByProject}
+        participantsByProject={participantsByProject}
+      />
       <NoticeStrip />
     </>
   );
 }
 
-function PageHeader() {
+// ── helpers ────────────────────────────────────────────────────
+
+function labelFromSlug(slug: string | null | undefined): CategoryLabel | null {
+  if (!slug) return null;
+  if (slug === "commons") return "공유지";
+  if (slug === "network") return "네트워크";
+  if (slug === "world") return "세계";
+  if (slug === "policy") return "정책";
+  return null;
+}
+
+function periodLabel(p: ProjectRow): string {
+  const start = p.started_at;
+  const end = p.ended_at;
+  const startYear = start ? new Date(start).getFullYear() : null;
+  const endYear = end ? new Date(end).getFullYear() : null;
+  if (startYear && endYear) return `${startYear} – ${endYear}`;
+  if (startYear) return `${startYear} – 진행 중`;
+  return "기간 미정";
+}
+
+// ── presentation ───────────────────────────────────────────────
+
+function PageHeader({ totalCount }: { totalCount: number }) {
   return (
     <div
       className="pt-[100px]"
@@ -118,7 +178,7 @@ function PageHeader() {
       <div className="mx-auto max-w-[1280px] px-6 pb-14 pt-14 lg:px-[60px]">
         <AnimateOnScroll>
           <p className="mb-4 text-[10.5px] font-semibold uppercase tracking-[3.5px] text-[#6BAF8A]">
-            PROJECTS · 강화유니버스의 장기 프로젝트
+            PROJECTS · 강화유니버스의 장기 프로젝트 {totalCount}개
           </p>
         </AnimateOnScroll>
         <AnimateOnScroll delay={0.08}>
@@ -143,33 +203,135 @@ function PageHeader() {
   );
 }
 
-function ProjectsGrid() {
+function ProjectsGroupedGrid({
+  grouped,
+  order,
+  stats,
+  episodesByProject,
+  participantsByProject,
+}: {
+  grouped: Map<CategoryLabel, ProjectRow[]>;
+  order: CategoryLabel[];
+  stats: Map<string, StatRow>;
+  episodesByProject: Map<string, { total: number; completed: number }>;
+  participantsByProject: Map<string, Set<string>>;
+}) {
+  const allEmpty = order.every((l) => (grouped.get(l) ?? []).length === 0);
+
   return (
     <div className="bg-v2-paper py-16 lg:py-20">
       <div className="mx-auto max-w-[1280px] px-6 lg:px-[60px]">
-        <AnimateOnScroll>
-          <div className="mb-9 flex items-end justify-between">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[3.5px] text-[#6BAF8A]">
-              ALL PROJECTS · {PROJECTS.length}개
+        {allEmpty ? (
+          <div className="rounded-2xl border border-dashed border-v2-rule bg-white/60 px-8 py-16 text-center">
+            <p className="mb-1 text-[13.5px] font-semibold text-v2-ink">
+              아직 공개된 프로젝트가 없어요.
             </p>
-            <span className="text-[12px] font-light text-[#AEAEB2]">
-              카테고리 4종 · 시간순 표시
-            </span>
+            <p className="text-[12px] font-light leading-[1.7] text-v2-ink3">
+              첫 프로젝트가 등록되면 여기에 카테고리별로 모입니다.
+            </p>
           </div>
-        </AnimateOnScroll>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {PROJECTS.map((p, i) => (
-            <AnimateOnScroll key={p.slug} delay={(i + 1) * 0.06}>
-              <ProjectListCard project={p} />
-            </AnimateOnScroll>
-          ))}
-        </div>
+        ) : (
+          order.map((label) => {
+            const list = grouped.get(label) ?? [];
+            if (list.length === 0) return null;
+            return (
+              <CategorySection
+                key={label}
+                label={label}
+                list={list}
+                stats={stats}
+                episodesByProject={episodesByProject}
+                participantsByProject={participantsByProject}
+              />
+            );
+          })
+        )}
       </div>
     </div>
   );
 }
 
-function ProjectListCard({ project }: { project: ProjectListItem }) {
+function CategorySection({
+  label,
+  list,
+  stats,
+  episodesByProject,
+  participantsByProject,
+}: {
+  label: CategoryLabel;
+  list: ProjectRow[];
+  stats: Map<string, StatRow>;
+  episodesByProject: Map<string, { total: number; completed: number }>;
+  participantsByProject: Map<string, Set<string>>;
+}) {
+  const badge = CATEGORY_BADGE[label];
+  return (
+    <div className="mb-12 last:mb-0">
+      <AnimateOnScroll>
+        <div className="mb-5 flex items-end justify-between">
+          <div className="flex items-center gap-2.5">
+            <span
+              className="inline-block rounded-full px-3 py-[5px] text-[10px] font-semibold uppercase tracking-[1.5px]"
+              style={{ background: badge.bg, color: badge.color }}
+            >
+              {label}
+            </span>
+            <span className="text-[12px] font-light text-[#AEAEB2]">
+              {list.length}개 프로젝트
+            </span>
+          </div>
+        </div>
+      </AnimateOnScroll>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {list.map((p, i) => {
+          const s = stats.get(p.id) ?? {
+            cards: 0,
+            participants: 0,
+            episodesTotal: 0,
+            episodesCompleted: 0,
+          };
+          const ep = episodesByProject.get(p.id);
+          const participantsCount = participantsByProject.get(p.id)?.size ?? 0;
+          const progress = calculateProgress({
+            progress_type: p.progress_type,
+            progress_target:
+              (p.progress_target as Record<string, unknown> | null) ?? {},
+            completedEpisodes: ep?.completed ?? 0,
+            totalEpisodes: ep?.total ?? 0,
+            publicActivities: s.cards,
+            distinctParticipants: participantsCount,
+          });
+          return (
+            <AnimateOnScroll key={p.id} delay={(i + 1) * 0.06}>
+              <ProjectListCard
+                project={p}
+                label={label}
+                cards={s.cards}
+                participants={participantsCount}
+                progressLabel={progress.label}
+              />
+            </AnimateOnScroll>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProjectListCard({
+  project,
+  label,
+  cards,
+  participants,
+  progressLabel,
+}: {
+  project: ProjectRow;
+  label: CategoryLabel;
+  cards: number;
+  participants: number;
+  progressLabel: string;
+}) {
+  const badge = CATEGORY_BADGE[label];
   return (
     <Link
       href={`/projects/${project.slug}`}
@@ -178,12 +340,12 @@ function ProjectListCard({ project }: { project: ProjectListItem }) {
       <div className="mb-5 flex items-center justify-between">
         <span
           className="rounded-full px-3 py-[5px] text-[10px] font-semibold uppercase tracking-[1.5px]"
-          style={{ background: project.badgeBg, color: project.badgeColor }}
+          style={{ background: badge.bg, color: badge.color }}
         >
-          {project.category}
+          {label}
         </span>
         <span className="text-[11px] font-light tracking-[0.5px] text-[#AEAEB2]">
-          {project.period}
+          {periodLabel(project)}
         </span>
       </div>
       <h3
@@ -192,16 +354,16 @@ function ProjectListCard({ project }: { project: ProjectListItem }) {
       >
         {project.title}
       </h3>
-      <p className="mb-7 flex-1 text-[13px] font-light leading-[1.75] text-v2-ink3">
-        {project.desc}
+      <p className="mb-7 line-clamp-3 flex-1 text-[13px] font-light leading-[1.75] text-v2-ink3">
+        {project.summary || project.description || "프로젝트 소개 준비 중."}
       </p>
       <div className="flex items-center justify-between border-t border-[#F0F0EC] pt-4">
         <div className="flex gap-5">
-          <Stat num={project.cards} label="카드" accent />
-          <Stat num={project.participants} label="참여자" />
+          <Stat num={cards} label="카드" accent />
+          <Stat num={participants} label="참여자" />
         </div>
         <span className="text-[11px] font-light text-[#AEAEB2]">
-          {project.chapters}
+          {progressLabel}
         </span>
       </div>
     </Link>
