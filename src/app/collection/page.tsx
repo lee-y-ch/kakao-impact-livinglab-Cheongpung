@@ -520,26 +520,49 @@ function ProfileCard({ profile }: { profile: ProfileSummary }) {
       </div>
       <div className="my-3.5 border-t border-[#F0F0EC] pt-3.5" />
       <div className="grid grid-cols-2 gap-2.5">
-        <ProfileStat num={profile.totalCards} label="모은 카드" />
-        <ProfileStat num={profile.totalLetters} label="받은 편지" sub="💌" />
-        <ProfileStat num={profile.totalHifive} label="하이파이브" sub="★" />
-        <ProfileStat num={profile.visitCount} label="방문 횟수" />
+        <ProfileStat
+          href="#collection-cards"
+          num={profile.totalCards}
+          label="모은 카드"
+        />
+        <ProfileStat
+          href="#collection-cards"
+          num={profile.totalLetters}
+          label="받은 편지"
+          sub="💌"
+        />
+        <ProfileStat
+          href="#collection-cards"
+          num={profile.totalHifive}
+          label="하이파이브"
+          sub="★"
+        />
+        <ProfileStat
+          href="#collection-progress"
+          num={profile.visitCount}
+          label="방문 횟수"
+        />
       </div>
     </div>
   );
 }
 
 function ProfileStat({
+  href,
   num,
   label,
   sub,
 }: {
+  href: string;
   num: number;
   label: string;
   sub?: string;
 }) {
   return (
-    <div className="rounded-[10px] bg-[#F8F8F6] px-3.5 py-3">
+    <Link
+      href={href}
+      className="block rounded-[10px] bg-[#F8F8F6] px-3.5 py-3 transition-colors hover:bg-[#EDECEA] focus:outline-none focus:ring-2 focus:ring-[#6BAF8A]/40"
+    >
       <p className="mb-1 text-[22px] font-bold leading-none tracking-[-0.8px] text-v2-ink">
         {num}
       </p>
@@ -547,13 +570,16 @@ function ProfileStat({
       {sub && (
         <p className="mt-0.5 text-[10px] font-medium text-[#6BAF8A]">{sub}</p>
       )}
-    </div>
+    </Link>
   );
 }
 
 function ProgressCard({ progress }: { progress: ProgressRow[] }) {
   return (
-    <div className="mb-4 rounded-2xl border border-v2-rule bg-white px-6 py-5">
+    <div
+      id="collection-progress"
+      className="mb-4 scroll-mt-24 rounded-2xl border border-v2-rule bg-white px-6 py-5"
+    >
       <p className="mb-4 text-[9.5px] font-semibold uppercase tracking-[3px] text-[#AEAEB2]">
         MY PROGRESS
       </p>
@@ -650,7 +676,10 @@ function Main({
       </AnimateOnScroll>
 
       <AnimateOnScroll delay={0.07}>
-        <div className="mb-6 flex flex-wrap gap-1.5">
+        <div
+          id="collection-cards"
+          className="mb-6 flex scroll-mt-24 flex-wrap gap-1.5"
+        >
           <CategoryFilter href="/collection" active={!activeFilter}>
             전체 {totalCount}
           </CategoryFilter>
