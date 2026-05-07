@@ -1,5 +1,6 @@
 "use client";
 
+import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -10,6 +11,7 @@ export function OwnerLoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showCode, setShowCode] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,17 +64,32 @@ export function OwnerLoginForm() {
       </label>
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium">가게 코드</span>
-        <input
-          type="password"
-          inputMode="text"
-          autoComplete="current-password"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          className="v2-legacy-input text-base tracking-widest"
-          placeholder="8자리"
-          required
-          minLength={8}
-        />
+        <div className="relative">
+          <input
+            type={showCode ? "text" : "password"}
+            inputMode="text"
+            autoComplete="current-password"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className="v2-legacy-input pr-12 text-base tracking-widest"
+            placeholder="8자리"
+            required
+            minLength={8}
+          />
+          <button
+            type="button"
+            onClick={() => setShowCode((v) => !v)}
+            className="absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-v2-ink3 transition-colors hover:bg-black/[0.04] hover:text-v2-ink"
+            aria-label={showCode ? "가게 코드 숨기기" : "가게 코드 보기"}
+            title={showCode ? "가게 코드 숨기기" : "가게 코드 보기"}
+          >
+            {showCode ? (
+              <EyeOff size={17} strokeWidth={1.8} aria-hidden />
+            ) : (
+              <Eye size={17} strokeWidth={1.8} aria-hidden />
+            )}
+          </button>
+        </div>
       </label>
 
       {error ? (

@@ -630,22 +630,24 @@ function Stats({
           target={2016}
           format={false}
           label="잠시섬 시작 연도"
-          hoverColor="rgba(204, 75, 55, 0.22)"
+          hoverClass="hover:bg-[#D94A38]/15"
+          hoverTextClass="group-hover/stat:text-[#D94A38]"
           showPlus={false}
         />
         <StatCell
           target={visitors}
           format
           label="누적 방문자"
-          hoverColor="rgba(76, 153, 76, 0.22)"
+          hoverClass="hover:bg-[#3A9B5F]/15"
+          hoverTextClass="group-hover/stat:text-[#3A9B5F]"
           showPlus
-          rightBorder={false}
         />
         <StatCell
           target={residents}
           format
           label="강화유니버스 주민"
-          hoverColor="rgba(66, 120, 190, 0.22)"
+          hoverClass="hover:bg-[#2F6FD6]/15"
+          hoverTextClass="group-hover/stat:text-[#2F6FD6]"
           showPlus
           rightBorder={false}
         />
@@ -658,38 +660,44 @@ function StatCell({
   target,
   format,
   label,
-  hoverColor,
+  hoverClass,
+  hoverTextClass,
   showPlus,
   rightBorder = true,
 }: {
   target: number;
   format: boolean;
   label: string;
-  hoverColor: string;
+  hoverClass: string;
+  hoverTextClass: string;
   showPlus: boolean;
   rightBorder?: boolean;
 }) {
   return (
     <div
-      className={`group/stat px-11 py-[52px] text-center transition-colors duration-300 ${
+      className={`group/stat px-11 py-[52px] text-center transition-colors duration-300 ${hoverClass} ${
         rightBorder
           ? "border-b border-v2-rule sm:border-b-0 sm:border-r"
           : "border-b border-v2-rule sm:border-b-0"
       }`}
-      style={{
-        ["--hover-bg" as string]: hoverColor,
-      }}
     >
-      <style>{`
-        .group\\/stat:hover { background: ${hoverColor}; }
-      `}</style>
-      <p className="mb-2.5 text-[52px] font-bold leading-none tracking-[-2px] text-v2-brand">
+      <p
+        className={`mb-2.5 text-[52px] font-bold leading-none tracking-[-2px] text-v2-brand transition-colors duration-300 ${hoverTextClass}`}
+      >
         <CountUp target={target} format={format} />
         {showPlus ? (
-          <span className="text-[28px] font-bold text-v2-brand">+</span>
+          <span
+            className={`text-[28px] font-bold text-v2-brand transition-colors duration-300 ${hoverTextClass}`}
+          >
+            +
+          </span>
         ) : null}
       </p>
-      <p className="text-[15px] font-normal text-[#777]">{label}</p>
+      <p
+        className={`text-[15px] font-normal text-[#777] transition-colors duration-300 ${hoverTextClass}`}
+      >
+        {label}
+      </p>
     </div>
   );
 }
