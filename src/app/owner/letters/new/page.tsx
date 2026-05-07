@@ -11,17 +11,17 @@ import { LetterComposer } from "./LetterComposer";
 export const dynamic = "force-dynamic";
 
 const CATEGORY_COLOR: Record<string, string> = {
-  commons: "var(--cat-commons)",
+  active_life: "var(--cat-active-life)",
   network: "var(--cat-network)",
-  world: "var(--cat-world)",
-  policy: "var(--cat-policy)",
+  local_culture: "var(--cat-local-culture)",
+  tech: "var(--cat-tech)",
 };
 
 const CATEGORY_EN: Record<string, string> = {
-  commons: "commons",
+  active_life: "active_life",
   network: "network",
-  world: "world",
-  policy: "policy",
+  local_culture: "local_culture",
+  tech: "tech",
 };
 
 type SearchParams = { activity?: string };

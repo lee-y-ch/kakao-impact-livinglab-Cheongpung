@@ -23,20 +23,20 @@ export const dynamic = "force-dynamic";
 const REVIEW_QUEUE_LIMIT = 6;
 const EPISODE_PANEL_LIMIT = 5;
 
-type CategoryLabel = "공유지" | "네트워크" | "세계" | "정책";
+type CategoryLabel = "라이프" | "네트워크" | "창작" | "테크";
 
 const SLUG_TO_LABEL: Record<string, CategoryLabel> = {
-  commons: "공유지",
+  active_life: "라이프",
   network: "네트워크",
-  world: "세계",
-  policy: "정책",
+  local_culture: "창작",
+  tech: "테크",
 };
 
 const BADGE_CLASS: Record<CategoryLabel, string> = {
-  공유지: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
+  라이프: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
   네트워크: "bg-[rgba(107,175,138,0.12)] text-[#3A7A55]",
-  세계: "bg-[rgba(49,130,246,0.1)] text-[#2060C8]",
-  정책: "bg-[rgba(160,128,204,0.14)] text-[#5A3A88]",
+  창작: "bg-[rgba(49,130,246,0.1)] text-[#2060C8]",
+  테크: "bg-[rgba(160,128,204,0.14)] text-[#5A3A88]",
 };
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {

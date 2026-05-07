@@ -9,17 +9,23 @@
 
 import type { CSSProperties, ReactNode } from "react";
 
-export type CategorySlug = "commons" | "network" | "world" | "policy";
+export type CategorySlug = "active_life" | "local_culture" | "network" | "tech";
 
 export const GH_CAT: Record<
   CategorySlug,
   { ko: string; en: string; color: string; soft: string }
 > = {
-  commons: {
-    ko: "공유지",
-    en: "commons",
-    color: "var(--cat-commons)",
-    soft: "var(--cat-commons-soft)",
+  active_life: {
+    ko: "라이프",
+    en: "active life",
+    color: "var(--cat-active-life)",
+    soft: "var(--cat-active-life-soft)",
+  },
+  local_culture: {
+    ko: "창작",
+    en: "local culture",
+    color: "var(--cat-local-culture)",
+    soft: "var(--cat-local-culture-soft)",
   },
   network: {
     ko: "네트워크",
@@ -27,17 +33,11 @@ export const GH_CAT: Record<
     color: "var(--cat-network)",
     soft: "var(--cat-network-soft)",
   },
-  world: {
-    ko: "세계",
-    en: "world",
-    color: "var(--cat-world)",
-    soft: "var(--cat-world-soft)",
-  },
-  policy: {
-    ko: "정책",
-    en: "policy",
-    color: "var(--cat-policy)",
-    soft: "var(--cat-policy-soft)",
+  tech: {
+    ko: "테크",
+    en: "tech",
+    color: "var(--cat-tech)",
+    soft: "var(--cat-tech-soft)",
   },
 };
 

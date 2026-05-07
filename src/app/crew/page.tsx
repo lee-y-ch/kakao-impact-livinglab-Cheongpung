@@ -22,13 +22,13 @@ export const dynamic = "force-dynamic";
 const ARRIVAL_LIMIT = 8;
 const EPISODE_LIMIT = 6;
 
-type CategoryLabel = "공유지" | "네트워크" | "세계" | "정책";
+type CategoryLabel = "라이프" | "네트워크" | "창작" | "테크";
 
 const SLUG_TO_LABEL: Record<string, CategoryLabel> = {
-  commons: "공유지",
+  active_life: "라이프",
   network: "네트워크",
-  world: "세계",
-  policy: "정책",
+  local_culture: "창작",
+  tech: "테크",
 };
 
 type EpisodeStatus = "planned" | "in_progress" | "completed";

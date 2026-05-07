@@ -171,7 +171,7 @@ export function ProjectForm({ categories, initial, returnTo }: Props) {
           <input
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
-            placeholder="hospitality-commons"
+            placeholder="weekend-yoga-club"
             className={inputClass}
           />
         </LabeledField>

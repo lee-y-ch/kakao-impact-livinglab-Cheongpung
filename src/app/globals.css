@@ -84,15 +84,15 @@
     --sunset: oklch(0.58 0.14 38);
     --sunset-soft: oklch(0.95 0.022 55);
 
-    /* 카테고리 매핑 */
-    --cat-commons: var(--pine);
-    --cat-commons-soft: var(--pine-soft);
+    /* 카테고리 매핑 — PDF/랜딩 분류와 일치 (003_categories_realign 이후) */
+    --cat-active-life: var(--sunset);
+    --cat-active-life-soft: var(--sunset-soft);
+    --cat-local-culture: var(--pine);
+    --cat-local-culture-soft: var(--pine-soft);
     --cat-network: var(--sea);
     --cat-network-soft: var(--sea-soft);
-    --cat-world: var(--sunset);
-    --cat-world-soft: var(--sunset-soft);
-    --cat-policy: oklch(0.24 0.012 260);
-    --cat-policy-soft: oklch(0.92 0.006 260);
+    --cat-tech: oklch(0.24 0.012 260);
+    --cat-tech-soft: oklch(0.92 0.006 260);
 
     /* 폰트 패밀리 — UI / 서사 / 라벨 3종 */
     --ui-font:
