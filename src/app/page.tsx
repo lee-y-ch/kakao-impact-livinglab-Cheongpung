@@ -630,24 +630,24 @@ function Stats({
           target={2016}
           format={false}
           label="잠시섬 시작 연도"
-          hoverClass="hover:bg-[#D94A38]/15"
-          hoverTextClass="group-hover/stat:text-[#D94A38]"
+          hoverClass="hover:bg-[#C73322]/15"
+          hoverTextClass="group-hover/stat:text-[#C73322]"
           showPlus={false}
         />
         <StatCell
           target={visitors}
           format
           label="누적 방문자"
-          hoverClass="hover:bg-[#3A9B5F]/15"
-          hoverTextClass="group-hover/stat:text-[#3A9B5F]"
+          hoverClass="hover:bg-[#217A43]/15"
+          hoverTextClass="group-hover/stat:text-[#217A43]"
           showPlus
         />
         <StatCell
           target={residents}
           format
           label="강화유니버스 주민"
-          hoverClass="hover:bg-[#2F6FD6]/15"
-          hoverTextClass="group-hover/stat:text-[#2F6FD6]"
+          hoverClass="hover:bg-[#1F55B8]/15"
+          hoverTextClass="group-hover/stat:text-[#1F55B8]"
           showPlus
           rightBorder={false}
         />
