@@ -18,20 +18,36 @@ export function KakaoLoginButton({ next }: { next?: string }) {
     const redirectTo = new URL("/auth/callback", origin);
     if (next) redirectTo.searchParams.set("next", next);
 
-    const { error } = await supabase.auth.signInWithOAuth({
+    // Supabase 의 Kakao provider 는 default scope 으로 `account_email` 을 하드코딩 주입한다.
+    // 비즈 앱 미등록 상태에선 카카오에 그 scope 권한이 없어 KOE205 가 발생.
+    // skipBrowserRedirect 로 URL 을 가로챈 뒤 scope 파라미터에서 account_email 을 제거하고 수동 리다이렉트.
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "kakao",
       options: {
         redirectTo: redirectTo.toString(),
-        // 카카오 비즈 앱이 아니므로 account_email 권한이 없음.
-        // Supabase 기본 scope (account_email 포함) 를 덮어써서 KOE205 회피.
+        skipBrowserRedirect: true,
         scopes: "profile_nickname profile_image",
       },
     });
 
-    if (error) {
+    if (error || !data?.url) {
       console.error("kakao oauth error", error);
       setLoading(false);
+      return;
     }
+
+    const oauthUrl = new URL(data.url);
+    const scope = oauthUrl.searchParams.get("scope") ?? "";
+    const cleaned = Array.from(
+      new Set(
+        scope
+          .split(/\s+/)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0 && s !== "account_email")
+      )
+    ).join(" ");
+    oauthUrl.searchParams.set("scope", cleaned);
+    window.location.href = oauthUrl.toString();
   }
 
   return (
