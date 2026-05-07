@@ -10,6 +10,7 @@ import type { CurrentActor } from "@/lib/auth/current-actor";
 export type NavActive =
   | "impact"
   | "projects"
+  | "shops"
   | "feed"
   | "collection"
   | "crew"
@@ -26,6 +27,7 @@ const BASE_NAV_ITEMS: ReadonlyArray<Omit<NavItem, "href"> & { href: string }> =
   [
     { key: "impact", label: "임팩트", href: "/impact" },
     { key: "projects", label: "프로젝트", href: "/projects" },
+    { key: "shops", label: "가게", href: "/shops" },
     { key: "feed", label: "피드", href: "/feed" },
     { key: "collection", label: "내 도감", href: "/collection" },
   ];
@@ -202,6 +204,7 @@ function activeFromPath(pathname: string | null): NavActive {
   if (!pathname) return null;
   if (pathname.startsWith("/impact")) return "impact";
   if (pathname.startsWith("/projects")) return "projects";
+  if (pathname.startsWith("/shops")) return "shops";
   if (pathname.startsWith("/feed")) return "feed";
   if (pathname.startsWith("/collection")) return "collection";
   if (pathname.startsWith("/crew")) return "crew";

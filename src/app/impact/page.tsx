@@ -347,9 +347,14 @@ function StatsStrip({
     hiFive: number;
   };
 }) {
-  const cells: { num: number; label: string; accent?: boolean }[] = [
+  const cells: {
+    num: number;
+    label: string;
+    accent?: boolean;
+    href?: string;
+  }[] = [
     { num: stats.cards, label: "누적 환대 카드", accent: true },
-    { num: stats.shops, label: "연결된 가게" },
+    { num: stats.shops, label: "연결된 가게", href: "/shops" },
     { num: stats.users, label: "참여자" },
     { num: stats.episodes, label: "에피소드" },
     { num: stats.letters, label: "사장님 편지" },
@@ -360,25 +365,41 @@ function StatsStrip({
     <div className="border-y border-v2-rule" style={{ background: "#F5F4F1" }}>
       <div className="mx-auto max-w-[1280px] px-6 lg:px-[60px]">
         <div className="flex items-stretch overflow-x-auto">
-          {cells.map((s, i) => (
-            <div
-              key={s.label}
-              className={`flex flex-1 flex-col items-center justify-center gap-1.5 px-9 py-5 ${
-                i < cells.length - 1 ? "border-r border-v2-rule" : ""
-              }`}
-            >
-              <p
-                className={`whitespace-nowrap text-[28px] font-bold leading-none tracking-[-1px] ${
-                  s.accent ? "text-[#6BAF8A]" : "text-v2-ink"
-                }`}
-              >
-                <CountUp target={s.num} />
-              </p>
-              <p className="whitespace-nowrap text-[12.5px] font-semibold tracking-[-0.2px] text-v2-ink">
-                {s.label}
-              </p>
-            </div>
-          ))}
+          {cells.map((s, i) => {
+            const baseClass = `flex flex-1 flex-col items-center justify-center gap-1.5 px-9 py-5 ${
+              i < cells.length - 1 ? "border-r border-v2-rule" : ""
+            }`;
+            const inner = (
+              <>
+                <p
+                  className={`whitespace-nowrap text-[28px] font-bold leading-none tracking-[-1px] ${
+                    s.accent ? "text-[#6BAF8A]" : "text-v2-ink"
+                  }`}
+                >
+                  <CountUp target={s.num} />
+                </p>
+                <p className="whitespace-nowrap text-[12.5px] font-semibold tracking-[-0.2px] text-v2-ink">
+                  {s.label}
+                </p>
+              </>
+            );
+            if (s.href) {
+              return (
+                <Link
+                  key={s.label}
+                  href={s.href}
+                  className={`${baseClass} transition-colors hover:bg-white/70`}
+                >
+                  {inner}
+                </Link>
+              );
+            }
+            return (
+              <div key={s.label} className={baseClass}>
+                {inner}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
