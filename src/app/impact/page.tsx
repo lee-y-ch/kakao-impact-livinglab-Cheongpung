@@ -3,6 +3,15 @@ import Link from "next/link";
 import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
 import { CountUp } from "@/components/v2/CountUp";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  NodeMapClient,
+  type CategoryLabel,
+  type CategorySlug,
+  type GraphEdge,
+  type GraphNode,
+  type GraphNodeType,
+  type ImpactGraph,
+} from "./NodeMapClient";
 
 export const dynamic = "force-dynamic";
 
@@ -10,16 +19,15 @@ export const dynamic = "force-dynamic";
  * v2 redesign — `/impact` 강화도 진척 공개 대시보드.
  * 시안: design-v2-reference/강화유니버스_임팩트.html.
  *
- * 공개 페이지 (auth 가드 없음). 6 stat / 카테고리 진척 / 최근 공개 카드를
- * service role 로 집계해 시연용 노드맵 SVG (정적 좌표) 와 함께 렌더.
- *
- * 노드맵은 D3/React Flow 도입 전까지 시연용 정적 좌표 유지 — 시안 그대로.
+ * 공개 페이지 (auth 가드 없음). 6 stat / 카테고리 진척 / 최근 공개 카드 /
+ * 공개 activity 기반 관계 노드맵을 service role 로 집계해 렌더.
  */
 
 const FEED_LIMIT = 4;
-
-type CategorySlug = "active_life" | "network" | "local_culture" | "tech";
-type CategoryLabel = "라이프" | "네트워크" | "창작" | "테크";
+const GRAPH_ACTIVITY_LIMIT = 80;
+const GRAPH_PROJECT_LIMIT = 10;
+const GRAPH_SHOP_LIMIT = 10;
+const GRAPH_PARTICIPANT_LIMIT = 14;
 
 const SLUG_TO_LABEL: Record<CategorySlug, CategoryLabel> = {
   active_life: "라이프",
@@ -53,6 +61,27 @@ type ProjectProgressRow = {
   category: { slug: string | null } | null;
 };
 
+type GraphActivity = {
+  id: string;
+  body: string | null;
+  created_at: string;
+  author: { id: string; nickname: string | null } | null;
+  shop: { id: string; name: string | null; is_public: boolean | null } | null;
+  project: {
+    id: string;
+    title: string | null;
+    category: { id: string; slug: string | null; name: string | null } | null;
+  } | null;
+  episode: {
+    id: string;
+    project: {
+      id: string;
+      title: string | null;
+      category: { id: string; slug: string | null; name: string | null } | null;
+    } | null;
+  } | null;
+};
+
 export default async function ImpactPage() {
   const admin = createAdminClient();
 
@@ -74,6 +103,7 @@ export default async function ImpactPage() {
     projectsRes,
     earliestActivityRes,
     publicCardsForCategoryRes,
+    graphActivitiesRes,
   ] = await Promise.all([
     admin
       .from("activities")
@@ -132,6 +162,24 @@ export default async function ImpactPage() {
       )
       .eq("is_public", true)
       .is("removed_at", null),
+    admin
+      .from("activities")
+      .select(
+        `
+        id, body, created_at,
+        author:user_id ( id, nickname ),
+        shop:shop_id ( id, name, is_public ),
+        project:project_id ( id, title, category:categories ( id, slug, name ) ),
+        episode:episode_id (
+          id,
+          project:project_id ( id, title, category:categories ( id, slug, name ) )
+        )
+      `
+      )
+      .eq("is_public", true)
+      .is("removed_at", null)
+      .order("created_at", { ascending: false })
+      .limit(GRAPH_ACTIVITY_LIMIT),
   ]);
 
   const stats = {
@@ -147,6 +195,9 @@ export default async function ImpactPage() {
   const projects = (projectsRes.data ?? []) as unknown as ProjectProgressRow[];
   const allPublic = (publicCardsForCategoryRes.data ??
     []) as unknown as CategoryActivity[];
+  const graph = buildImpactGraph(
+    (graphActivitiesRes.data ?? []) as unknown as GraphActivity[]
+  );
 
   // 카테고리 진척 — 한 번의 SELECT 로 가져온 공개 카드를 JS 에서 group-by
   const categoryCounts: Record<CategoryLabel, number> = {
@@ -203,7 +254,7 @@ export default async function ImpactPage() {
     <>
       <PageHeader earliestIso={earliestIso} />
       <StatsStrip stats={stats} />
-      <NodeMapSection />
+      <NodeMapSection graph={graph} />
       <ProgressSection rows={categoryProgress} />
       <RecentFeed feed={feed} />
       <NoticeStrip />
@@ -246,6 +297,181 @@ function feedPlace(f: FeedActivity): string {
   if (f.shop?.name) return `@ ${f.shop.name}`;
   if (f.episode?.location) return `@ ${f.episode.location}`;
   return "";
+}
+
+function addPreview(node: GraphNode, body: string | null) {
+  if (!body || node.previews.length >= 5) return;
+  node.previews.push(body.length > 48 ? `${body.slice(0, 47)}…` : body);
+}
+
+function edgeKey(source: string, target: string) {
+  return `${source}__${target}`;
+}
+
+function distributeY(count: number, top = 72, bottom = 368) {
+  if (count <= 1) return [220];
+  const step = (bottom - top) / (count - 1);
+  return Array.from({ length: count }, (_, i) => Math.round(top + step * i));
+}
+
+function nodeSort(a: GraphNode, b: GraphNode) {
+  return b.count - a.count || a.label.localeCompare(b.label, "ko");
+}
+
+function buildImpactGraph(rows: GraphActivity[]): ImpactGraph {
+  const nodes = new Map<string, GraphNode>();
+  const edges = new Map<string, GraphEdge>();
+
+  function ensureNode(
+    id: string,
+    rawId: string,
+    type: GraphNodeType,
+    label: string,
+    categorySlug: CategorySlug | null
+  ) {
+    const existing = nodes.get(id);
+    if (existing) return existing;
+    const node: GraphNode = {
+      id,
+      rawId,
+      type,
+      label,
+      count: 0,
+      previews: [],
+      categorySlug,
+      x: 0,
+      y: 0,
+    };
+    nodes.set(id, node);
+    return node;
+  }
+
+  function connect(source: GraphNode | null, target: GraphNode | null) {
+    if (!source || !target) return;
+    const id = edgeKey(source.id, target.id);
+    const existing = edges.get(id);
+    if (existing) {
+      existing.count += 1;
+      return;
+    }
+    edges.set(id, {
+      id,
+      source: source.id,
+      target: target.id,
+      count: 1,
+    });
+  }
+
+  for (const row of rows) {
+    const project = row.project ?? row.episode?.project ?? null;
+    const category = project?.category ?? null;
+    const categorySlug =
+      category?.slug && category.slug in SLUG_TO_LABEL
+        ? (category.slug as CategorySlug)
+        : null;
+
+    const categoryNode =
+      category && categorySlug
+        ? ensureNode(
+            `category:${category.id}`,
+            category.id,
+            "category",
+            category.name ?? SLUG_TO_LABEL[categorySlug],
+            categorySlug
+          )
+        : null;
+    const projectNode = project
+      ? ensureNode(
+          `project:${project.id}`,
+          project.id,
+          "project",
+          project.title ?? "이름 없는 프로젝트",
+          categorySlug
+        )
+      : null;
+    const shopNode =
+      row.shop && row.shop.is_public !== false
+        ? ensureNode(
+            `shop:${row.shop.id}`,
+            row.shop.id,
+            "shop",
+            row.shop.name ?? "이름 없는 가게",
+            categorySlug
+          )
+        : null;
+    const participantNode = row.author
+      ? ensureNode(
+          `participant:${row.author.id}`,
+          row.author.id,
+          "participant",
+          row.author.nickname ?? "이름 없는 참여자",
+          categorySlug
+        )
+      : null;
+
+    for (const node of [categoryNode, projectNode, shopNode, participantNode]) {
+      if (!node) continue;
+      node.count += 1;
+      addPreview(node, row.body);
+    }
+
+    connect(categoryNode, projectNode);
+    connect(projectNode, shopNode);
+    connect(shopNode, participantNode);
+  }
+
+  const categories = [...nodes.values()]
+    .filter((n) => n.type === "category")
+    .sort((a, b) => {
+      const order = Object.keys(SLUG_TO_LABEL);
+      return (
+        order.indexOf(a.categorySlug ?? "") -
+        order.indexOf(b.categorySlug ?? "")
+      );
+    });
+  const projects = [...nodes.values()]
+    .filter((n) => n.type === "project")
+    .sort(nodeSort)
+    .slice(0, GRAPH_PROJECT_LIMIT);
+  const shops = [...nodes.values()]
+    .filter((n) => n.type === "shop")
+    .sort(nodeSort)
+    .slice(0, GRAPH_SHOP_LIMIT);
+  const participants = [...nodes.values()]
+    .filter((n) => n.type === "participant")
+    .sort(nodeSort)
+    .slice(0, GRAPH_PARTICIPANT_LIMIT);
+
+  const visibleNodes = [...categories, ...projects, ...shops, ...participants];
+  const visibleIds = new Set(visibleNodes.map((n) => n.id));
+  const columns: Record<GraphNodeType, { x: number; list: GraphNode[] }> = {
+    category: { x: 105, list: categories },
+    project: { x: 315, list: projects },
+    shop: { x: 565, list: shops },
+    participant: { x: 790, list: participants },
+  };
+
+  for (const { x, list } of Object.values(columns)) {
+    const ys = distributeY(list.length);
+    list.forEach((node, index) => {
+      node.x = x;
+      node.y = ys[index] ?? 220;
+    });
+  }
+
+  return {
+    nodes: visibleNodes,
+    edges: [...edges.values()].filter(
+      (e) => visibleIds.has(e.source) && visibleIds.has(e.target)
+    ),
+    stats: {
+      activities: rows.length,
+      categories: categories.length,
+      projects: projects.length,
+      shops: shops.length,
+      participants: participants.length,
+    },
+  };
 }
 
 const CATEGORY_DOT: Record<CategoryLabel, string> = {
@@ -406,7 +632,7 @@ function StatsStrip({
   );
 }
 
-function NodeMapSection() {
+function NodeMapSection({ graph }: { graph: ImpactGraph }) {
   return (
     <div className="py-16 lg:py-20" style={{ background: "#EDECEA" }}>
       <div className="mx-auto max-w-[1280px] px-6 lg:px-[60px]">
@@ -434,10 +660,10 @@ function NodeMapSection() {
           <AnimateOnScroll delay={0.16}>
             <div className="flex flex-shrink-0 flex-col gap-2.5 rounded-xl border border-black/[0.06] bg-white px-6 py-5">
               <p className="mb-1 text-[9.5px] font-semibold uppercase tracking-[2.5px] text-[#AEAEB2]">
-                LEGEND
+                LIVE GRAPH
               </p>
               <LegendItem color="#6BAF8A" type="dot">
-                프로젝트 — 환대가 자라는 축
+                카테고리·프로젝트 — 환대가 자라는 축
               </LegendItem>
               <LegendItem color="#C4956A" type="dot">
                 가게·장소 — 환대가 머무는 점
@@ -448,14 +674,21 @@ function NodeMapSection() {
               <LegendItem color="#6BAF8A" type="line">
                 환대 연결
               </LegendItem>
+              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 border-t border-black/[0.06] pt-3 text-[11px] text-[#999]">
+                <span>카드 {graph.stats.activities}장</span>
+                <span>프로젝트 {graph.stats.projects}개</span>
+                <span>가게 {graph.stats.shops}곳</span>
+                <span>참여자 {graph.stats.participants}명</span>
+              </div>
             </div>
           </AnimateOnScroll>
         </div>
         <AnimateOnScroll delay={0.08}>
           <div className="relative h-[300px] overflow-hidden rounded-[20px] border border-black/[0.06] bg-white lg:h-[460px]">
-            <NodeMapSvg />
+            <NodeMapClient graph={graph} />
             <p className="absolute bottom-5 right-5 text-[10.5px] tracking-[1px] text-[#AEAEB2]">
-              시연용 정적 시각화
+              공개 카드 {graph.stats.activities}장 기준 · 노드 hover 시 카드
+              미리보기
             </p>
           </div>
         </AnimateOnScroll>
@@ -488,183 +721,6 @@ function LegendItem({
       )}
       <span>{children}</span>
     </div>
-  );
-}
-
-function NodeMapSvg() {
-  return (
-    <svg
-      viewBox="0 0 900 440"
-      preserveAspectRatio="xMidYMid meet"
-      className="h-full w-full"
-    >
-      <line
-        x1="260"
-        y1="180"
-        x2="450"
-        y2="120"
-        stroke="#6BAF8A"
-        strokeWidth={2}
-        opacity={0.4}
-        fill="none"
-      />
-      <line
-        x1="260"
-        y1="180"
-        x2="640"
-        y2="200"
-        stroke="#6BAF8A"
-        strokeWidth={2}
-        opacity={0.4}
-        fill="none"
-      />
-      <line
-        x1="450"
-        y1="120"
-        x2="640"
-        y2="200"
-        stroke="#6BAF8A"
-        strokeWidth={2}
-        opacity={0.4}
-        fill="none"
-      />
-      {[
-        ["260", "180", "140", "280"],
-        ["260", "180", "340", "300"],
-        ["450", "120", "560", "60"],
-        ["450", "120", "360", "50"],
-        ["640", "200", "760", "140"],
-        ["640", "200", "740", "310"],
-        ["140", "280", "80", "370"],
-        ["340", "300", "420", "380"],
-        ["740", "310", "820", "380"],
-        ["560", "60", "680", "60"],
-      ].map(([x1, y1, x2, y2]) => (
-        <line
-          key={`${x1}-${y1}-${x2}-${y2}`}
-          x1={x1}
-          y1={y1}
-          x2={x2}
-          y2={y2}
-          stroke="rgba(0,0,0,0.08)"
-          strokeWidth={1.5}
-          fill="none"
-        />
-      ))}
-      <circle cx="260" cy="180" r="26" fill="#6BAF8A" opacity="0.9" />
-      <text
-        x="260"
-        y="216"
-        textAnchor="middle"
-        fontSize="11"
-        fill="#1A1A1A"
-        fontWeight={500}
-      >
-        시부야 교류
-      </text>
-      <circle cx="450" cy="120" r="22" fill="#6BAF8A" opacity="0.85" />
-      <text
-        x="450"
-        y="154"
-        textAnchor="middle"
-        fontSize="11"
-        fill="#1A1A1A"
-        fontWeight={500}
-      >
-        해녀 학교
-      </text>
-      <circle cx="640" cy="200" r="20" fill="#6BAF8A" opacity="0.8" />
-      <text
-        x="640"
-        y="232"
-        textAnchor="middle"
-        fontSize="11"
-        fill="#1A1A1A"
-        fontWeight={500}
-      >
-        한달살기
-      </text>
-      <circle cx="140" cy="280" r="14" fill="#C4956A" />
-      <text
-        x="140"
-        y="304"
-        textAnchor="middle"
-        fontSize="10"
-        fill="#888"
-        fontWeight={300}
-      >
-        갯벌카페
-      </text>
-      <circle cx="340" cy="300" r="12" fill="#C4956A" />
-      <text
-        x="340"
-        y="322"
-        textAnchor="middle"
-        fontSize="10"
-        fill="#888"
-        fontWeight={300}
-      >
-        약초당
-      </text>
-      <circle cx="760" cy="140" r="12" fill="#C4956A" />
-      <text
-        x="760"
-        y="162"
-        textAnchor="middle"
-        fontSize="10"
-        fill="#888"
-        fontWeight={300}
-      >
-        온수리카페
-      </text>
-      <circle cx="740" cy="310" r="11" fill="#C4956A" />
-      <text
-        x="740"
-        y="332"
-        textAnchor="middle"
-        fontSize="10"
-        fill="#888"
-        fontWeight={300}
-      >
-        공유 주방
-      </text>
-      <circle cx="80" cy="370" r="8" fill="#B8B8B8" />
-      <circle cx="420" cy="380" r="8" fill="#B8B8B8" />
-      <circle cx="820" cy="380" r="8" fill="#B8B8B8" />
-      <circle cx="560" cy="60" r="8" fill="#B8B8B8" />
-      <circle cx="360" cy="50" r="8" fill="#B8B8B8" />
-      <circle cx="680" cy="60" r="8" fill="#B8B8B8" />
-      <text
-        x="80"
-        y="394"
-        textAnchor="middle"
-        fontSize="10"
-        fill="#888"
-        fontWeight={300}
-      >
-        풀잎
-      </text>
-      <text
-        x="420"
-        y="400"
-        textAnchor="middle"
-        fontSize="10"
-        fill="#888"
-        fontWeight={300}
-      >
-        현주
-      </text>
-      <text
-        x="820"
-        y="400"
-        textAnchor="middle"
-        fontSize="10"
-        fill="#888"
-        fontWeight={300}
-      >
-        Yui
-      </text>
-    </svg>
   );
 }
 
