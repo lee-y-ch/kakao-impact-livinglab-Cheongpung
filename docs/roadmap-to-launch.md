@@ -181,6 +181,7 @@
 2. **DB 마이그레이션 적용**:
    - SQL Editor → `src/db/migrations/001_initial.sql` 전체 → 실행
    - SQL Editor → `src/db/migrations/002_phase1_extensions.sql` 전체 → 실행
+   - SQL Editor → `src/db/migrations/003_categories_realign.sql` 전체 → 실행
 3. **Storage 버킷 생성**: `node --env-file=.env.local scripts/bootstrap-storage.mjs` 실행 (정책: Public = ON, 5MB 제한, `image/jpeg|png|webp`). 수동 생성 시 Storage → New bucket → name = `activity-photos`, **Public bucket = ON**. 사진 보호는 RLS 행 단위에서 처리
 4. **카카오 OAuth Provider 연결**:
    - Authentication → Providers → Kakao → Enable
@@ -240,6 +241,11 @@
 cat src/db/seed_demo.sql
 
 # 부족한 부분 보강 후, 프로덕션 SQL Editor 에 붙여넣어 적용
+# 전제:
+# - 기존 배포 DB라면 001/002 는 이미 적용된 상태일 가능성이 높음. 다시 실행하지 말고
+#   categories.slug 가 active_life/local_culture/network/tech 인지만 확인.
+# - 새 DB를 처음 만들 때만 001 → 002 → 003 순서로 적용.
+# - 기존 DB의 categories 가 commons/network/world/policy 상태면 003_categories_realign.sql 만 먼저 적용.
 # 단, 비밀번호 해시 (사장님 코드, 관리자 비번) 는 로컬에서 미리 생성 필요
 ```
 
