@@ -17,27 +17,27 @@ export const dynamic = "force-dynamic";
  * 진척바 (calculator 기반) + 해당 프로젝트의 공개 카드 그리드.
  */
 
-type CategoryLabel = "공유지" | "네트워크" | "세계" | "정책";
+type CategoryLabel = "라이프" | "네트워크" | "창작" | "테크";
 
 const CATEGORY_BADGE: Record<
   CategoryLabel,
   { bg: string; color: string; upper: string }
 > = {
-  공유지: {
+  라이프: {
     bg: "rgba(180,110,40,0.1)",
     color: "#9B6020",
-    upper: "COMMONS · 공유지",
+    upper: "COMMONS · 라이프",
   },
   네트워크: {
     bg: "rgba(107,175,138,0.12)",
     color: "#3A7A55",
     upper: "NETWORK · 네트워크",
   },
-  세계: { bg: "rgba(49,130,246,0.1)", color: "#2060C8", upper: "WORLD · 세계" },
-  정책: {
+  창작: { bg: "rgba(49,130,246,0.1)", color: "#2060C8", upper: "WORLD · 창작" },
+  테크: {
     bg: "rgba(130,90,180,0.1)",
     color: "#6040A0",
-    upper: "POLICY · 정책",
+    upper: "POLICY · 테크",
   },
 };
 
@@ -245,10 +245,10 @@ export default async function ProjectDetailPage({
 
 function labelFromSlug(slug: string | null | undefined): CategoryLabel | null {
   if (!slug) return null;
-  if (slug === "commons") return "공유지";
+  if (slug === "active_life") return "라이프";
   if (slug === "network") return "네트워크";
-  if (slug === "world") return "세계";
-  if (slug === "policy") return "정책";
+  if (slug === "local_culture") return "창작";
+  if (slug === "tech") return "테크";
   return null;
 }
 

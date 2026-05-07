@@ -15,17 +15,17 @@ export const dynamic = "force-dynamic";
  * 본인 activities Supabase 페치로 교체. 비로그인 시 /login redirect.
  */
 
-type CategorySlug = "commons" | "network" | "world" | "policy";
-type Category = "공유지" | "네트워크" | "세계" | "정책";
+type CategorySlug = "active_life" | "network" | "local_culture" | "tech";
+type Category = "라이프" | "네트워크" | "창작" | "테크";
 
 const SLUG_TO_LABEL: Record<CategorySlug, Category> = {
-  commons: "공유지",
+  active_life: "라이프",
   network: "네트워크",
-  world: "세계",
-  policy: "정책",
+  local_culture: "창작",
+  tech: "테크",
 };
 
-const CATEGORY_ORDER: Category[] = ["공유지", "네트워크", "세계", "정책"];
+const CATEGORY_ORDER: Category[] = ["라이프", "네트워크", "창작", "테크"];
 
 type CategoryStyle = {
   bg: string;
@@ -34,9 +34,9 @@ type CategoryStyle = {
 };
 
 const CATEGORY_STYLE: Record<Category, CategoryStyle> = {
-  공유지: {
+  라이프: {
     bg: "linear-gradient(145deg, #C4956A 0%, #A87850 100%)",
-    badge: "공유지",
+    badge: "라이프",
     dot: "#C4956A",
   },
   네트워크: {
@@ -44,14 +44,14 @@ const CATEGORY_STYLE: Record<Category, CategoryStyle> = {
     badge: "네트워크",
     dot: "#6BAF8A",
   },
-  세계: {
+  창작: {
     bg: "linear-gradient(145deg, #7BA8D4 0%, #5A88B8 100%)",
-    badge: "세계",
+    badge: "창작",
     dot: "#88AADD",
   },
-  정책: {
+  테크: {
     bg: "linear-gradient(145deg, #9A80C8 0%, #7A60A8 100%)",
-    badge: "정책",
+    badge: "테크",
     dot: "#A080CC",
   },
 };
@@ -216,10 +216,10 @@ export default async function CollectionPage({
 
   // 카테고리별 카드 수
   const categoryCounts: Record<Category, number> = {
-    공유지: 0,
+    라이프: 0,
     네트워크: 0,
-    세계: 0,
-    정책: 0,
+    창작: 0,
+    테크: 0,
   };
   for (const a of activities) {
     const slug = resolveCategorySlug(a);
@@ -230,10 +230,10 @@ export default async function CollectionPage({
 
   // 카테고리별 목표 카드 수 (progress_target.target_cards 합산)
   const categoryTargets: Record<Category, number> = {
-    공유지: 0,
+    라이프: 0,
     네트워크: 0,
-    세계: 0,
-    정책: 0,
+    창작: 0,
+    테크: 0,
   };
   type ProjectProgressRow = {
     progress_type: string | null;
@@ -327,7 +327,7 @@ export default async function CollectionPage({
     const label =
       slug && slug in SLUG_TO_LABEL
         ? SLUG_TO_LABEL[slug as CategorySlug]
-        : "공유지";
+        : "라이프";
 
     const projectTitle = a.episode?.project?.title ?? a.project?.title ?? "";
     const episodeBit =
@@ -397,7 +397,7 @@ function resolveCategorySlug(a: ActivityRow): string | null {
 }
 
 function parseCategoryFilter(cat: string | undefined): Category | null {
-  const allowed: Category[] = ["공유지", "네트워크", "세계", "정책"];
+  const allowed: Category[] = ["라이프", "네트워크", "창작", "테크"];
   if (cat && (allowed as string[]).includes(cat)) return cat as Category;
   return null;
 }

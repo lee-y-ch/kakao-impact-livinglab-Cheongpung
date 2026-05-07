@@ -18,14 +18,14 @@ export const dynamic = "force-dynamic";
 
 const FEED_LIMIT = 4;
 
-type CategorySlug = "commons" | "network" | "world" | "policy";
-type CategoryLabel = "공유지" | "네트워크" | "세계" | "정책";
+type CategorySlug = "active_life" | "network" | "local_culture" | "tech";
+type CategoryLabel = "라이프" | "네트워크" | "창작" | "테크";
 
 const SLUG_TO_LABEL: Record<CategorySlug, CategoryLabel> = {
-  commons: "공유지",
+  active_life: "라이프",
   network: "네트워크",
-  world: "세계",
-  policy: "정책",
+  local_culture: "창작",
+  tech: "테크",
 };
 
 type FeedActivity = {
@@ -150,16 +150,16 @@ export default async function ImpactPage() {
 
   // 카테고리 진척 — 한 번의 SELECT 로 가져온 공개 카드를 JS 에서 group-by
   const categoryCounts: Record<CategoryLabel, number> = {
-    공유지: 0,
+    라이프: 0,
     네트워크: 0,
-    세계: 0,
-    정책: 0,
+    창작: 0,
+    테크: 0,
   };
   const categoryTargets: Record<CategoryLabel, number> = {
-    공유지: 0,
+    라이프: 0,
     네트워크: 0,
-    세계: 0,
-    정책: 0,
+    창작: 0,
+    테크: 0,
   };
 
   for (const a of allPublic) {
@@ -180,14 +180,14 @@ export default async function ImpactPage() {
   }
 
   const categoryProgress = (
-    ["공유지", "네트워크", "세계", "정책"] as CategoryLabel[]
+    ["라이프", "네트워크", "창작", "테크"] as CategoryLabel[]
   ).map((label) => {
     const current = categoryCounts[label];
     const total = categoryTargets[label];
     const pct =
       total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
     return {
-      name: label === "공유지" ? "환대의 공유지" : label,
+      name: label === "라이프" ? "환대의 라이프" : label,
       label,
       current,
       total,
@@ -249,22 +249,22 @@ function feedPlace(f: FeedActivity): string {
 }
 
 const CATEGORY_DOT: Record<CategoryLabel, string> = {
-  공유지: "#9B6020",
+  라이프: "#9B6020",
   네트워크: "#3A7A55",
-  세계: "#2060C8",
-  정책: "#6040A0",
+  창작: "#2060C8",
+  테크: "#6040A0",
 };
 const CATEGORY_FILL: Record<CategoryLabel, string> = {
-  공유지: "#C4956A",
+  라이프: "#C4956A",
   네트워크: "#6BAF8A",
-  세계: "#88AADD",
-  정책: "#A080CC",
+  창작: "#88AADD",
+  테크: "#A080CC",
 };
 const CATEGORY_BADGE: Record<CategoryLabel, string> = {
-  공유지: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
+  라이프: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
   네트워크: "bg-[rgba(107,175,138,0.12)] text-[#3A7A55]",
-  세계: "bg-[rgba(49,130,246,0.1)] text-[#2060C8]",
-  정책: "bg-[rgba(130,90,180,0.1)] text-[#6040A0]",
+  창작: "bg-[rgba(49,130,246,0.1)] text-[#2060C8]",
+  테크: "bg-[rgba(130,90,180,0.1)] text-[#6040A0]",
 };
 
 // ── presentation ───────────────────────────────────────────────

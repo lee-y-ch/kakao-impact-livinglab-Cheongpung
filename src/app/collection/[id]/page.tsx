@@ -20,14 +20,14 @@ export const dynamic = "force-dynamic";
  * 같이 펼쳐 보여주는 정적 표현으로 대체. (실데이터 연동 시 client 분리 필요하면 후속.)
  */
 
-type CategorySlug = "commons" | "network" | "world" | "policy";
-type CategoryLabel = "공유지" | "네트워크" | "세계" | "정책";
+type CategorySlug = "active_life" | "network" | "local_culture" | "tech";
+type CategoryLabel = "라이프" | "네트워크" | "창작" | "테크";
 
 const SLUG_TO_LABEL: Record<CategorySlug, CategoryLabel> = {
-  commons: "공유지",
+  active_life: "라이프",
   network: "네트워크",
-  world: "세계",
-  policy: "정책",
+  local_culture: "창작",
+  tech: "테크",
 };
 
 type CategoryStyle = {
@@ -39,7 +39,7 @@ type CategoryStyle = {
 };
 
 const CATEGORY_STYLE: Record<CategoryLabel, CategoryStyle> = {
-  공유지: {
+  라이프: {
     accent: "#C4956A",
     bgLight: "rgba(196,149,106,0.12)",
     bgDark: "rgba(196,149,106,0.20)",
@@ -53,14 +53,14 @@ const CATEGORY_STYLE: Record<CategoryLabel, CategoryStyle> = {
     text: "#3A7A55",
     badgeBg: "rgba(107,175,138,0.06)",
   },
-  세계: {
+  창작: {
     accent: "#88AADD",
     bgLight: "rgba(136,170,221,0.14)",
     bgDark: "rgba(136,170,221,0.22)",
     text: "#2060C8",
     badgeBg: "rgba(136,170,221,0.08)",
   },
-  정책: {
+  테크: {
     accent: "#A080CC",
     bgLight: "rgba(160,128,204,0.14)",
     bgDark: "rgba(160,128,204,0.22)",
@@ -198,7 +198,7 @@ export default async function CardDetailPage({
       : null;
   const style = categoryLabel
     ? CATEGORY_STYLE[categoryLabel]
-    : CATEGORY_STYLE["공유지"];
+    : CATEGORY_STYLE["라이프"];
 
   const projectTitle =
     activity.episode?.project?.title ?? activity.project?.title ?? null;

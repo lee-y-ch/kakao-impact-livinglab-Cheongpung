@@ -15,28 +15,28 @@ export const dynamic = "force-dynamic";
 
 const FEED_LIMIT = 50;
 
-type CategorySlug = "commons" | "network" | "world" | "policy";
-type CategoryLabel = "공유지" | "네트워크" | "세계" | "정책";
+type CategorySlug = "active_life" | "network" | "local_culture" | "tech";
+type CategoryLabel = "라이프" | "네트워크" | "창작" | "테크";
 
 const SLUG_TO_LABEL: Record<CategorySlug, CategoryLabel> = {
-  commons: "공유지",
+  active_life: "라이프",
   network: "네트워크",
-  world: "세계",
-  policy: "정책",
+  local_culture: "창작",
+  tech: "테크",
 };
 
 const CATEGORY_BADGE: Record<CategoryLabel, string> = {
-  공유지: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
+  라이프: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
   네트워크: "bg-[rgba(107,175,138,0.12)] text-[#3A7A55]",
-  세계: "bg-[rgba(49,130,246,0.1)] text-[#2060C8]",
-  정책: "bg-[rgba(130,90,180,0.1)] text-[#6040A0]",
+  창작: "bg-[rgba(49,130,246,0.1)] text-[#2060C8]",
+  테크: "bg-[rgba(130,90,180,0.1)] text-[#6040A0]",
 };
 
 const CATEGORY_DOT: Record<CategoryLabel, string> = {
-  공유지: "#C4956A",
+  라이프: "#C4956A",
   네트워크: "#6BAF8A",
-  세계: "#88AADD",
-  정책: "#A080CC",
+  창작: "#88AADD",
+  테크: "#A080CC",
 };
 
 const PERIODS: {
@@ -118,10 +118,10 @@ export default async function FeedPage({
 
   // 카테고리별 카운트 (현재 기간 한정)
   const categoryCounts: Record<CategoryLabel, number> = {
-    공유지: 0,
+    라이프: 0,
     네트워크: 0,
-    세계: 0,
-    정책: 0,
+    창작: 0,
+    테크: 0,
   };
   for (const a of allInPeriod) {
     const label = labelOf(a);
@@ -163,7 +163,7 @@ export default async function FeedPage({
 
 function parseCategory(cat: string | undefined): CategoryLabel | null {
   if (!cat) return null;
-  const allowed: CategoryLabel[] = ["공유지", "네트워크", "세계", "정책"];
+  const allowed: CategoryLabel[] = ["라이프", "네트워크", "창작", "테크"];
   return (allowed as string[]).includes(cat) ? (cat as CategoryLabel) : null;
 }
 
@@ -276,7 +276,7 @@ function Sidebar({
   activePeriod: Period;
   topShops: { name: string; pct: number }[];
 }) {
-  const allLabels: CategoryLabel[] = ["공유지", "네트워크", "세계", "정책"];
+  const allLabels: CategoryLabel[] = ["라이프", "네트워크", "창작", "테크"];
 
   return (
     <aside className="lg:sticky lg:top-[88px]">
@@ -311,7 +311,7 @@ function Sidebar({
                       className="mr-2 h-[7px] w-[7px] flex-shrink-0 rounded-full"
                       style={{ background: CATEGORY_DOT[label] }}
                     />
-                    {label === "공유지" ? "환대의 공유지" : label}
+                    {label === "라이프" ? "환대의 라이프" : label}
                   </span>
                   <span className="text-[11px] opacity-50">
                     {categoryCounts[label]}
