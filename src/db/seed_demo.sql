@@ -13,12 +13,10 @@
 --   001_initial.sql + 002_phase1_extensions.sql + 003_categories_realign.sql 적용 후 실행.
 --   재실행해도 idempotent (DELETE … WHERE 표식 → INSERT 패턴).
 --
--- 사장님 로그인 정보 (시연 직전 청풍에 별도 채널로 전달):
---   교동 책방 두번째 지구 (gyodong-bookshop) → 코드 demo0001
---   잠시섬 카페            (jamsi-cafe)        → 코드 demo0002
---   장흥리 사랑방          (jangheungri-living)→ 코드 demo0003
---   초지진 손님방          (chojijin-guestroom)→ 코드 demo0004
---   강화 풍물시장          (ganghwa-market)    → 코드 demo0005
+-- 사장님 로그인 정보:
+--   평문 코드는 repo 에 남기지 않는다.
+--   시연 직전 청풍/팀원에게 별도 안전한 채널로 전달한다.
+--   이 파일에는 bcrypt hash 만 유지한다.
 --
 -- 참고:
 --   사진 URL 은 Unsplash 자유이용 이미지로 placeholder. 실제 시연 직전
@@ -284,11 +282,11 @@ insert into public.shops (id, name, description, address, qr_token, is_public, s
   );
 
 insert into public.shop_owners (shop_id, name, owner_code_hash) values
-  ('dddddddd-0000-4000-8000-000000000001', '교동 책방 사장님', '$2b$12$a0hMpWm6mEUJrIWtwrq/buK23kQhkRaFtILGAtuD0muKmWTljWlHe'),  -- demo0001
-  ('dddddddd-0000-4000-8000-000000000002', '잠시섬 카페 사장님', '$2b$12$ZsS8rVCEg6UdotijBP2/VuTTJzAIYa52uQ6Wz/o81G7M4idU0N9BK'),  -- demo0002
-  ('dddddddd-0000-4000-8000-000000000003', '장흥리 사랑방 사장님', '$2b$12$nqY3QvMdWYzFCP/qY9miFOI59WtOKcxFNiZsJqZIe.xDOjwv.PV5a'), -- demo0003
-  ('dddddddd-0000-4000-8000-000000000004', '초지진 손님방 사장님', '$2b$12$kTc.Y3LPPN7p0cAExlu67eLZbnKuc40knfDX1VrTqoz6zIG2Z3ETe'), -- demo0004
-  ('dddddddd-0000-4000-8000-000000000005', '강화 풍물시장 상인회', '$2b$12$qXGtSVI9VlKlXmlZ92jZg.nNgFPcUmYXLEZoz7xb6S8ENdTC9WSUm'); -- demo0005
+  ('dddddddd-0000-4000-8000-000000000001', '교동 책방 사장님', '$2b$12$a0hMpWm6mEUJrIWtwrq/buK23kQhkRaFtILGAtuD0muKmWTljWlHe'),
+  ('dddddddd-0000-4000-8000-000000000002', '잠시섬 카페 사장님', '$2b$12$ZsS8rVCEg6UdotijBP2/VuTTJzAIYa52uQ6Wz/o81G7M4idU0N9BK'),
+  ('dddddddd-0000-4000-8000-000000000003', '장흥리 사랑방 사장님', '$2b$12$nqY3QvMdWYzFCP/qY9miFOI59WtOKcxFNiZsJqZIe.xDOjwv.PV5a'),
+  ('dddddddd-0000-4000-8000-000000000004', '초지진 손님방 사장님', '$2b$12$kTc.Y3LPPN7p0cAExlu67eLZbnKuc40knfDX1VrTqoz6zIG2Z3ETe'),
+  ('dddddddd-0000-4000-8000-000000000005', '강화 풍물시장 상인회', '$2b$12$qXGtSVI9VlKlXmlZ92jZg.nNgFPcUmYXLEZoz7xb6S8ENdTC9WSUm');
 
 -- ───────────────────────── 7. activities (35개) ─────────────────────────
 -- 다양한 type / shop / project / episode / 공개 여부.

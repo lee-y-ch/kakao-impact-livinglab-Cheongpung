@@ -90,8 +90,8 @@ cp .env.local.example .env.local
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase 프로젝트
 - `SUPABASE_SERVICE_ROLE_KEY` — 서버 전용 (RLS 우회, 관리자 API/시드)
-- `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET` — Supabase Auth Provider 등록용
-- `ANTHROPIC_API_KEY` — LLM 편지 보조 (Phase 4~)
+- `LLM_PROVIDER`, `GEMINI_API_KEY` — LLM 편지 첫 문장 제안
+- `ANTHROPIC_API_KEY` — Anthropic 전환 시 선택
 - `CREW_ACCESS_CODE` — 크루 공용 코드 (Phase 3)
 - `NEXT_PUBLIC_SITE_URL` — 로컬 `http://localhost:3001`, 배포 시 실제 도메인
 
@@ -122,14 +122,16 @@ npx supabase gen types typescript --project-id <PROJECT_REF> --schema public > s
 ## 카카오 OAuth 셋업
 
 1. [developers.kakao.com](https://developers.kakao.com) 에서 내 애플리케이션 생성
-2. **앱 키 → REST API 키** → `KAKAO_CLIENT_ID`
-3. **보안 → Client Secret** 생성 → `KAKAO_CLIENT_SECRET`
+2. **앱 키 → REST API 키** 확인
+3. **보안 → Client Secret** 생성
 4. **카카오 로그인 → 활성화 ON**, **Redirect URI** 에 다음 등록
    ```
    https://<SUPABASE-PROJECT-REF>.supabase.co/auth/v1/callback
    ```
 5. **동의 항목** : 닉네임, 프로필 사진 (필수 최소 범위)
-6. Supabase 대시보드 → **Authentication → Providers → Kakao** 에 `Client ID`, `Client Secret` 입력하고 활성화
+6. Supabase 대시보드 → **Authentication → Providers → Kakao** 에 REST API 키와 Client Secret을 입력하고 활성화
+
+앱 서버는 카카오 REST API key/secret을 직접 읽지 않는다. Vercel env에는 등록하지 않고 Supabase Auth Provider에만 등록한다.
 
 ## Vercel 배포
 
