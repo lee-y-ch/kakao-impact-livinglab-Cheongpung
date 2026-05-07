@@ -118,6 +118,7 @@ export async function POST(request: NextRequest) {
     author_shop_id: authorShopId,
     kind: parsed.data.kind,
     body: parsed.data.body,
+    llm_draft: actor.role === "owner" ? parsed.data.llmDraft : null,
     visibility: parsed.data.visibility,
   };
 

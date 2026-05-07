@@ -142,21 +142,21 @@
 
 ## 기술 스택
 
-| 영역                | 선택                                           |
-| ------------------- | ---------------------------------------------- |
-| 프레임워크          | Next.js 14 (App Router) + TypeScript           |
-| 스타일링            | Tailwind CSS + shadcn/ui                       |
-| DB / Storage / Auth | Supabase (Postgres + Storage + Auth + RLS)     |
-| 참여자 인증         | Supabase Auth + 카카오 OAuth                   |
-| 사장님 인증         | 가게 코드 (bcrypt) + httpOnly 쿠키 + 실패 잠금 |
-| 크루 인증           | 공용 코드 (Phase 3) → 개인 계정 (Phase 7)      |
-| 관리자 인증         | Supabase Auth + `role=admin`                   |
-| LLM                 | Claude Haiku 4.5 (편지 첫 문장 제안)           |
-| 호스팅              | Vercel                                         |
-| PWA                 | `public/manifest.json` (Phase 8 재판단)        |
-| QR 생성             | `qrcode` npm 패키지                            |
-| 폼/검증             | Zod + react-hook-form                          |
-| 시각화 (노드맵)     | D3 또는 React Flow (Phase 5 선정)              |
+| 영역                | 선택                                                                                          |
+| ------------------- | --------------------------------------------------------------------------------------------- |
+| 프레임워크          | Next.js 14 (App Router) + TypeScript                                                          |
+| 스타일링            | Tailwind CSS + shadcn/ui                                                                      |
+| DB / Storage / Auth | Supabase (Postgres + Storage + Auth + RLS)                                                    |
+| 참여자 인증         | Supabase Auth + 카카오 OAuth                                                                  |
+| 사장님 인증         | 가게 코드 (bcrypt) + httpOnly 쿠키 + 실패 잠금                                                |
+| 크루 인증           | 공용 코드 (Phase 3) → 개인 계정 (Phase 7)                                                     |
+| 관리자 인증         | Supabase Auth + `role=admin`                                                                  |
+| LLM                 | Gemini 2.5 Flash-Lite (`gemini-2.5-flash-lite`) 기본, Anthropic 전환 가능 (편지 첫 문장 제안) |
+| 호스팅              | Vercel                                                                                        |
+| PWA                 | `public/manifest.json` (Phase 8 재판단)                                                       |
+| QR 생성             | `qrcode` npm 패키지                                                                           |
+| 폼/검증             | Zod + react-hook-form                                                                         |
+| 시각화 (노드맵)     | D3 또는 React Flow (Phase 5 선정)                                                             |
 
 ## 데이터 모델
 
@@ -372,7 +372,7 @@ type CurrentActor =
    • 카드 선택 → /owner/letters/new
 5. /owner/letters/new?activity_id=...
    • 카드 미리보기 (단서)
-   • POST /api/llm/draft → Claude Haiku 4.5 (고정 프롬프트)
+   • POST /api/llm/draft → Gemini 2.5 Flash-Lite 기본 / Anthropic 전환 가능 (고정 프롬프트)
    • "AI 초안, 꼭 수정해서 보내세요" 라벨 필수
    • visibility 선택 → reactions insert (kind=letter, author_role=owner)
 6. /owner/settings
@@ -599,24 +599,24 @@ type CurrentActor =
 
 ## 리스크와 대응
 
-| 리스크                 | 대응                                                                 |
-| ---------------------- | -------------------------------------------------------------------- |
-| 카카오 OAuth 검수      | Phase 0 완료                                                         |
-| 모바일 카메라·EXIF     | `capture="environment"` + EXIF 회전 보정                             |
-| Supabase Free tier     | 1024px 압축                                                          |
-| LLM API 비용           | Haiku 4.5, 명시적 버튼에서만                                         |
-| 솔로 dev 번아웃        | Phase 단위 배포                                                      |
-| "주인공 모호" 피드백   | 세 주인공 + 참여자 카드 강조 + `/impact` 공개로 "강화도 진척" 가시화 |
-| 로컬유니버스 앱과 중복 | 다중 역할 환대 서사 대시보드 포지셔닝                                |
-| 청풍 운영 인계 어려움  | 관리자 CRUD Phase 3, `/admin` 평문 폼                                |
-| 혼합 인증 복잡도       | `current-actor` 단일 레이어 + 관리자 Supabase Auth 통일              |
-| CSRF                   | SameSite + Origin + 상태 변경 토큰                                   |
-| service role 남용      | 전용 route handler, 진입부 권한 검증                                 |
-| 중복 저장              | `idempotency_key`                                                    |
-| 초상권/개인정보        | `face_consent` + `reported_at` + 신고·삭제 절차                      |
-| 공개 콘텐츠 빈곤       | 공개 전환 UX + 검수 큐에서 공개 추천                                 |
-| 포인트 왜곡            | 개인 점수 UI X, 집계 단위만                                          |
-| 진척도 기준 혼란       | `progress_type` 컬럼으로 프로젝트마다 선택 (팀 결정)                 |
+| 리스크                 | 대응                                                                   |
+| ---------------------- | ---------------------------------------------------------------------- |
+| 카카오 OAuth 검수      | Phase 0 완료                                                           |
+| 모바일 카메라·EXIF     | `capture="environment"` + EXIF 회전 보정                               |
+| Supabase Free tier     | 1024px 압축                                                            |
+| LLM API 비용           | Gemini 무료 tier 우선, 명시적 버튼에서만. Anthropic 은 키 발급 후 전환 |
+| 솔로 dev 번아웃        | Phase 단위 배포                                                        |
+| "주인공 모호" 피드백   | 세 주인공 + 참여자 카드 강조 + `/impact` 공개로 "강화도 진척" 가시화   |
+| 로컬유니버스 앱과 중복 | 다중 역할 환대 서사 대시보드 포지셔닝                                  |
+| 청풍 운영 인계 어려움  | 관리자 CRUD Phase 3, `/admin` 평문 폼                                  |
+| 혼합 인증 복잡도       | `current-actor` 단일 레이어 + 관리자 Supabase Auth 통일                |
+| CSRF                   | SameSite + Origin + 상태 변경 토큰                                     |
+| service role 남용      | 전용 route handler, 진입부 권한 검증                                   |
+| 중복 저장              | `idempotency_key`                                                      |
+| 초상권/개인정보        | `face_consent` + `reported_at` + 신고·삭제 절차                        |
+| 공개 콘텐츠 빈곤       | 공개 전환 UX + 검수 큐에서 공개 추천                                   |
+| 포인트 왜곡            | 개인 점수 UI X, 집계 단위만                                            |
+| 진척도 기준 혼란       | `progress_type` 컬럼으로 프로젝트마다 선택 (팀 결정)                   |
 
 ## 검증 (수동, 시연 직전)
 
@@ -643,33 +643,33 @@ type CurrentActor =
 
 ## 핵심 파일
 
-| 경로                                            | 역할                               |
-| ----------------------------------------------- | ---------------------------------- |
-| `src/db/migrations/001_initial.sql`             | 스키마·RLS·카테고리 시드           |
-| `src/lib/supabase/{server,middleware}.ts`       | SSR 클라이언트·세션 갱신           |
-| `src/lib/auth/current-actor.ts`                 | **단일 actor 해석**                |
-| `src/lib/auth/{owner,crew,admin}.ts`            | 역할별 인증                        |
-| `src/lib/schemas/activity.ts`                   | Zod activity 스키마                |
-| `src/lib/progress/calculator.ts`                | progress_type 별 진척 계산         |
-| `src/lib/utils/csrf.ts`                         | CSRF·Origin 검증                   |
-| `src/lib/llm/anthropic.ts`                      | Claude Haiku 4.5                   |
-| `src/components/activities/ActivityCard.tsx`    | 카드 (참여자/공개 뷰 공용)         |
-| `src/components/activities/ActivityForm.tsx`    | 카드 작성 폼                       |
-| `src/components/impact/NodeMap.tsx`             | `/impact` 노드맵                   |
-| `src/components/impact/CategoryProgress.tsx`    | 카테고리 진척 바                   |
-| `src/components/projects/ProgressBar.tsx`       | 프로젝트 진척 바                   |
-| `src/components/reactions/ReactionComposer.tsx` | 편지·응원                          |
-| `src/app/auth/callback/route.ts`                | 카카오 OAuth 콜백 (idempotent)     |
-| `src/app/(traveler)/entry/[qr_token]/page.tsx`  | QR 진입                            |
-| `src/app/(traveler)/collection/page.tsx`        | 참여자 도감                        |
-| `src/app/(public)/impact/page.tsx`              | **공개 임팩트 대시보드** (Phase 5) |
-| `src/app/(public)/projects/[slug]/page.tsx`     | 프로젝트 진척·타임라인             |
-| `src/app/(admin)/admin/review/page.tsx`         | 공개 검수 큐                       |
-| `src/app/(admin)/admin/reports/page.tsx`        | 신고 대응                          |
-| `src/app/(crew)/crew/page.tsx`                  | 크루 대시보드 (Phase 3)            |
-| `src/app/api/activities/route.ts`               | 카드 생성                          |
-| `src/app/api/episodes/[id]/status/route.ts`     | 크루 status 업데이트               |
-| `docs/test-scenarios.md`                        | 수동 체크리스트                    |
+| 경로                                             | 역할                                                            |
+| ------------------------------------------------ | --------------------------------------------------------------- |
+| `src/db/migrations/001_initial.sql`              | 스키마·RLS·카테고리 시드                                        |
+| `src/lib/supabase/{server,middleware}.ts`        | SSR 클라이언트·세션 갱신                                        |
+| `src/lib/auth/current-actor.ts`                  | **단일 actor 해석**                                             |
+| `src/lib/auth/{owner,crew,admin}.ts`             | 역할별 인증                                                     |
+| `src/lib/schemas/activity.ts`                    | Zod activity 스키마                                             |
+| `src/lib/progress/calculator.ts`                 | progress_type 별 진척 계산                                      |
+| `src/lib/utils/csrf.ts`                          | CSRF·Origin 검증                                                |
+| `src/lib/llm/{index,gemini,anthropic,prompt}.ts` | Gemini 기본 / Anthropic 전환 가능한 편지 첫 문장 LLM 클라이언트 |
+| `src/components/activities/ActivityCard.tsx`     | 카드 (참여자/공개 뷰 공용)                                      |
+| `src/components/activities/ActivityForm.tsx`     | 카드 작성 폼                                                    |
+| `src/components/impact/NodeMap.tsx`              | `/impact` 노드맵                                                |
+| `src/components/impact/CategoryProgress.tsx`     | 카테고리 진척 바                                                |
+| `src/components/projects/ProgressBar.tsx`        | 프로젝트 진척 바                                                |
+| `src/components/reactions/ReactionComposer.tsx`  | 편지·응원                                                       |
+| `src/app/auth/callback/route.ts`                 | 카카오 OAuth 콜백 (idempotent)                                  |
+| `src/app/(traveler)/entry/[qr_token]/page.tsx`   | QR 진입                                                         |
+| `src/app/(traveler)/collection/page.tsx`         | 참여자 도감                                                     |
+| `src/app/(public)/impact/page.tsx`               | **공개 임팩트 대시보드** (Phase 5)                              |
+| `src/app/(public)/projects/[slug]/page.tsx`      | 프로젝트 진척·타임라인                                          |
+| `src/app/(admin)/admin/review/page.tsx`          | 공개 검수 큐                                                    |
+| `src/app/(admin)/admin/reports/page.tsx`         | 신고 대응                                                       |
+| `src/app/(crew)/crew/page.tsx`                   | 크루 대시보드 (Phase 3)                                         |
+| `src/app/api/activities/route.ts`                | 카드 생성                                                       |
+| `src/app/api/episodes/[id]/status/route.ts`      | 크루 status 업데이트                                            |
+| `docs/test-scenarios.md`                         | 수동 체크리스트                                                 |
 
 ## MVP 에서 빼고 풀버전에서 추가할 것
 

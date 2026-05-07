@@ -37,7 +37,9 @@ export function LetterComposer({
   const [body, setBody] = useState("");
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [drafting, setDrafting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [llmDraft, setLlmDraft] = useState<string | null>(null);
   const [makePublic, setMakePublic] = useState(true);
 
   const draftKey = `${DRAFT_KEY_PREFIX}${activityId}`;
@@ -119,6 +121,36 @@ export function LetterComposer({
     }
   }
 
+  async function requestAiDraft() {
+    if (drafting) return;
+    setDrafting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/llm/draft", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ activityId }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        draft?: string;
+        message?: string;
+      };
+      if (!res.ok || !data.draft) {
+        setError(
+          data.message ??
+            "AI 초안을 만들지 못했어요. 직접 작성은 계속할 수 있어요."
+        );
+        return;
+      }
+      setLlmDraft(data.draft);
+      startWith(data.draft);
+    } catch {
+      setError("AI 초안 요청 중 네트워크 오류가 발생했어요.");
+    } finally {
+      setDrafting(false);
+    }
+  }
+
   async function send() {
     if (submitting) return;
     const trimmed = body.trim();
@@ -136,6 +168,7 @@ export function LetterComposer({
           activityId,
           kind: "letter",
           body: trimmed,
+          llmDraft,
           visibility: makePublic ? "public" : "private",
         }),
       });
@@ -212,9 +245,34 @@ export function LetterComposer({
               fontSize: 11,
               fontFamily: "var(--mono-font)",
               color: "var(--ink-3)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
             }}
           >
-            {savedAt ? `자동 저장됨 · ${savedAt}` : "초안 저장 대기"}
+            <span>
+              {savedAt ? `자동 저장됨 · ${savedAt}` : "초안 저장 대기"}
+            </span>
+            <button
+              type="button"
+              onClick={requestAiDraft}
+              disabled={drafting}
+              style={{
+                padding: "9px 12px",
+                cursor: drafting ? "wait" : "pointer",
+                background: "var(--ink)",
+                color: "var(--paper)",
+                border: "none",
+                fontSize: 10.5,
+                fontFamily: "var(--mono-font)",
+                letterSpacing: "0.08em",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {drafting ? "AI 초안 중…" : "AI 첫 문장 제안"}
+            </button>
           </div>
         </div>
 
@@ -423,8 +481,56 @@ export function LetterComposer({
             lineHeight: 1.7,
           }}
         >
-          대신 써주지 않습니다. 떠오르지 않는 단어만 옆에서 같이 골라요.
+          AI 초안은 첫 문장 제안일 뿐입니다. 꼭 사장님 말로 고쳐서 보내주세요.
         </div>
+
+        <button
+          type="button"
+          onClick={requestAiDraft}
+          disabled={drafting}
+          style={{
+            width: "100%",
+            padding: "11px 12px",
+            marginBottom: 18,
+            cursor: drafting ? "wait" : "pointer",
+            background: "var(--ink)",
+            color: "var(--paper)",
+            border: "none",
+            fontSize: 11,
+            fontFamily: "var(--mono-font)",
+            letterSpacing: "0.1em",
+          }}
+        >
+          {drafting ? "AI 초안 만드는 중…" : "AI 첫 문장 제안"}
+        </button>
+
+        {llmDraft ? (
+          <div
+            style={{
+              marginBottom: 20,
+              padding: 12,
+              border: "1px solid var(--sea)",
+              background: "var(--paper)",
+              fontSize: 11.5,
+              lineHeight: 1.7,
+              color: "var(--ink-2)",
+              fontFamily: "var(--serif-font)",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "var(--mono-font)",
+                fontSize: 9.5,
+                color: "var(--ink-3)",
+                letterSpacing: "0.12em",
+                marginBottom: 6,
+              }}
+            >
+              AI DRAFT · 저장 시 원본 기록
+            </div>
+            {llmDraft}
+          </div>
+        ) : null}
 
         <div
           style={{
@@ -554,8 +660,8 @@ export function LetterComposer({
           >
             POLICY
           </div>
-          AI 단어 추천은 사장님 글을 학습에 쓰지 않습니다. {recipientName}님
-          정보는 이 편지 작성 동안만 보여요.
+          AI 초안은 명시적으로 버튼을 누를 때만 만듭니다. 초안은 원본 기록으로
+          남기고, 실제로 보내는 글은 사장님이 수정한 본문입니다.
         </div>
       </aside>
     </>

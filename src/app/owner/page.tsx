@@ -505,7 +505,7 @@ export default async function OwnerHomePage() {
                           }}
                         >
                           <Link
-                            href={`/owner/letters/new?activity=${c.id as string}`}
+                            href={`/owner/letters/new?activity_id=${c.id as string}`}
                             style={{
                               padding: "8px 14px",
                               fontSize: 11.5,

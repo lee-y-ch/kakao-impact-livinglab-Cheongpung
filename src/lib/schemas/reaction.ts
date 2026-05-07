@@ -28,6 +28,12 @@ export const ReactionCreateSchema = z
       .max(2000)
       .optional()
       .transform((v) => (v && v.length > 0 ? v : null)),
+    llmDraft: z
+      .string()
+      .trim()
+      .max(2000)
+      .optional()
+      .transform((v) => (v && v.length > 0 ? v : null)),
     visibility: ReactionVisibilitySchema.default("private"),
   })
   .superRefine((val, ctx) => {

@@ -24,19 +24,18 @@ const CATEGORY_EN: Record<string, string> = {
   tech: "tech",
 };
 
-type SearchParams = { activity?: string };
+type SearchParams = { activity?: string; activity_id?: string };
 
 /**
  * /owner/letters/new — Claude editorial 톤의 사장님 편지 작성.
  *
  * 출처: Claude artifact pages/OwnerLetterDesktop.jsx (2026-04-29).
  * 시각: 시안 그대로 (3-col 320 / 1fr / 280 — 좌 받는 사람 컨텍스트 / 중앙 편지지 / 우 ASSIST)
- * 기능: ?activity=UUID 카드 컨텍스트 로드. 본문 작성 → POST /api/reactions
+ * 기능: ?activity=UUID 또는 ?activity_id=UUID 카드 컨텍스트 로드. 본문 작성 → POST /api/reactions
  *      (kind=letter). 사장님 letter 는 이번 PR 에서 reactions API 가
  *      허용하도록 함께 확장됨.
  *
- * AI 단어/첫 문장 후보는 schema-derived (참여자 닉네임 + 자주 등장한 단어)
- * 로 정적 placeholder 처럼 채움. 실제 LLM 호출은 다음 단계 (Phase 4-b).
+ * 정적 첫 문장 후보 + /api/llm/draft 의 명시적 AI 첫 문장 제안을 함께 제공.
  */
 export default async function OwnerLetterNewPage({
   searchParams,
@@ -48,9 +47,8 @@ export default async function OwnerLetterNewPage({
     redirect("/owner/login?next=/owner/letters/new");
   }
 
-  const idCheck = searchParams.activity
-    ? UuidSchema.safeParse(searchParams.activity)
-    : null;
+  const activityParam = searchParams.activity_id ?? searchParams.activity;
+  const idCheck = activityParam ? UuidSchema.safeParse(activityParam) : null;
   if (!idCheck || !idCheck.success) {
     return <NoActivitySelected />;
   }

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
+  CREW_COOKIE,
   OWNER_COOKIE,
   sessionCookieOptions,
   type OwnerSessionPayload,
@@ -10,6 +11,7 @@ import {
 import { getRequestIp, recordAuthEvent } from "@/lib/auth/audit";
 import { OwnerLoginSchema } from "@/lib/schemas/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { assertSameOrigin, CsrfError } from "@/lib/utils/csrf";
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -143,7 +145,11 @@ export async function POST(request: NextRequest) {
     shopId,
     issuedAt: Date.now(),
   };
+  const supabase = createServerSupabase();
+  await supabase.auth.signOut();
+
   const cookieStore = cookies();
+  cookieStore.set(CREW_COOKIE, "", { ...sessionCookieOptions(0), maxAge: 0 });
   cookieStore.set(
     OWNER_COOKIE,
     JSON.stringify(payload),

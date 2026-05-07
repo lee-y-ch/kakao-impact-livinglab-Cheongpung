@@ -70,7 +70,7 @@
 **해야 할 것**:
 1. `/owner` 대시보드 — 본인 가게 연결된 activities 그리드, v2 디자인 토큰
 2. `/owner/letters/new?activity_id=...` — 카드 미리보기 + LLM 첫문장 제안 버튼 + 본문 textarea + visibility 선택 + 저장 → `POST /api/reactions` (kind=letter, author_role=owner)
-3. `POST /api/llm/draft` (route handler 신규) — `src/lib/llm/anthropic.ts` 의 Claude Haiku 4.5 호출. 고정 프롬프트 + activity 컨텍스트 + "수정해서 보내세요" 라벨 강제
+3. `POST /api/llm/draft` (route handler 신규) — `src/lib/llm/` 의 Gemini 2.5 Flash-Lite 기본 호출. Anthropic 키 발급 시 provider 전환 가능. 고정 프롬프트 + activity 컨텍스트 + "수정해서 보내세요" 라벨 강제
 4. `/owner/settings` — 가게 공개 ON/OFF 토글 (`shops.is_public` PATCH). 신규 라우트 핸들러. owner 본인 가게에만 권한
 5. `/collection/[id]` 의 reactions 실시간 반영 검증 (이미 PR #2 에서 살아있음. 새 letter 가 표시되는지만 확인)
 
@@ -203,7 +203,8 @@
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` ← Production 만 권장 (Preview 는 별도 dev 키 또는 동일)
    - `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET`
-   - `ANTHROPIC_API_KEY` (Phase 4 LLM)
+   - `LLM_PROVIDER` / `GEMINI_API_KEY` (Phase 4 LLM, 기본 provider)
+   - `ANTHROPIC_API_KEY` (선택, 추후 Anthropic 전환 시)
    - `CREW_ACCESS_CODE` (8자 이상 랜덤. 청풍에 별도 전달)
    - `NEXT_PUBLIC_SITE_URL` ← 최종 도메인 (`https://<domain>`)
 4. **Domain** : 우선 Vercel 기본 도메인(`<project>.vercel.app`)으로 배포 → 나중에 커스텀 도메인 연결
@@ -312,7 +313,7 @@ npm run dev   # → http://localhost:3001
 |---|---|---|
 | 카카오 OAuth 검수 지연 | 4.3 단계에서 redirect 추가 후 첫 로그인 시 | dev redirect 그대로 두고 prod 만 추가. 검수 거부 시 비즈 앱 등록 |
 | Supabase Free tier 용량 | 시드 데이터 + 사진 업로드 후 | 1024px 압축 적용 중. 발표 후 Pro 전환 검토 |
-| LLM 비용 | Phase 4 라이브 후 | Haiku 4.5 + 명시적 버튼 1회 호출만. 월 한도 monitor |
+| LLM 비용 | Phase 4 라이브 후 | Gemini 무료 tier 우선 + 명시적 버튼 1회 호출만. Anthropic 전환 시 월 한도 monitor |
 | 모바일 카메라 EXIF | `/entry/[qr_token]` 실기기 테스트 | `prepareImage` 가 처리. iOS 14+ Safari 동작 확인 필요 |
 | 시연 시 라이브 호출 실패 | 4.4 smoke test 단계 | 시연 PC 의 인터넷 연결 백업 (테더링), 도메인 캐시 |
 | 노드맵 도입 시간 부족 | 2.5 작업 중 | 정적 SVG fallback. 캡션만 변경 |
