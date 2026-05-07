@@ -164,7 +164,7 @@
    where table_schema = 'public' order by table_name;
    ```
    `activities, artifacts, auth_events, categories, contribution_log, contribution_points, episode_archives, episodes, page_views, project_hosts, projects, reactions, shop_owners, shops, users` 가 다 보이면 OK
-3. **Storage 버킷 확인**: Storage → `activity-photos` 버킷 존재 + Public **OFF**. 없으면 Section 4.1.B 의 3번 따라 생성
+3. **Storage 버킷 확인**: Storage → `activity-photos` 버킷 존재 확인. 정책: **Public = ON**, 5MB 제한, `image/jpeg|png|webp` 만 허용. 없으면 `node --env-file=.env.local scripts/bootstrap-storage.mjs` 실행 (이 스크립트가 자동 생성·업데이트). 사진 보호는 RLS 가 `activities.is_public` / `removed_at` 으로 행 단위에서 처리하므로 버킷은 public read 로 둔다 — `<Image src={photo_url}>` 가 직접 렌더하는 구조
 4. **카카오 OAuth Provider** 이미 활성화되어 있는지 확인 (Authentication → Providers → Kakao)
 5. **첫 관리자 계정**: 청풍 담당자 이메일로 Authentication → Users → Add user. 이후:
    ```sql
@@ -181,9 +181,7 @@
 2. **DB 마이그레이션 적용**:
    - SQL Editor → `src/db/migrations/001_initial.sql` 전체 → 실행
    - SQL Editor → `src/db/migrations/002_phase1_extensions.sql` 전체 → 실행
-3. **Storage 버킷 생성**:
-   - Storage → New bucket → name = `activity-photos`, **Public bucket = OFF**
-   - Bucket Policies → "Allow service_role full access" 정책 1개만 (insert/update/delete/select 모두 service_role 만)
+3. **Storage 버킷 생성**: `node --env-file=.env.local scripts/bootstrap-storage.mjs` 실행 (정책: Public = ON, 5MB 제한, `image/jpeg|png|webp`). 수동 생성 시 Storage → New bucket → name = `activity-photos`, **Public bucket = ON**. 사진 보호는 RLS 행 단위에서 처리
 4. **카카오 OAuth Provider 연결**:
    - Authentication → Providers → Kakao → Enable
    - Kakao REST API Key + Client Secret 입력 (dev 와 동일한 키 사용 가능)
