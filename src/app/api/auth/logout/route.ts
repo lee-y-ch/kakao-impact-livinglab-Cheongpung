@@ -1,11 +1,17 @@
+import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getRequestIp, recordAuthEvent } from "@/lib/auth/audit";
-import { getCurrentActor } from "@/lib/auth/current-actor";
+import {
+  CREW_COOKIE,
+  OWNER_COOKIE,
+  getCurrentActor,
+  sessionCookieOptions,
+} from "@/lib/auth/current-actor";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { assertSameOrigin, CsrfError } from "@/lib/utils/csrf";
 
-/** Supabase Auth 세션 로그아웃 (참여자 + 관리자 공용). 사장님은 /api/auth/owner DELETE 사용. */
+/** 현재 브라우저에 남은 인증 세션을 정리한다. */
 export async function POST(request: NextRequest) {
   try {
     assertSameOrigin(request);
@@ -19,6 +25,10 @@ export async function POST(request: NextRequest) {
   const actor = await getCurrentActor();
   const supabase = createServerSupabase();
   await supabase.auth.signOut();
+
+  const cookieStore = cookies();
+  cookieStore.set(OWNER_COOKIE, "", { ...sessionCookieOptions(0), maxAge: 0 });
+  cookieStore.set(CREW_COOKIE, "", { ...sessionCookieOptions(0), maxAge: 0 });
 
   if (actor.role === "participant" || actor.role === "admin") {
     await recordAuthEvent({

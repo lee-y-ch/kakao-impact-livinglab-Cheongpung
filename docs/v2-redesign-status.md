@@ -25,7 +25,7 @@
 - `src/lib/schemas/{activity,reaction,shop,project,episode}.ts` — Zod 스키마
 - `src/lib/progress/calculator.ts` — `progress_type` 별 진척 계산
 - `src/lib/utils/{csrf,image,qr,cn}.ts`
-- `src/lib/llm/anthropic.ts` — Claude Haiku 4.5 클라이언트
+- `src/lib/llm/{index,gemini,anthropic,prompt}.ts` — Gemini 2.5 Flash-Lite 기본, Anthropic 전환 가능 클라이언트
 
 ### 1.2 API 라우트 (전부 라이브)
 ```
