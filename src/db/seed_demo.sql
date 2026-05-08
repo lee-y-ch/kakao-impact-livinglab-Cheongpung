@@ -130,7 +130,7 @@ insert into public.projects (id, category_id, slug, title, summary, description,
     'demo-shibuya-exchange',
     '시부야대학 교류',
     '도쿄와 강화의 로컬 커뮤니티가 서로를 탐방하고 교류하는 롱텀 프로젝트',
-    '강화유니버스 × 시부야대학. 두 로컬 커뮤니티가 ''환대''를 매개로 서로의 삶과 배움을 교류하는 5년 롱텀 프로젝트. 2024년 11월 첫 만남, 2027년까지 회차 예정.',
+    '강화유니버스 × 시부야대학. 두 로컬 커뮤니티가 ''환대''를 매개로 서로의 삶과 배움을 주고받는 5년 롱텀 교류. 첫 만남은 2024년 11월, 서로의 동네를 오가며 관계를 천천히 쌓아간다.',
     '2024-11-01', null, true, 'time', '{"start_date": "2024-11-01", "end_date": "2028-12-31"}',
     'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=1200&h=800&fit=crop'
   ),
@@ -239,7 +239,7 @@ insert into public.shops (id, name, description, address, qr_token, is_public, s
   (
     'dddddddd-0000-4000-8000-000000000002',
     '잠시섬 카페',
-    '강화유니버스의 베이스캠프. 모든 여정이 시작되는 곳.',
+    '강화유니버스의 베이스캠프. 참여자와 크루, 외부 파트너가 가장 먼저 서로를 만나는 자리.',
     '인천광역시 강화군 강화읍 갑곶리 1015',
     'demo-jamsi-cafe',
     true,
@@ -371,7 +371,7 @@ insert into public.activities (
    'https://images.unsplash.com/photo-1533050487297-09b450131914?w=1200&h=800&fit=crop',
    true, true, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-17'), '2025-02-22 14:00:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000003', 'bbbbbbbb-0000-4000-8000-000000000005', 'cccccccc-0000-4000-8000-000000000503', 'dddddddd-0000-4000-8000-000000000002',
-   'photo', null, '시부야 친구들이 잠시섬 마루에 둘러앉아 한국 전통차를 신기해 했다.',
+   'photo', null, '시부야 친구들이 잠시섬 마루에 둘러앉아 강화의 차를 마셨다. 서로 말은 조금 느렸지만, 웃음은 금방 같은 속도가 됐다.',
    'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=1200&h=800&fit=crop',
    true, true, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-18'), '2025-11-08 16:00:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000004', 'bbbbbbbb-0000-4000-8000-000000000005', 'cccccccc-0000-4000-8000-000000000503', null,
@@ -474,8 +474,8 @@ insert into public.reactions (activity_id, author_user_id, author_shop_id, autho
     (select id from public.activities where idempotency_key = uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-18')),
     null, 'dddddddd-0000-4000-8000-000000000002', 'owner', '잠시섬 카페 사장님',
     'letter',
-    '시부야 친구들과 마루에 앉아 있던 그 풍경을 카페에서도 자주 떠올려요. 잠시섬은 그 날 이후로 조금 더 둥글어진 것 같아요.',
-    '시부야 친구들과 함께한 그 자리가 잊히지 않습니다. 잠시섬은 그 날 더 풍성해졌어요.',
+    '시부야 친구들과 마루에 앉아 있던 그 풍경을 카페에서도 자주 떠올려요. 서로 다른 동네가 잠시섬에서 한 상에 앉았던 날, 강화가 조금 더 넓어진 것 같았습니다.',
+    '시부야 친구들과 함께한 그 자리가 잊히지 않습니다. 서로 다른 동네가 잠시섬에서 한 상에 앉았던 날이었어요.',
     'public'
   ),
   -- 장흥리 사랑방 → 텃밭 카드 (act-9)
