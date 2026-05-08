@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Menu, X } from "lucide-react";
+import { ChevronDown, LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -32,6 +32,12 @@ const BASE_NAV_ITEMS: ReadonlyArray<Omit<NavItem, "href"> & { href: string }> =
     { key: "collection", label: "내 도감", href: "/collection" },
   ];
 
+const OPERATOR_LOGIN_ITEMS = [
+  { label: "사장님 로그인", href: "/owner/login" },
+  { label: "크루 로그인", href: "/crew/login" },
+  { label: "관리자 로그인", href: "/admin/login" },
+] as const;
+
 export function NavbarClient({
   active = null,
   actor,
@@ -43,6 +49,7 @@ export function NavbarClient({
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [operatorOpen, setOperatorOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -54,6 +61,7 @@ export function NavbarClient({
 
   useEffect(() => {
     setOpen(false);
+    setOperatorOpen(false);
   }, [pathname]);
 
   const resolvedActive = active ?? activeFromPath(pathname);
@@ -111,6 +119,14 @@ export function NavbarClient({
               <NavLink item={it} active={resolvedActive === it.key} />
             </li>
           ))}
+          {actor.role === "anonymous" ? (
+            <li>
+              <OperatorLoginMenu
+                open={operatorOpen}
+                onToggle={() => setOperatorOpen((v) => !v)}
+              />
+            </li>
+          ) : null}
           <li>
             <Link
               href={cta.href}
@@ -167,6 +183,25 @@ export function NavbarClient({
                 {cta.label}
               </Link>
             </li>
+            {actor.role === "anonymous" ? (
+              <li className="border-t border-black/[0.06] pt-4">
+                <p className="mb-3 text-[12px] font-semibold tracking-[0.18em] text-v2-ink3">
+                  운영 로그인
+                </p>
+                <ul className="flex flex-col gap-3">
+                  {OPERATOR_LOGIN_ITEMS.map((item) => (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className="text-[14px] text-v2-ink3 no-underline transition-colors hover:text-v2-ink"
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ) : null}
             {actor.role !== "anonymous" ? (
               <li>
                 <button
@@ -184,6 +219,48 @@ export function NavbarClient({
         </div>
       ) : null}
     </nav>
+  );
+}
+
+function OperatorLoginMenu({
+  open,
+  onToggle,
+}: {
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1 text-[13px] font-medium text-v2-ink3 transition-colors hover:text-v2-ink"
+      >
+        운영 로그인
+        <ChevronDown
+          size={14}
+          strokeWidth={1.8}
+          className={`transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
+      {open ? (
+        <div className="absolute right-0 top-full pt-3">
+          <div className="min-w-[154px] rounded-lg border border-black/[0.08] bg-[#F8F8F6] py-2 shadow-[0_12px_28px_rgba(0,0,0,0.12)]">
+            {OPERATOR_LOGIN_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="block px-4 py-2.5 text-[13px] text-v2-ink3 no-underline transition-colors hover:bg-black/[0.04] hover:text-v2-ink"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
