@@ -1,7 +1,8 @@
 # 강화유니버스 대시보드 — 완성·배포 로드맵
 
 > 작성일 : 2026-05-07
-> 기준 : `feat/v2-redesign` → `main` 머지 직후
+> 최종 갱신 : 2026-05-08
+> 기준 : `main` 최신 배포 + PR #17 머지 이후
 > 마감 : **2026 년 6월 최종 발표**
 >
 > **이 문서의 목적** — v2 리디자인 후속 복구가 끝난 시점에서, "프로젝트 완성 (배포 + 청풍 운영 인계 + 6월 발표 시연 가능 상태)" 까지 남은 작업을 한 곳에 정리한다. 다른 세션에서 이 문서 + `CLAUDE.md` + `docs/v2-redesign-status.md` 만 읽고 이어 작업할 수 있도록 자기완결적으로 작성됨.
@@ -10,26 +11,46 @@
 
 ## 0. TL;DR (한 줄)
 
-**페이지·인증·API 는 다 살아있다. 남은 건 (1) 사장님 편지 LLM 흐름 v2 마이그레이션, (2) `/impact` 노드맵 데이터 연결, (3) Vercel 프로덕션 배포 (Supabase 는 dev 프로젝트 승격 가능), (4) 시연 시드 데이터, (5) 청풍 운영 인계 자료.**
+**시연 전 P0 기능은 완료됐다. 배포, 2026 카테고리 재정렬, 시연 seed, 사장님 LLM 편지 흐름, `/impact` 실데이터 노드맵, 기본 UX polish, 회의용 문서 3종이 반영된 상태다. 남은 핵심은 (1) 회의 전 실기기/배포 환경 최종 검증, (2) 청풍 피드백으로 문구·데이터·운영 책임 확정, (3) 최종 발표용 화면과 대본 고정이다.**
+
+---
+
+## 0.1 2026-05-08 현재 완료 현황
+
+- **배포** — Vercel 프로덕션 배포 완료. 기본 접근 URL은 `https://ganghwa-universe.vercel.app` 기준으로 관리한다.
+- **DB/시드** — `003_categories_realign.sql` 적용 완료, `src/db/seed_demo.sql` 프로덕션 적용 완료.
+- **카테고리** — DB/운영 화면은 `active_life`, `local_culture`, `network`, `tech` 4종으로 통일.
+- **사장님 흐름** — `/owner`, `/owner/letters/new`, `/owner/settings`, `POST /api/llm/draft` 구현 완료. Gemini 무료 tier 기본, Anthropic 전환 가능.
+- **`/impact`** — 공개 activity 기반 실데이터 노드맵 연결 완료. hover/focus 미리보기 반영.
+- **시연 전 UX polish** — 사장님 코드 보이기/숨기기, 내 도감 상단 카드 링크, 랜딩 현황 카드 hover 색상, 한국어 줄바꿈 개선 반영.
+- **문서** — `docs/test-scenarios.md`, `docs/demo-script.md`, `docs/feedback-questions.md`, `docs/admin-onboarding.md` 작성 완료.
+
+## 0.2 회의 전 남은 준비
+
+1. `docs/test-scenarios.md`를 실제 배포/실기기 검증 결과로 계속 갱신한다.
+2. 청풍 회의에서 `docs/feedback-questions.md`의 결정 로그를 채운다.
+3. 시연 대표 프로젝트, 대표 가게, 대표 카드를 확정하고 seed 문구를 필요 시 보정한다.
+4. iOS Safari, Android Chrome, 발표 PC에서 `/`, `/impact`, `/entry`, `/collection`, `/owner/letters/new`를 최종 확인한다.
+5. Vercel 환경변수, 카카오 redirect, 사장님/크루/관리자 코드 전달 상태를 최종 점검한다.
 
 ---
 
 ## 1. 현재 상태
 
-### 1.1 코드 — 완료된 것 (PR #11 머지 시점)
+### 1.1 코드 — 완료된 것
 
 - **DB 스키마 + RLS** — `001_initial.sql` + `002_phase1_extensions.sql` 모든 도메인 테이블 + 정책
 - **인증 3종** — 카카오 OAuth (참여자), 가게 코드 (사장님), 공용 코드 (크루), Supabase Auth + app_metadata.role (관리자). 단일 `current-actor.ts` 로 통일
 - **API 라우트 전부 라이브** — activities CRUD + moderate, reactions, episodes/status, admin/{projects,shops,activities,episodes,shop-owners}, auth/{owner,crew,logout}, dev/login
-- **9개 v2 페이지 데이터 연결** — `/`, `/impact`, `/projects`, `/projects/[slug]`, `/shops`, `/shops/[id]`, `/feed`, `/collection`, `/collection/[id]`, `/entry/[qr_token]`, `/crew`, `/admin`
+- **주요 v2 페이지 데이터 연결** — `/`, `/impact`, `/projects`, `/projects/[slug]`, `/shops`, `/shops/[id]`, `/feed`, `/collection`, `/collection/[id]`, `/entry/[qr_token]`, `/crew`, `/admin`, `/owner`
 - **글로벌 chrome** — Navbar (actor 분기 + 로그아웃), Footer (legal 링크 + `/legal/terms`·`/legal/privacy` 페이지). `/admin*` 경로는 자체 sidebar 셸로 chrome 미노출
-- **Legacy `(default)/*` 페이지** — 대부분 v2 톤으로 마이그레이션. **단, `/owner` + `/owner/letters/new` 는 아직 v1 톤** (Phase 4 작업 시 같이 손볼 것)
+- **사장님 편지 LLM 흐름** — `/owner`, `/owner/letters/new`, `/owner/settings`, `POST /api/llm/draft` 구현 완료. 수동 작성 fallback 유지
 
 ### 1.2 인프라 — 현재 상태
 
-- **Supabase** — **dev 프로젝트 1개 존재** (로컬 `.env.local` 에 실제 키, 마이그레이션 적용된 상태로 추정). 카카오 OAuth Provider 도 dev 용으로 등록되어 있음
-- **Vercel** — **미생성**. 로컬에 `.vercel/` 없음. 프로덕션 도메인 / push-to-deploy 설정 모두 안 됨
-- **카카오 디벨로퍼스** — dev redirect 만 등록 (`http://localhost:3001/...` + `https://<supabase-ref>.supabase.co/auth/v1/callback`). prod 도메인 redirect 미등록
+- **Supabase** — 기존 프로젝트에 `001`, `002`, `003`, `seed_demo.sql` 적용 완료 상태로 운영한다. 새 DB를 처음 만들 때만 전체 순서를 다시 적용한다.
+- **Vercel** — 프로덕션 배포 완료. main merge 후 자동 배포 흐름을 유지한다.
+- **카카오 디벨로퍼스** — 배포 도메인 기준 Web 사이트 도메인과 Supabase callback redirect를 유지 점검한다.
 
 ---
 
@@ -38,11 +59,16 @@
 ### 🔴 P0 — 시연 가능 상태 (배포 + 데이터 + 노드맵)
 
 #### 2.1 Vercel 프로덕션 배포 + Supabase 정리
-- [Section 4 의 단계별 체크리스트](#4-배포-체크리스트) 따라 진행
-- 산출물 : `https://<도메인>` 으로 외부 접근 가능 + 카카오 OAuth 정상 작동
+
+- 상태: **완료**
+- 산출물: 배포 URL 외부 접근 가능, seed 데이터 기준 smoke test 1차 완료
+- 남은 일: 회의 전 환경변수와 카카오 redirect 재점검
 
 #### 2.2 시연 시드 데이터
-- `src/db/seed_demo.sql` 이 이미 존재 → 내용 검토 + 보강 + 프로덕션 적용
+
+- 상태: **완료**
+- `src/db/seed_demo.sql` 작성 및 프로덕션 적용 완료
+- 회의 후 청풍 피드백에 따라 프로젝트/가게/카드 문구만 보정 가능
 - 시연 시나리오에 필요한 최소 데이터:
   - 카테고리 4종 (이미 시드됨)
   - 프로젝트 6~8개 (카테고리별 1~2개)
@@ -52,51 +78,45 @@
   - 참여자 dummy 5~10명
   - 활동 30~50건 (`is_public=true`, 카테고리·shop·episode 다양하게)
   - 사장님 편지 5+ 건 + 하이파이브 20+
-- 산출물 : 프로덕션에 seed 적용 후 `/`, `/impact`, `/feed`, `/projects`, `/admin` 모두 의미있는 숫자로 보임
+- 산출물 : 프로덕션에 seed 적용 후 `/`, `/impact`, `/feed`, `/projects`, `/admin` 모두 의미있는 숫자로 표시됨
 
 #### 2.3 데모 시나리오 검증 체크리스트
-- `docs/test-scenarios.md` — **현재 부재**. 신규 작성 필요
-- CLAUDE.md §16 의 18개 검증 항목을 마크다운 체크리스트로 옮기고, 시연 직전 한 번 손으로 통과시킴
-- 산출물 : 모든 항목 ✅ 표시된 체크리스트
+
+- 상태: **초안 완료, 계속 갱신**
+- 산출물: `docs/test-scenarios.md`
+- 남은 일: 실제 배포/실기기 검증 결과를 회의 전까지 체크
 
 #### 2.4 사장님 편지 LLM 흐름 v2 마이그레이션 (Phase 4 핵심)
 **대상**: `/owner`, `/owner/letters/new`, `/owner/settings`
 
 **현재 상태**:
-- `/owner` 와 `/owner/letters/new` 는 `src/app/owner/*.tsx` 에 있고 v1 톤 (`@/components/claude/primitives` 사용)
-- `/owner/settings` 페이지는 미존재
-- API `/api/llm/draft` 가 아직 미구현 (CLAUDE.md 의 핵심 파일 표에는 있지만 실제 파일은 없음 — 확인 필요)
+- 상태: **완료**
+- `/owner` 대시보드, `/owner/letters/new`, `/owner/settings`, `POST /api/llm/draft` 구현 완료
+- Gemini API key가 없거나 한도에 걸리면 수동 작성 흐름이 막히지 않도록 fallback 유지
 
 **해야 할 것**:
-1. `/owner` 대시보드 — 본인 가게 연결된 activities 그리드, v2 디자인 토큰
-2. `/owner/letters/new?activity_id=...` — 카드 미리보기 + LLM 첫문장 제안 버튼 + 본문 textarea + visibility 선택 + 저장 → `POST /api/reactions` (kind=letter, author_role=owner)
-3. `POST /api/llm/draft` (route handler 신규) — `src/lib/llm/` 의 Gemini 2.5 Flash-Lite 기본 호출. Anthropic 키 발급 시 provider 전환 가능. 고정 프롬프트 + activity 컨텍스트 + "수정해서 보내세요" 라벨 강제
-4. `/owner/settings` — 가게 공개 ON/OFF 토글 (`shops.is_public` PATCH). 신규 라우트 핸들러. owner 본인 가게에만 권한
-5. `/collection/[id]` 의 reactions 실시간 반영 검증 (이미 PR #2 에서 살아있음. 새 letter 가 표시되는지만 확인)
+1. 회의 전 대표 activity 1건으로 AI 제안 -> 수정 -> 저장 -> `/collection/[id]` 반영까지 재검증
+2. Gemini 무료 tier 한도 초과 시 수동 작성 fallback을 시연 대본에 따라 설명
 
 **산출물** : 사장님이 LLM 도움 받아 편지 보내는 핵심 시연 흐름 완성. 발표에서 "AI 가 첫 문장만 제안, 사장님이 수정해 보냄" 데모 가능.
 
 #### 2.5 `/impact` 노드맵 실데이터 연결
-**현재 상태**: 노드맵 SVG 가 정적 좌표 (시안 그대로).
+**현재 상태**: **완료.** 공개 activity 기반 실데이터 그래프로 연결됨.
 
 **왜 P0 로 옮겼나**: 발표 임팩트가 큰 시각화. "관계의 모양" 을 한눈에 보여주는 핵심 화면. 정적 SVG 면 발표 메시지(`참여자·가게·프로젝트의 환대 그래프`)와 어긋남.
 
-**해야 할 것**:
-- `react-flow` 또는 D3 force-directed graph 도입
-- 노드 타입 — project (큰 점) / shop (중간) / participant (작은 점, 닉네임만)
-- 엣지 — activity 가 만든 (participant ↔ shop) + (shop ↔ project) + (project ↔ category)
-- 공개 카드만 표시. 신고·비공개 제외
-- 마우스 hover 시 카드 미리보기 (3~5건)
-- 모바일에선 정적 폴백 또는 `pinch-zoom` 단순화
-
-**시간 부족 시 fallback**: 정적 SVG 유지 + 우측 하단 캡션을 "시연용 정적 시각화 — 실시간 그래프는 정식 출시 시 도입" 으로 명시.
+**남은 것**:
+- 회의 전 모바일에서 노드맵 높이, hover/focus 대체 동작, 카드 미리보기 겹침 여부 확인
+- 청풍 피드백에 따라 노드 수를 줄이거나 대표 프로젝트 중심 story mode를 추가할지 결정
 
 ---
 
 ### 🟡 P1 — 운영 인계 (청풍이 직접 굴리려면 필요)
 
 #### 2.6 청풍 관리자 온보딩 가이드
-- `docs/admin-onboarding.md` 신규
+- 상태: **초안 완료**
+- 산출물: `docs/admin-onboarding.md`
+- 회의 후 운영 책임자 이름과 실제 연락/재발급 채널을 채워야 함
 - 내용:
   - 관리자 추가 절차 (`.env.local.example` 의 SQL 스니펫 + 스크린샷)
   - 새 프로젝트·에피소드 등록 흐름 (`/admin/projects`)
@@ -133,16 +153,25 @@
 
 ## 3. 작업 순서 권장
 
-**시연 전** (D-7 일까지):
-1. **2.4 사장님 편지 LLM** — 발표 내러티브의 핵심 기능. 가장 무거운 작업이라 먼저 (D-21 ~ D-14)
-2. **2.5 노드맵 실데이터** — 발표 임팩트 영역 (D-14 ~ D-10). 시간 부족하면 정적 fallback
-3. **2.1 Vercel 배포** + **2.2 시드 데이터** (D-10 ~ D-7)
-4. **2.3 데모 시나리오 체크리스트** + **2.6~2.7 운영 인계 자료** (D-7 ~ D-3)
+**청풍 회의 전**:
+
+1. `docs/demo-script.md` 순서대로 배포 URL에서 한 번 시연한다.
+2. `docs/test-scenarios.md`의 미검증 항목을 역할별로 체크한다.
+3. 대표 프로젝트, 대표 가게, 대표 카드를 정하고 필요한 seed 문구를 보정한다.
+4. 모바일 실기기에서 `/entry`, `/collection`, `/owner/letters/new`, `/impact`를 확인한다.
+5. 환경변수, 카카오 redirect, 사장님/크루/관리자 코드 전달 상태를 점검한다.
+
+**청풍 회의 중**:
+
+1. `docs/demo-script.md`로 동일한 순서의 시연을 진행한다.
+2. `docs/feedback-questions.md`의 결정 로그를 채운다.
+3. 발표 전 필수 수정, 발표 후 개선, 보류를 그 자리에서 나눈다.
 
 **시연 직전** (D-2):
-5. 2.3 체크리스트 한 번 손으로 통과
-6. 모바일 실기기 (iOS Safari + Android Chrome) UX 점검
-7. 시연 PC 에서 Vercel 도메인 정상 표시 + 백업 인터넷 (테더링)
+
+1. `docs/test-scenarios.md` 체크리스트 한 번 손으로 통과
+2. 모바일 실기기 (iOS Safari + Android Chrome) UX 점검
+3. 발표 PC 에서 Vercel 도메인 정상 표시 + 백업 인터넷 (테더링)
 
 **시연 이후**:
 - 2.8 (신고 대응 SOP 문서화)
@@ -202,7 +231,6 @@
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` ← Production 만 권장 (Preview 는 별도 dev 키 또는 동일)
-   - `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET`
    - `LLM_PROVIDER` / `GEMINI_API_KEY` (Phase 4 LLM, 기본 provider)
    - `ANTHROPIC_API_KEY` (선택, 추후 Anthropic 전환 시)
    - `CREW_ACCESS_CODE` (8자 이상 랜덤. 청풍에 별도 전달)
@@ -213,6 +241,8 @@
 ### 4.3 카카오 OAuth — 프로덕션 redirect 추가
 
 배포 도메인 확정되면:
+
+- 카카오 REST API key/secret은 Vercel env가 아니라 Supabase Auth Provider Kakao 설정에 등록한다.
 - 카카오 디벨로퍼스 → 내 애플리케이션 → 카카오 로그인 → **Redirect URI** 에 다음 추가:
   - `https://<supabase-project-ref>.supabase.co/auth/v1/callback` (Section 4.1 에서 등록되어 있을 가능성 높음)
 - **앱 설정 → 플랫폼 → Web 사이트 도메인** 에 `https://<도메인>` 등록 (Origin 검증 통과)
