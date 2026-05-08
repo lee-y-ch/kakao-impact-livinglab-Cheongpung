@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export type CategorySlug = "active_life" | "network" | "local_culture" | "tech";
 export type CategoryLabel = "라이프" | "네트워크" | "창작" | "테크";
@@ -65,10 +65,24 @@ function shortLabel(label: string, max = 12): string {
 
 export function NodeMapClient({ graph }: { graph: ImpactGraph }) {
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
-  const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+  const [mode, setMode] = useState<"all" | "presentation">("all");
+  const visibleGraph = useMemo(
+    () => (mode === "presentation" ? toPresentationGraph(graph) : graph),
+    [graph, mode]
+  );
+  const byId = useMemo(
+    () => new Map(visibleGraph.nodes.map((node) => [node.id, node])),
+    [visibleGraph]
+  );
   const activeNode = activeNodeId ? (byId.get(activeNodeId) ?? null) : null;
 
-  if (graph.nodes.length === 0) {
+  useEffect(() => {
+    if (activeNodeId && !byId.has(activeNodeId)) {
+      setActiveNodeId(null);
+    }
+  }, [activeNodeId, byId]);
+
+  if (visibleGraph.nodes.length === 0) {
     return (
       <div className="flex h-full items-center justify-center px-8 text-center">
         <div>
@@ -85,6 +99,17 @@ export function NodeMapClient({ graph }: { graph: ImpactGraph }) {
 
   return (
     <>
+      <div className="bg-white/92 absolute left-4 top-4 z-10 hidden overflow-hidden rounded-full border border-black/[0.08] p-1 shadow-[0_12px_32px_rgba(0,0,0,0.08)] backdrop-blur md:flex">
+        <GraphModeButton active={mode === "all"} onClick={() => setMode("all")}>
+          전체
+        </GraphModeButton>
+        <GraphModeButton
+          active={mode === "presentation"}
+          onClick={() => setMode("presentation")}
+        >
+          발표
+        </GraphModeButton>
+      </div>
       <svg
         viewBox="0 0 900 440"
         preserveAspectRatio="xMidYMid meet"
@@ -103,7 +128,7 @@ export function NodeMapClient({ graph }: { graph: ImpactGraph }) {
           </filter>
         </defs>
 
-        {graph.edges.map((edge) => {
+        {visibleGraph.edges.map((edge) => {
           const source = byId.get(edge.source);
           const target = byId.get(edge.target);
           if (!source || !target) return null;
@@ -126,7 +151,7 @@ export function NodeMapClient({ graph }: { graph: ImpactGraph }) {
           );
         })}
 
-        {graph.nodes.map((node) => (
+        {visibleGraph.nodes.map((node) => (
           <GraphNodeView
             key={node.id}
             node={node}
@@ -159,6 +184,52 @@ export function NodeMapClient({ graph }: { graph: ImpactGraph }) {
       </svg>
       <HoverPanel node={activeNode} />
     </>
+  );
+}
+
+function toPresentationGraph(graph: ImpactGraph): ImpactGraph {
+  const categories = graph.nodes.filter((node) => node.type === "category");
+  const projects = graph.nodes
+    .filter((node) => node.type === "project")
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 4);
+  const shops = graph.nodes
+    .filter((node) => node.type === "shop")
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 4);
+  const nodes = [...categories, ...projects, ...shops];
+  const visibleIds = new Set(nodes.map((node) => node.id));
+
+  return {
+    ...graph,
+    nodes,
+    edges: graph.edges.filter(
+      (edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target)
+    ),
+  };
+}
+
+function GraphModeButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+        active
+          ? "bg-v2-ink text-white"
+          : "text-v2-ink3 hover:bg-black/[0.04] hover:text-v2-ink"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

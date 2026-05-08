@@ -3,7 +3,7 @@
 import { ChevronDown, LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { CurrentActor } from "@/lib/auth/current-actor";
 
@@ -47,6 +47,7 @@ export function NavbarClient({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const operatorMenuRef = useRef<HTMLDivElement | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [operatorOpen, setOperatorOpen] = useState(false);
@@ -63,6 +64,32 @@ export function NavbarClient({
     setOpen(false);
     setOperatorOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!operatorOpen) return;
+
+    function onPointerDown(event: PointerEvent) {
+      if (
+        operatorMenuRef.current &&
+        !operatorMenuRef.current.contains(event.target as Node)
+      ) {
+        setOperatorOpen(false);
+      }
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOperatorOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [operatorOpen]);
 
   const resolvedActive = active ?? activeFromPath(pathname);
   const navItems = useMemo(
@@ -122,8 +149,10 @@ export function NavbarClient({
           {actor.role === "anonymous" ? (
             <li>
               <OperatorLoginMenu
+                menuRef={operatorMenuRef}
                 open={operatorOpen}
                 onToggle={() => setOperatorOpen((v) => !v)}
+                onClose={() => setOperatorOpen(false)}
               />
             </li>
           ) : null}
@@ -223,14 +252,18 @@ export function NavbarClient({
 }
 
 function OperatorLoginMenu({
+  menuRef,
   open,
   onToggle,
+  onClose,
 }: {
+  menuRef: React.RefObject<HTMLDivElement>;
   open: boolean;
   onToggle: () => void;
+  onClose: () => void;
 }) {
   return (
-    <div className="relative">
+    <div ref={menuRef} className="relative">
       <button
         type="button"
         onClick={onToggle}
@@ -252,6 +285,7 @@ function OperatorLoginMenu({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={onClose}
                 className="block px-4 py-2.5 text-[13px] text-v2-ink3 no-underline transition-colors hover:bg-black/[0.04] hover:text-v2-ink"
               >
                 {item.label}
