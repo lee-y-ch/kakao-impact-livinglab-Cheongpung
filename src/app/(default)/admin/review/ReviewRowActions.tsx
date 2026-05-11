@@ -13,7 +13,7 @@ type Props = {
 
 const LABELS: Record<Action, string> = {
   unpublish: "비공개 전환",
-  remove: "공개 영역에서 가리기",
+  remove: "공개에서 삭제 처리",
   restore: "복원",
 };
 
@@ -21,7 +21,7 @@ const CONFIRMS: Record<Action, string> = {
   unpublish:
     "이 카드를 비공개로 돌릴까요? 작성자가 원하면 다시 공개할 수 있어요.",
   remove:
-    "이 카드를 공개 영역에서 완전히 가릴까요? 작성자도 자기 도감에서 삭제 처리됨 상태로 봅니다.",
+    "이 카드를 공개 영역에서 숨기고 삭제 처리할까요? 작성자도 자기 도감에서 삭제 처리된 상태로 봅니다.",
   restore:
     "삭제 처리된 카드를 복원할까요? (공개 여부는 별도로 조정해야 합니다.)",
 };

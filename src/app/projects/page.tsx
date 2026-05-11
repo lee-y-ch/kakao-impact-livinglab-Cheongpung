@@ -44,8 +44,13 @@ type StatRow = {
   episodesCompleted: number;
 };
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams?: { cat?: string };
+}) {
   const admin = createAdminClient();
+  const activeCategory = parseCategoryFilter(searchParams?.cat);
 
   const [projectsRes, activitiesRes, episodesRes] = await Promise.all([
     admin
@@ -134,6 +139,7 @@ export default async function ProjectsPage() {
       <ProjectsGroupedGrid
         grouped={grouped}
         order={order}
+        activeCategory={activeCategory}
         stats={stats}
         episodesByProject={episodesByProject}
         participantsByProject={participantsByProject}
@@ -151,6 +157,12 @@ function labelFromSlug(slug: string | null | undefined): CategoryLabel | null {
   if (slug === "network") return "네트워크";
   if (slug === "local_culture") return "창작";
   if (slug === "tech") return "테크";
+  return null;
+}
+
+function parseCategoryFilter(cat: string | undefined): CategoryLabel | null {
+  const allowed: CategoryLabel[] = ["라이프", "네트워크", "창작", "테크"];
+  if (cat && (allowed as string[]).includes(cat)) return cat as CategoryLabel;
   return null;
 }
 
@@ -206,17 +218,20 @@ function PageHeader({ totalCount }: { totalCount: number }) {
 function ProjectsGroupedGrid({
   grouped,
   order,
+  activeCategory,
   stats,
   episodesByProject,
   participantsByProject,
 }: {
   grouped: Map<CategoryLabel, ProjectRow[]>;
   order: CategoryLabel[];
+  activeCategory: CategoryLabel | null;
   stats: Map<string, StatRow>;
   episodesByProject: Map<string, { total: number; completed: number }>;
   participantsByProject: Map<string, Set<string>>;
 }) {
   const allEmpty = order.every((l) => (grouped.get(l) ?? []).length === 0);
+  const visibleOrder = activeCategory ? [activeCategory] : order;
 
   return (
     <div className="bg-v2-paper py-16 lg:py-20">
@@ -231,23 +246,113 @@ function ProjectsGroupedGrid({
             </p>
           </div>
         ) : (
-          order.map((label) => {
-            const list = grouped.get(label) ?? [];
-            if (list.length === 0) return null;
-            return (
-              <CategorySection
-                key={label}
-                label={label}
-                list={list}
-                stats={stats}
-                episodesByProject={episodesByProject}
-                participantsByProject={participantsByProject}
-              />
-            );
-          })
+          <>
+            <CategoryTabs
+              order={order}
+              grouped={grouped}
+              activeCategory={activeCategory}
+            />
+            {visibleOrder.map((label) => {
+              const list = grouped.get(label) ?? [];
+              if (list.length === 0) return null;
+              return (
+                <CategorySection
+                  key={label}
+                  label={label}
+                  list={list}
+                  stats={stats}
+                  episodesByProject={episodesByProject}
+                  participantsByProject={participantsByProject}
+                />
+              );
+            })}
+          </>
         )}
       </div>
     </div>
+  );
+}
+
+function CategoryTabs({
+  order,
+  grouped,
+  activeCategory,
+}: {
+  order: CategoryLabel[];
+  grouped: Map<CategoryLabel, ProjectRow[]>;
+  activeCategory: CategoryLabel | null;
+}) {
+  return (
+    <div className="mb-10">
+      <p className="mb-3 text-[11px] font-semibold uppercase tracking-[3px] text-[#AEAEB2]">
+        CATEGORY FILTER
+      </p>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+        <ProjectCategoryTab
+          href="/projects"
+          active={!activeCategory}
+          label="전체"
+          count={order.reduce(
+            (sum, label) => sum + (grouped.get(label)?.length ?? 0),
+            0
+          )}
+        />
+        {order.map((label) => (
+          <ProjectCategoryTab
+            key={label}
+            href={`/projects?cat=${encodeURIComponent(label)}`}
+            active={activeCategory === label}
+            label={label}
+            count={grouped.get(label)?.length ?? 0}
+            badge={CATEGORY_BADGE[label]}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProjectCategoryTab({
+  href,
+  active,
+  label,
+  count,
+  badge,
+}: {
+  href: string;
+  active: boolean;
+  label: string;
+  count: number;
+  badge?: { bg: string; color: string };
+}) {
+  return (
+    <Link
+      href={href}
+      className={`rounded-[14px] border px-4 py-4 transition-all hover:-translate-y-0.5 ${
+        active
+          ? "border-v2-ink bg-v2-ink text-white shadow-[0_10px_28px_rgba(0,0,0,0.08)]"
+          : "border-black/[0.06] bg-white text-v2-ink hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]"
+      }`}
+    >
+      <span
+        className="mb-2 inline-block h-2 w-2 rounded-full"
+        style={{
+          background: active
+            ? "rgba(255,255,255,0.75)"
+            : (badge?.color ?? "#6BAF8A"),
+        }}
+      />
+      <span className="block text-[16px] font-semibold tracking-[-0.03em]">
+        {label}
+      </span>
+      <span
+        className={`mt-1 block text-[12px] ${
+          active ? "text-white/55" : "text-[#AEAEB2]"
+        }`}
+      >
+        {count}개 프로젝트
+      </span>
+    </Link>
   );
 }
 

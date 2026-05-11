@@ -153,6 +153,7 @@ export default async function FeedPage({
         activePeriod={activePeriod}
         topShops={topShops.map(([name, count]) => ({
           name,
+          count,
           pct: Math.round((count / Math.max(1, maxShopCount)) * 100),
         }))}
       />
@@ -243,7 +244,7 @@ function FeedLayout({
   categoryCounts: Record<CategoryLabel, number>;
   activeCategory: CategoryLabel | null;
   activePeriod: Period;
-  topShops: { name: string; pct: number }[];
+  topShops: { name: string; count: number; pct: number }[];
 }) {
   return (
     <div className="mx-auto max-w-[1280px] px-6 pb-20 pt-[100px] lg:px-[60px]">
@@ -276,7 +277,7 @@ function Sidebar({
   categoryCounts: Record<CategoryLabel, number>;
   activeCategory: CategoryLabel | null;
   activePeriod: Period;
-  topShops: { name: string; pct: number }[];
+  topShops: { name: string; count: number; pct: number }[];
 }) {
   const allLabels: CategoryLabel[] = ["라이프", "네트워크", "창작", "테크"];
 
@@ -360,12 +361,15 @@ function Sidebar({
               {topShops.map((p) => (
                 <li
                   key={p.name}
-                  className="flex items-center justify-between py-1 text-[12.5px] text-v2-ink3"
+                  className="grid grid-cols-[1fr_auto] items-center gap-2 py-1.5 text-[12.5px] text-v2-ink3"
                 >
                   <span className="truncate">{p.name}</span>
-                  <div className="ml-2 h-[3px] w-[60px] flex-shrink-0 overflow-hidden rounded-full bg-v2-rule">
+                  <span className="text-[11px] font-medium tabular-nums text-v2-ink">
+                    {p.count}장
+                  </span>
+                  <div className="col-span-2 h-2.5 overflow-hidden rounded-full bg-v2-rule">
                     <div
-                      className="h-full rounded-full"
+                      className="h-full min-w-[12px] rounded-full"
                       style={{ width: `${p.pct}%`, background: "#6BAF8A" }}
                     />
                   </div>

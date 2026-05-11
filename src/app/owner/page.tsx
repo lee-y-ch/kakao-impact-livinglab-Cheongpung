@@ -257,16 +257,16 @@ export default async function OwnerHomePage() {
           </h1>
           <p
             style={{
-              fontSize: 13.5,
+              fontSize: 15,
               color: "var(--ink-2)",
-              lineHeight: 1.7,
+              lineHeight: 1.8,
               marginTop: 14,
-              maxWidth: 520,
+              maxWidth: 680,
               fontFamily: "var(--serif-font)",
             }}
           >
-            오늘 가게에서 만난 손님이 남긴 카드를 봅니다. 손님이 아니라 자주
-            오는 이웃이 되어가는 시간을 — 짧은 편지로 한 줄 이어가요.
+            오늘 가게에서 만난 손님이 남긴 카드를 봅니다. 손님이 자주 오는
+            이웃이 되어가는 시간을 짧은 편지로 이어가요.
           </p>
 
           <div
@@ -276,6 +276,7 @@ export default async function OwnerHomePage() {
               gap: 14,
               marginTop: 24,
               maxWidth: 760,
+              minWidth: 0,
             }}
           >
             <Stat label="CARDS" value={totalCards} unit="장" />
