@@ -526,7 +526,7 @@ function PageHeader({ earliestIso }: { earliestIso: string | null }) {
         </AnimateOnScroll>
         <AnimateOnScroll delay={0.16}>
           <p className="max-w-[520px] text-[15px] font-light leading-[1.8] text-v2-ink3">
-            참여자·크루·사장님의 환대 행위가 쌓여 강화도의 서사가 됩니다.
+            참여자·크루·사장님의 환대 행위가 쌓여 강화도의 서사가 돼요.
             <br />
             좋아요도 순위도 없이, 관계의 모양 그대로.
           </p>
@@ -650,9 +650,9 @@ function NodeMapSection({ graph }: { graph: ImpactGraph }) {
               어떻게 엮였는지
             </h2>
             <p className="max-w-[420px] text-[13.5px] font-light leading-[1.8] text-v2-ink3">
-              노드 하나하나는 사람이고 장소입니다.
+              노드 하나하나는 사람이고 장소예요.
               <br />
-              선은 그들 사이에 오간 환대입니다.
+              선은 그들 사이에 오간 환대예요.
               <br />
               단일 지표가 아닌 형태로 임팩트를 읽어보세요.
             </p>
@@ -751,9 +751,9 @@ function ProgressSection({
                 4개 분류가 얼마나 자랐나
               </h2>
             </div>
-            <p className="max-w-[260px] text-left text-[13px] font-light leading-[1.7] text-[#999] lg:text-right">
-              각 카테고리의 목표 대비 현재 공개 카드 수입니다. 목표가 아직
-              설정되지 않은 카테고리는 누적 카드 수만 표시됩니다.
+            <p className="max-w-[280px] text-left text-[13.5px] font-light leading-[1.7] text-[#999] lg:text-right">
+              각 카테고리의 목표와 현재 공개 카드 수를 함께 보여줘요. 목표가
+              없을 때는 누적 카드 수만 보여줘요.
             </p>
           </div>
         </AnimateOnScroll>
@@ -835,8 +835,8 @@ function RecentFeed({ feed }: { feed: FeedActivity[] }) {
             <p className="mb-1 text-[13.5px] font-semibold text-v2-ink">
               아직 공개된 카드가 없어요.
             </p>
-            <p className="text-[12px] font-light leading-[1.7] text-v2-ink3">
-              첫 공개 카드가 도착하면 여기 자동으로 모입니다.
+            <p className="text-[13px] font-light leading-[1.7] text-v2-ink3">
+              첫 공개 카드가 도착하면 여기에서 바로 볼 수 있어요.
             </p>
           </div>
         ) : (
@@ -894,9 +894,9 @@ function NoticeStrip() {
     >
       <p className="text-center text-[12px] leading-[1.7] tracking-[0.5px] text-white/50">
         <strong className="font-medium text-white/80">
-          좋아요 / 팔로우 / 랭킹은 없습니다.
+          좋아요 / 팔로우 / 랭킹은 없어요.
         </strong>
-        &nbsp;카드는 시간순으로만 흐르고, 공개로 동의한 글만 보입니다.
+        &nbsp;카드는 시간순으로만 흐르고, 공개에 동의한 글만 보여요.
       </p>
     </div>
   );

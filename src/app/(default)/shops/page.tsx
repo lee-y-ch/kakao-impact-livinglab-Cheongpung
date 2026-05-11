@@ -6,6 +6,11 @@ import {
   LegacyPage,
   LegacyPanel,
 } from "@/components/legacy-v2/PageChrome";
+import {
+  inferShopKind,
+  SHOP_KIND_ORDER,
+  type ShopKind,
+} from "@/lib/shops/kind";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -48,8 +53,18 @@ export default async function ShopsPage() {
     .map((s) => ({
       ...s,
       cardCount: activityCountByShop.get(s.id as string) ?? 0,
+      kind: inferShopKind(
+        s.name as string,
+        (s.description as string | null) ?? null
+      ),
     }))
     .sort((a, b) => b.cardCount - a.cardCount);
+
+  const grouped = new Map<ShopKind, typeof sorted>();
+  for (const kind of SHOP_KIND_ORDER) grouped.set(kind, []);
+  for (const shop of sorted) {
+    grouped.get(shop.kind)?.push(shop);
+  }
 
   return (
     <LegacyPage>
@@ -57,51 +72,69 @@ export default async function ShopsPage() {
         <LegacyHeader
           eyebrow="Shops"
           title="환대가 오래 머무는 자리"
-          description="청풍과 연결된 강화의 가게들입니다. 각 가게 안에서 쌓인 공개 카드와 분위기를 이어서 살펴볼 수 있습니다."
+          description="청풍과 연결된 강화의 가게들이에요. 각 가게 안에서 쌓인 공개 카드와 분위기를 이어서 살펴볼 수 있어요."
         />
 
         {sorted.length === 0 ? (
           <p className="v2-legacy-empty">아직 공개된 가게가 없어요.</p>
         ) : (
-          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {sorted.map((s) => (
-              <li key={s.id as string}>
-                <Link
-                  href={`/shops/${s.id as string}`}
-                  className="block h-full"
-                >
-                  <LegacyPanel className="flex h-full flex-col gap-4 transition hover:-translate-y-[2px]">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="v2-legacy-kicker mb-2">Shop</p>
-                        <h2 className="truncate text-lg font-semibold tracking-[-0.03em] text-v2-ink">
-                          {s.name as string}
-                        </h2>
-                        {s.address ? (
-                          <p className="mt-1 truncate text-[12px] text-v2-ink3">
-                            {s.address as string}
-                          </p>
-                        ) : null}
-                      </div>
-                      <span className="v2-legacy-pill shrink-0">
-                        카드 {s.cardCount}
-                      </span>
-                    </div>
-                    {s.slogan ? (
-                      <p className="serif text-sm text-v2-ink2">
-                        “{s.slogan as string}”
-                      </p>
-                    ) : null}
-                    {s.description ? (
-                      <p className="line-clamp-3 text-sm leading-[1.8] text-v2-ink3">
-                        {s.description as string}
-                      </p>
-                    ) : null}
-                  </LegacyPanel>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-10">
+            {SHOP_KIND_ORDER.map((kind) => {
+              const list = grouped.get(kind) ?? [];
+              if (list.length === 0) return null;
+              return (
+                <section key={kind}>
+                  <div className="mb-4 flex items-center gap-2">
+                    <h2 className="text-[18px] font-semibold tracking-[-0.03em] text-v2-ink">
+                      {kind}
+                    </h2>
+                    <span className="v2-legacy-pill">{list.length}곳</span>
+                  </div>
+                  <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {list.map((s) => (
+                      <li key={s.id as string}>
+                        <Link
+                          href={`/shops/${s.id as string}`}
+                          className="block h-full"
+                        >
+                          <LegacyPanel className="flex h-full flex-col gap-4 transition hover:-translate-y-[2px]">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="v2-legacy-kicker mb-2">
+                                  {s.kind}
+                                </p>
+                                <h3 className="truncate text-lg font-semibold tracking-[-0.03em] text-v2-ink">
+                                  {s.name as string}
+                                </h3>
+                                {s.address ? (
+                                  <p className="mt-1 truncate text-[12.5px] text-v2-ink3">
+                                    {s.address as string}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <span className="v2-legacy-pill shrink-0">
+                                카드 {s.cardCount}
+                              </span>
+                            </div>
+                            {s.slogan ? (
+                              <p className="serif text-[15px] font-medium leading-[1.7] text-v2-ink2">
+                                “{s.slogan as string}”
+                              </p>
+                            ) : null}
+                            {s.description ? (
+                              <p className="line-clamp-3 text-[14.5px] leading-[1.8] text-v2-ink3">
+                                {s.description as string}
+                              </p>
+                            ) : null}
+                          </LegacyPanel>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              );
+            })}
+          </div>
         )}
       </LegacyContainer>
     </LegacyPage>

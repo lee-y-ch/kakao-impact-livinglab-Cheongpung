@@ -9,6 +9,7 @@ import {
   LegacyPage,
   LegacyPanel,
 } from "@/components/legacy-v2/PageChrome";
+import { inferShopKind } from "@/lib/shops/kind";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,10 @@ export default async function ShopDetailPage({ params }: Params) {
   }));
 
   const totalCards = countRes.count ?? 0;
+  const shopKind = inferShopKind(
+    shop.name as string,
+    shop.description as string | null
+  );
 
   return (
     <LegacyPage>
@@ -88,7 +93,7 @@ export default async function ShopDetailPage({ params }: Params) {
           description={
             shop.description
               ? (shop.description as string)
-              : "이 공간에서 쌓인 공개 카드를 통해 가게의 분위기와 참여 흔적을 볼 수 있습니다."
+              : "이 공간에서 쌓인 공개 카드로 가게의 분위기와 참여 흔적을 살펴볼 수 있어요."
           }
           backHref="/shops"
           backLabel="← 가게 목록"
@@ -106,13 +111,18 @@ export default async function ShopDetailPage({ params }: Params) {
         />
 
         <LegacyPanel className="mb-6">
-          <div className="flex flex-wrap gap-3 text-sm text-v2-ink3">
+          <div className="flex flex-col gap-3 text-[15px] leading-[1.75] text-v2-ink3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
             {shop.slogan ? (
-              <p className="serif text-base text-v2-ink2">
+              <p className="serif text-[20px] font-medium leading-[1.6] text-v2-ink">
                 “{shop.slogan as string}”
               </p>
             ) : null}
-            {shop.address ? <p>{shop.address as string}</p> : null}
+            <div className="flex flex-wrap items-center gap-2 text-[13.5px] font-normal text-v2-ink3">
+              <span className="rounded-full border border-v2-rule bg-white/60 px-3 py-1 text-[12px] font-medium text-v2-ink2">
+                {shopKind}
+              </span>
+              {shop.address ? <span>{shop.address as string}</span> : null}
+            </div>
           </div>
         </LegacyPanel>
 

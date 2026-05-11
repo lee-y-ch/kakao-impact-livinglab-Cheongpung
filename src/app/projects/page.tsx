@@ -226,8 +226,8 @@ function ProjectsGroupedGrid({
             <p className="mb-1 text-[13.5px] font-semibold text-v2-ink">
               아직 공개된 프로젝트가 없어요.
             </p>
-            <p className="text-[12px] font-light leading-[1.7] text-v2-ink3">
-              첫 프로젝트가 등록되면 여기에 카테고리별로 모입니다.
+            <p className="text-[13px] font-light leading-[1.7] text-v2-ink3">
+              첫 프로젝트가 등록되면 카테고리별로 모아 보여드릴게요.
             </p>
           </div>
         ) : (
@@ -354,8 +354,10 @@ function ProjectListCard({
       >
         {project.title}
       </h3>
-      <p className="mb-7 line-clamp-3 flex-1 text-[13px] font-light leading-[1.75] text-v2-ink3">
-        {project.summary || project.description || "프로젝트 소개 준비 중."}
+      <p className="mb-7 line-clamp-3 flex-1 text-[14.5px] font-light leading-[1.75] text-v2-ink3">
+        {project.summary ||
+          project.description ||
+          "프로젝트 소개를 준비하고 있어요."}
       </p>
       <div className="flex items-center justify-between border-t border-[#F0F0EC] pt-4">
         <div className="flex gap-5">
@@ -401,9 +403,9 @@ function NoticeStrip() {
     >
       <p className="text-center text-[12px] leading-[1.7] tracking-[0.5px] text-white/50">
         <strong className="font-medium text-white/80">
-          프로젝트는 한 번이 아니라 챕터로 이어집니다.
+          프로젝트는 한 번으로 끝나지 않고 챕터로 이어져요.
         </strong>
-        &nbsp;각 프로젝트 카드를 눌러 전체 진행 흐름을 확인하세요.
+        &nbsp;각 프로젝트 카드를 눌러 지금까지의 흐름을 살펴보세요.
       </p>
     </div>
   );
