@@ -123,7 +123,7 @@ export function EntryFormClient({
     if (!canSubmit) return;
 
     if (isPublic && hasPhoto && !faceConsent) {
-      setError("사진이 있는 공개 카드는 초상권 동의 후에만 발급할 수 있어요.");
+      setError("사람이 함께 나온 사진은 동의를 받은 뒤에만 공개할 수 있어요.");
       return;
     }
 
@@ -185,8 +185,8 @@ export function EntryFormClient({
               <br />
               무엇을 봤나요?
             </h1>
-            <p className="text-[13.5px] font-light leading-[1.75] text-v2-ink3">
-              한 줄이면 충분합니다. 잘 쓰지 않아도 됩니다.
+            <p className="text-[14.5px] font-light leading-[1.75] text-v2-ink3">
+              한 줄이면 충분해요. 잘 쓰지 않아도 괜찮아요.
               <br />
               짧은 메모가 다른 사람의 다음 발걸음이 될 수 있어요.
             </p>
@@ -257,7 +257,7 @@ export function EntryFormClient({
         </AnimateOnScroll>
 
         <AnimateOnScroll delay={0.24}>
-          <FieldGroup label="초상권 · 사진에 사람이 찍혔다면">
+          <FieldGroup label="초상권 · 사진에 사람이 함께 나왔다면">
             <button
               type="button"
               onClick={() => setFaceConsent((v) => !v)}
@@ -265,10 +265,10 @@ export function EntryFormClient({
             >
               <div>
                 <p className="mb-0.5 text-[13px] font-medium text-v2-ink">
-                  찍힌 사람들에게 공개 동의를 받았어요
+                  함께 나온 사람들에게 공개 동의를 받았어요
                 </p>
                 <span className="text-[11.5px] font-light text-[#AEAEB2]">
-                  공개 설정을 켜려면 동의가 필요해요. 사람 없는 사진이면 그냥
+                  공개 설정을 켜려면 동의가 필요해요. 사람이 없는 사진이면 그냥
                   넘어가셔도 됩니다.
                 </span>
               </div>

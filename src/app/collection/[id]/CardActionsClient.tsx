@@ -81,7 +81,7 @@ export function CardActionsClient({
   const togglingTo = isPublic ? "비공개로" : "공개로";
   const togglingHint =
     !isPublic && !faceConsent
-      ? "사람이 찍힌 사진은 초상권 동의 후에만 공개할 수 있어요."
+      ? "사람이 함께 나온 사진은 동의를 받은 뒤에만 공개할 수 있어요."
       : null;
 
   return (

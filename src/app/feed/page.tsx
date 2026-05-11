@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
@@ -55,6 +56,7 @@ type Period = (typeof PERIODS)[number]["value"];
 type FeedActivity = {
   id: string;
   body: string | null;
+  photo_url: string | null;
   created_at: string;
   episode: {
     seq: number | null;
@@ -89,7 +91,7 @@ export default async function FeedPage({
     .from("activities")
     .select(
       `
-      id, body, created_at,
+      id, body, photo_url, created_at,
       episode:episodes (
         seq, title, location,
         project:projects ( title, category:categories ( slug ) )
@@ -489,7 +491,7 @@ function FeedCardView({ card }: { card: FeedActivity }) {
   const badge = label ? CATEGORY_BADGE[label] : "bg-[#EDECEA] text-[#888]";
 
   return (
-    <div className="overflow-hidden rounded-[14px] border border-black/[0.06] bg-white transition-all duration-[220ms] hover:-translate-y-1 hover:shadow-[0_14px_36px_rgba(0,0,0,0.09)]">
+    <div className="group overflow-hidden rounded-[14px] border border-black/[0.06] bg-white transition-all duration-[220ms] hover:-translate-y-1 hover:shadow-[0_14px_36px_rgba(0,0,0,0.09)]">
       <div className="flex items-center justify-between border-b border-[#F4F4F2] px-4 pb-2.5 pt-3">
         <span className="text-[10px] font-semibold tracking-[1.5px] text-[#AEAEB2]">
           {feedNo(card.id)}
@@ -500,11 +502,22 @@ function FeedCardView({ card }: { card: FeedActivity }) {
           {label ?? "미분류"}
         </span>
       </div>
+      {card.photo_url ? (
+        <div className="relative h-[150px] w-full overflow-hidden border-b border-[#F4F4F2] bg-[#F5F4F1]">
+          <Image
+            src={card.photo_url}
+            alt={card.body || projectLine(card)}
+            fill
+            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 280px"
+            className="object-cover transition-transform duration-[450ms] group-hover:scale-[1.03]"
+          />
+        </div>
+      ) : null}
       <div className="px-4 pb-3 pt-3.5">
         <p className="mb-2 text-[10.5px] font-normal text-[#AEAEB2]">
           {projectLine(card)}
         </p>
-        <p className="mb-3.5 line-clamp-3 text-[13px] leading-[1.7] text-v2-ink">
+        <p className="mb-3.5 line-clamp-3 text-[14px] leading-[1.7] text-v2-ink">
           {card.body || "(메모 없음)"}
         </p>
         <div className="flex items-center justify-between">
@@ -544,7 +557,7 @@ function EmptyState({
             다른 카드를 둘러봐도 좋아요.
           </>
         ) : (
-          "첫 공개 카드가 도착하면 여기 자동으로 모입니다."
+          "첫 공개 카드가 도착하면 여기에서 바로 볼 수 있어요."
         )}
       </p>
     </div>
@@ -559,9 +572,9 @@ function NoticeStrip() {
     >
       <p className="text-center text-[12px] leading-[1.7] tracking-[0.5px] text-white/50">
         <strong className="font-medium text-white/80">
-          좋아요 / 팔로우 / 랭킹은 없습니다.
+          좋아요 / 팔로우 / 랭킹은 없어요.
         </strong>
-        &nbsp;카드는 시간순으로만 흐르고, 공개로 동의한 글만 보입니다.
+        &nbsp;카드는 시간순으로만 흐르고, 공개에 동의한 글만 보여요.
       </p>
     </div>
   );

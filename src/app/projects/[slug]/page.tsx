@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -68,6 +69,7 @@ type EpisodeRow = {
 type CardRow = {
   id: string;
   body: string | null;
+  photo_url: string | null;
   created_at: string;
   episode: { location: string | null } | null;
   shop: { name: string | null } | null;
@@ -111,7 +113,7 @@ export default async function ProjectDetailPage({
     admin
       .from("activities")
       .select(
-        `id, body, created_at,
+        `id, body, photo_url, created_at,
          episode:episodes ( location ),
          shop:shops ( name )`
       )
@@ -488,8 +490,8 @@ function ChapterTimeline({
           <p className="mb-1 text-[13px] font-semibold text-v2-ink">
             아직 등록된 챕터가 없어요.
           </p>
-          <p className="text-[11.5px] font-light text-[#AEAEB2]">
-            첫 에피소드가 만들어지면 여기에 타임라인으로 모입니다.
+          <p className="text-[13px] font-light text-[#AEAEB2]">
+            첫 챕터가 만들어지면 여기에 타임라인으로 보여드릴게요.
           </p>
         </div>
       ) : (
@@ -580,15 +582,15 @@ function ActiveChapter({
           </AnimateOnScroll>
           {episode.summary ? (
             <AnimateOnScroll delay={0.16}>
-              <p className="mb-7 max-w-[500px] whitespace-pre-line text-[14.5px] leading-[1.9] text-[#4A4A4A]">
+              <p className="mb-7 max-w-[500px] whitespace-pre-line text-[15px] leading-[1.9] text-[#4A4A4A]">
                 {episode.summary}
               </p>
             </AnimateOnScroll>
           ) : (
             <AnimateOnScroll delay={0.16}>
-              <p className="mb-7 max-w-[500px] text-[14.5px] leading-[1.9] text-[#4A4A4A]">
-                {project.title} 의 진행 챕터입니다. 크루가 진행 메모를 올리면
-                여기에 보여드릴게요.
+              <p className="mb-7 max-w-[500px] text-[15px] leading-[1.9] text-[#4A4A4A]">
+                {project.title}의 진행 챕터예요. 크루가 진행 메모를 올리면
+                여기에 함께 보여드릴게요.
               </p>
             </AnimateOnScroll>
           )}
@@ -682,7 +684,7 @@ function ProjectCards({
             아직 공개된 카드가 없어요.
           </p>
           <p className="text-[11.5px] font-light text-[#AEAEB2]">
-            첫 공개 카드가 도착하면 여기에 그리드로 모입니다.
+            첫 공개 카드가 도착하면 여기에서 바로 볼 수 있어요.
           </p>
         </div>
       ) : (
@@ -731,8 +733,19 @@ function ProjectCardView({
           </span>
         ) : null}
       </div>
+      {card.photo_url ? (
+        <div className="relative h-[142px] w-full overflow-hidden border-b border-[#F4F4F2] bg-[#F5F4F1]">
+          <Image
+            src={card.photo_url}
+            alt={card.body || place || "프로젝트 공개 카드 사진"}
+            fill
+            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 260px"
+            className="object-cover"
+          />
+        </div>
+      ) : null}
       <div className="px-3.5 pb-3 pt-3.5">
-        <p className="mb-3 line-clamp-3 text-[12.5px] leading-[1.7] text-v2-ink">
+        <p className="mb-3 line-clamp-3 text-[14px] leading-[1.7] text-v2-ink">
           {card.body || "(메모 없음)"}
         </p>
         <div className="flex items-center justify-between">
@@ -756,9 +769,9 @@ function NoticeStrip() {
     >
       <p className="text-center text-[12px] leading-[1.7] tracking-[0.5px] text-white/50">
         <strong className="font-medium text-white/80">
-          챕터를 클릭하면 해당 시기로 이동합니다.
+          챕터를 클릭하면 해당 시기로 이동해요.
         </strong>
-        &nbsp;진행 중인 에피소드는 크루가 실시간으로 업데이트합니다.
+        &nbsp;진행 중인 에피소드는 크루가 실시간으로 업데이트해요.
       </p>
     </div>
   );

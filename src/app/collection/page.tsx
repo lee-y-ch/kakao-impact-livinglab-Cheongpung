@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -62,6 +63,7 @@ type BookCard = {
   category: Category;
   project: string;
   memo: string;
+  photoUrl: string | null;
   place: string;
   date: string;
   letters: number;
@@ -351,6 +353,7 @@ export default async function CollectionPage({
       category: label,
       project: [projectTitle, episodeBit].filter(Boolean).join(" · ") || "—",
       memo: a.body ?? "",
+      photoUrl: a.photo_url,
       place,
       date: formatDate(a.created_at),
       letters: reactions.letters,
@@ -827,6 +830,20 @@ function BookCardView({ card }: { card: BookCard }) {
           <span className="mb-2.5 inline-block rounded-[3px] bg-white/[0.18] px-2 py-[3px] text-[9px] font-semibold tracking-[0.8px] text-white/85">
             {style.badge}
           </span>
+          {card.photoUrl ? (
+            <div className="relative mb-3 h-[92px] overflow-hidden rounded-[6px] border border-white/20 bg-black/10">
+              <Image
+                src={card.photoUrl}
+                alt={card.memo || card.project}
+                fill
+                sizes="(max-width: 640px) 80vw, 260px"
+                className="object-cover"
+              />
+              <span className="absolute bottom-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[8.5px] font-semibold tracking-[1px] text-white/80 backdrop-blur">
+                PHOTO
+              </span>
+            </div>
+          ) : null}
           <p className="mb-2 text-[10px] font-normal text-white/50">
             {card.project}
           </p>

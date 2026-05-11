@@ -83,7 +83,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
     return NextResponse.json(
       {
         error: "face_consent_required",
-        message: "사람이 찍힌 사진은 초상권 동의 후에만 공개할 수 있어요.",
+        message: "사람이 함께 나온 사진은 동의를 받은 뒤에만 공개할 수 있어요.",
       },
       { status: 400 }
     );

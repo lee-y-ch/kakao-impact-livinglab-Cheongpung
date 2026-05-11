@@ -92,7 +92,7 @@ export function EntryForm({ context }: { context: Context }) {
       return;
     }
     if (rawFile && !faceConsent) {
-      setError("사진에 사람이 찍혔다면 초상권 동의 체크가 필요해요.");
+      setError("사람이 함께 나온 사진은 동의 체크가 필요해요.");
       return;
     }
 
@@ -466,7 +466,7 @@ export function EntryForm({ context }: { context: Context }) {
             maxWidth: 520,
           }}
         >
-          한 줄이면 충분합니다. 잘 쓰지 않아도 됩니다. 짧은 메모가 다른 사람의
+          한 줄이면 충분해요. 잘 쓰지 않아도 괜찮아요. 짧은 메모가 다른 사람의
           다음 발걸음이 될 수 있어요.
         </p>
 
@@ -668,7 +668,7 @@ export function EntryForm({ context }: { context: Context }) {
         >
           <Toggle
             label="초상권 동의"
-            sub="사람이 찍힌 사진은 공개 전 반드시 체크."
+            sub="사람이 함께 나온 사진은 공개 전 반드시 체크."
             checked={faceConsent}
             onChange={setFaceConsent}
           />

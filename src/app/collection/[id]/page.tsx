@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -435,6 +436,18 @@ function CardFront({
             </span>
           )}
         </div>
+        {activity.photo_url ? (
+          <div className="relative h-[52%] w-full overflow-hidden border-b border-[#F0F0EC] bg-[#F5F4F1]">
+            <Image
+              src={activity.photo_url}
+              alt={activity.body || place || "도감 카드 사진"}
+              fill
+              sizes="(max-width: 640px) 90vw, 480px"
+              className="object-cover"
+              priority
+            />
+          </div>
+        ) : null}
         <div className="flex flex-1 flex-col justify-between px-[22px] pb-[18px] pt-[22px]">
           <p className="text-[15px] leading-[1.8] text-v2-ink">
             {activity.body || "(메모 없음)"}
@@ -498,6 +511,17 @@ function CardBack({
             </span>
           )}
         </div>
+        {activity.photo_url ? (
+          <div className="relative h-[52%] w-full overflow-hidden border-b border-white/[0.08] bg-white/[0.04]">
+            <Image
+              src={activity.photo_url}
+              alt=""
+              fill
+              sizes="(max-width: 640px) 90vw, 480px"
+              className="object-cover opacity-80 grayscale-[20%]"
+            />
+          </div>
+        ) : null}
         <div className="flex flex-1 flex-col justify-between px-[22px] pb-[18px] pt-[22px]">
           <p className="text-[15px] font-light italic leading-[1.8] text-white/85">
             {activity.body ? `“${activity.body}”` : "(메모가 없는 카드)"}
