@@ -107,6 +107,25 @@ export function LetterComposer({
     }
   }
 
+  function applyAiDraft(mode: "insert" | "replace" = "insert") {
+    if (!llmDraft) return;
+    if (mode === "replace" || body.trim().length === 0) {
+      setBody(llmDraft + "\n\n");
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+        const pos = llmDraft.length + 2;
+        textareaRef.current?.setSelectionRange(pos, pos);
+      });
+      return;
+    }
+    const next = `${body.trimEnd()}\n\n${llmDraft}\n\n`;
+    setBody(next);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(next.length, next.length);
+    });
+  }
+
   async function saveDraft() {
     try {
       window.localStorage.setItem(draftKey, body);
@@ -143,7 +162,9 @@ export function LetterComposer({
         return;
       }
       setLlmDraft(data.draft);
-      startWith(data.draft);
+      if (body.trim().length === 0) {
+        setBody(data.draft + "\n\n");
+      }
     } catch {
       setError("AI 초안 요청 중 네트워크 오류가 발생했어요.");
     } finally {
@@ -276,6 +297,96 @@ export function LetterComposer({
           </div>
         </div>
 
+        <div
+          style={{
+            marginBottom: 18,
+            padding: "16px 18px",
+            border: "1px solid var(--ink)",
+            background: "var(--paper-2)",
+            display: "grid",
+            gap: 10,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "var(--mono-font)",
+              fontSize: 10.5,
+              letterSpacing: "0.12em",
+              color: "var(--ink)",
+            }}
+          >
+            AI는 첫 문장만 도와줘요
+          </div>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 14,
+              lineHeight: 1.75,
+              color: "var(--ink-2)",
+              fontFamily: "var(--serif-font)",
+            }}
+          >
+            버튼을 누르면 아래 편지지에 넣을 수 있는 첫 문장이 만들어집니다.
+            그대로 보내지 말고, 사장님 말투로 꼭 고쳐서 보내주세요.
+          </p>
+          {llmDraft ? (
+            <div
+              style={{
+                borderTop: "1px solid var(--rule)",
+                paddingTop: 12,
+                display: "grid",
+                gap: 10,
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  color: "var(--ink)",
+                  fontFamily: "var(--serif-font)",
+                }}
+              >
+                “{llmDraft}”
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => applyAiDraft("insert")}
+                  style={{
+                    padding: "8px 11px",
+                    border: "1px solid var(--ink)",
+                    background: "var(--ink)",
+                    color: "var(--paper)",
+                    cursor: "pointer",
+                    fontSize: 10.5,
+                    fontFamily: "var(--mono-font)",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  편지에 넣기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyAiDraft("replace")}
+                  style={{
+                    padding: "8px 11px",
+                    border: "1px solid var(--rule)",
+                    background: "var(--paper)",
+                    color: "var(--ink-2)",
+                    cursor: "pointer",
+                    fontSize: 10.5,
+                    fontFamily: "var(--mono-font)",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  초안으로 바꾸기
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
         {/* paper */}
         <div
           style={{
@@ -293,7 +404,7 @@ export function LetterComposer({
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={14}
-            placeholder={`${recipientName}님께 짧은 한 줄을 남겨주세요. 잘 쓰지 않아도 됩니다.`}
+            placeholder={`${recipientName}님께 짧은 한 줄을 남겨주세요. 잘 쓰지 않아도 괜찮아요.`}
             style={{
               width: "100%",
               background: "transparent",
@@ -443,7 +554,7 @@ export function LetterComposer({
         ) : null}
       </section>
 
-      {/* RIGHT — AI helper */}
+      {/* RIGHT — writing guide */}
       <aside
         style={{
           borderLeft: "1px solid var(--rule)",
@@ -471,66 +582,20 @@ export function LetterComposer({
               background: "var(--sea)",
             }}
           />
-          ASSIST · 글쓰기 도움
+          GUIDE · 보내기 전 확인
         </div>
         <div
           style={{
-            fontSize: 11.5,
+            fontSize: 14,
             color: "var(--ink-3)",
-            marginBottom: 20,
-            lineHeight: 1.7,
+            marginBottom: 22,
+            lineHeight: 1.8,
+            fontFamily: "var(--serif-font)",
           }}
         >
-          AI 초안은 첫 문장 제안일 뿐입니다. 꼭 사장님 말로 고쳐서 보내주세요.
+          AI 초안은 첫 문장 제안일 뿐이에요. 실제로 보내는 글은 사장님이 직접
+          고친 문장이어야 합니다.
         </div>
-
-        <button
-          type="button"
-          onClick={requestAiDraft}
-          disabled={drafting}
-          style={{
-            width: "100%",
-            padding: "11px 12px",
-            marginBottom: 18,
-            cursor: drafting ? "wait" : "pointer",
-            background: "var(--ink)",
-            color: "var(--paper)",
-            border: "none",
-            fontSize: 11,
-            fontFamily: "var(--mono-font)",
-            letterSpacing: "0.1em",
-          }}
-        >
-          {drafting ? "AI 초안 만드는 중…" : "AI 첫 문장 제안"}
-        </button>
-
-        {llmDraft ? (
-          <div
-            style={{
-              marginBottom: 20,
-              padding: 12,
-              border: "1px solid var(--sea)",
-              background: "var(--paper)",
-              fontSize: 11.5,
-              lineHeight: 1.7,
-              color: "var(--ink-2)",
-              fontFamily: "var(--serif-font)",
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "var(--mono-font)",
-                fontSize: 9.5,
-                color: "var(--ink-3)",
-                letterSpacing: "0.12em",
-                marginBottom: 6,
-              }}
-            >
-              AI DRAFT · 저장 시 원본 기록
-            </div>
-            {llmDraft}
-          </div>
-        ) : null}
 
         <div
           style={{

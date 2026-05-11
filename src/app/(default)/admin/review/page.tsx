@@ -85,7 +85,7 @@ export default async function AdminReviewPage({ searchParams }: SearchProps) {
         <LegacyHeader
           eyebrow="Admin Review"
           title="공개 검수 큐"
-          description="공개로 노출 중인 카드를 훑어보고 필요하면 비공개 전환하거나 가립니다. 신고 대응은 별도 화면에서 관리합니다."
+          description="공개로 노출 중인 카드를 훑어보고 필요하면 비공개로 바꾸거나 공개 영역에서 삭제 처리합니다. 신고 대응은 별도 화면에서 관리합니다."
           backHref="/admin"
           backLabel="← 운영 홈"
         />
@@ -99,7 +99,7 @@ export default async function AdminReviewPage({ searchParams }: SearchProps) {
           />
           <FilterTab
             href="/admin/review?filter=removed"
-            label="가려진 카드"
+            label="삭제 처리된 카드"
             count={removedCount}
             active={filter === "removed"}
           />

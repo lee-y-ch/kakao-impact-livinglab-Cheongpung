@@ -779,16 +779,18 @@ function ProgressSection({
                     </span>
                   </div>
                   <div
-                    className="h-1.5 overflow-hidden rounded-full"
+                    className="relative h-6 overflow-hidden rounded-full"
                     style={{ background: "#EDECEA" }}
                   >
                     <div
-                      className="h-full rounded-full transition-[width] duration-[1200ms] ease-out"
+                      className="flex h-full min-w-[38px] items-center justify-end rounded-full pr-2 text-[11px] font-semibold text-white transition-[width] duration-[1200ms] ease-out"
                       style={{
                         width: `${hasTarget ? c.pct : Math.min(100, c.current * 4)}%`,
                         background: fill,
                       }}
-                    />
+                    >
+                      {hasTarget ? `${c.pct}%` : `${c.current}장`}
+                    </div>
                   </div>
                   <span className="text-right text-[12.5px] font-semibold tracking-[-0.3px] text-v2-ink">
                     {hasTarget ? `${c.current} / ${c.total}` : `${c.current}장`}
