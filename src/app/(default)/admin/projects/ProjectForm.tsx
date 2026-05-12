@@ -125,6 +125,7 @@ export function ProjectForm({ categories, initial, returnTo }: Props) {
       return;
     }
 
+    setSubmitting(false);
     router.replace(returnTo ?? "/admin/projects");
     router.refresh();
   }
