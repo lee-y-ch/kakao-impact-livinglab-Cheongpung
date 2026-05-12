@@ -54,11 +54,9 @@ type FeedActivity = {
   shop: { name: string | null } | null;
 };
 
-type ProjectProgressRow = {
-  id: string;
-  progress_type: string | null;
-  progress_target: unknown;
-  category: { slug: string | null } | null;
+type CategoryEpisodeRow = {
+  status: string | null;
+  project: { category: { slug: string | null } | null } | null;
 };
 
 type GraphActivity = {
@@ -85,13 +83,6 @@ type GraphActivity = {
 export default async function ImpactPage() {
   const admin = createAdminClient();
 
-  type CategoryActivity = {
-    episode: {
-      project: { category: { slug: string | null } | null } | null;
-    } | null;
-    project: { category: { slug: string | null } | null } | null;
-  };
-
   const [
     publicCardsRes,
     publicShopsRes,
@@ -100,9 +91,8 @@ export default async function ImpactPage() {
     lettersRes,
     hiFiveRes,
     feedRes,
-    projectsRes,
     earliestActivityRes,
-    publicCardsForCategoryRes,
+    categoryEpisodesRes,
     graphActivitiesRes,
   ] = await Promise.all([
     admin
@@ -143,25 +133,15 @@ export default async function ImpactPage() {
       .order("created_at", { ascending: false })
       .limit(FEED_LIMIT),
     admin
-      .from("projects")
-      .select("id, progress_type, progress_target, category:categories(slug)")
-      .eq("is_public", true),
-    admin
       .from("activities")
       .select("created_at")
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle(),
+    // 카테고리 진척 — 에피소드 진행 상태 기준 (크루가 업데이트하는 status)
     admin
-      .from("activities")
-      .select(
-        `
-        episode:episodes ( project:projects ( category:categories ( slug ) ) ),
-        project:projects ( category:categories ( slug ) )
-      `
-      )
-      .eq("is_public", true)
-      .is("removed_at", null),
+      .from("episodes")
+      .select(`status, project:projects ( category:categories ( slug ) )`),
     admin
       .from("activities")
       .select(
@@ -192,49 +172,40 @@ export default async function ImpactPage() {
   };
 
   const feed = (feedRes.data ?? []) as unknown as FeedActivity[];
-  const projects = (projectsRes.data ?? []) as unknown as ProjectProgressRow[];
-  const allPublic = (publicCardsForCategoryRes.data ??
-    []) as unknown as CategoryActivity[];
+  const categoryEpisodes = (categoryEpisodesRes.data ??
+    []) as unknown as CategoryEpisodeRow[];
   const graph = buildImpactGraph(
     (graphActivitiesRes.data ?? []) as unknown as GraphActivity[]
   );
 
-  // 카테고리 진척 — 한 번의 SELECT 로 가져온 공개 카드를 JS 에서 group-by
-  const categoryCounts: Record<CategoryLabel, number> = {
+  // 카테고리 진척 — 크루가 업데이트하는 에피소드 status 기준.
+  // 분자: 'completed' 에피소드 수 / 분모: 전체 에피소드 수
+  const categoryCompleted: Record<CategoryLabel, number> = {
     라이프: 0,
     네트워크: 0,
     창작: 0,
     테크: 0,
   };
-  const categoryTargets: Record<CategoryLabel, number> = {
+  const categoryTotal: Record<CategoryLabel, number> = {
     라이프: 0,
     네트워크: 0,
     창작: 0,
     테크: 0,
   };
 
-  for (const a of allPublic) {
-    const slug =
-      a.episode?.project?.category?.slug ?? a.project?.category?.slug ?? null;
+  for (const e of categoryEpisodes) {
+    const slug = e.project?.category?.slug ?? null;
     if (!slug || !(slug in SLUG_TO_LABEL)) continue;
-    categoryCounts[SLUG_TO_LABEL[slug as CategorySlug]] += 1;
-  }
-
-  for (const p of projects) {
-    const slug = p.category?.slug;
-    if (!slug || !(slug in SLUG_TO_LABEL)) continue;
-    const target = (p.progress_target as { target_cards?: unknown } | null)
-      ?.target_cards;
-    if (typeof target === "number" && Number.isFinite(target)) {
-      categoryTargets[SLUG_TO_LABEL[slug as CategorySlug]] += target;
-    }
+    const label = SLUG_TO_LABEL[slug as CategorySlug];
+    categoryTotal[label] += 1;
+    if (e.status === "completed") categoryCompleted[label] += 1;
   }
 
   const categoryProgress = (
     ["라이프", "네트워크", "창작", "테크"] as CategoryLabel[]
   ).map((label) => {
-    const current = categoryCounts[label];
-    const total = categoryTargets[label];
+    const current = categoryCompleted[label];
+    const total = categoryTotal[label];
     const pct =
       total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
     return {
@@ -751,9 +722,9 @@ function ProgressSection({
                 4개 분류가 얼마나 자랐나
               </h2>
             </div>
-            <p className="max-w-[280px] text-left text-[13.5px] font-light leading-[1.7] text-[#999] lg:text-right">
-              각 카테고리의 목표와 현재 공개 카드 수를 함께 보여줘요. 목표가
-              없을 때는 누적 카드 수만 보여줘요.
+            <p className="max-w-[300px] text-left text-[13.5px] font-light leading-[1.7] text-[#999] lg:text-right">
+              크루가 진행하는 회차(에피소드) 중 완료된 비율이에요. 회차가 아직
+              열리지 않은 카테고리는 0회차로 표시돼요.
             </p>
           </div>
         </AnimateOnScroll>
@@ -785,15 +756,15 @@ function ProgressSection({
                     <div
                       className="flex h-full min-w-[38px] items-center justify-end rounded-full pr-2 text-[11px] font-semibold text-white transition-[width] duration-[1200ms] ease-out"
                       style={{
-                        width: `${hasTarget ? c.pct : Math.min(100, c.current * 4)}%`,
+                        width: `${hasTarget ? c.pct : 0}%`,
                         background: fill,
                       }}
                     >
-                      {hasTarget ? `${c.pct}%` : `${c.current}장`}
+                      {hasTarget ? `${c.pct}%` : "—"}
                     </div>
                   </div>
                   <span className="text-right text-[12.5px] font-semibold tracking-[-0.3px] text-v2-ink">
-                    {hasTarget ? `${c.current} / ${c.total}` : `${c.current}장`}
+                    {hasTarget ? `${c.current} / ${c.total} 회차` : "0회차"}
                   </span>
                 </div>
               </AnimateOnScroll>
