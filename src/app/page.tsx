@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
 import { CountUp } from "@/components/v2/CountUp";
 import { FaqAccordion } from "@/components/v2/FaqAccordion";
+import { HighlightQuote } from "@/components/v2/HighlightQuote";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -536,20 +537,9 @@ function Manifesto() {
             </p>
           </AnimateOnScroll>
           <AnimateOnScroll delay={0.08}>
-            <blockquote
-              className="relative inline-block whitespace-nowrap font-bold leading-[1.2] tracking-[-0.8px] text-v2-ink"
-              style={{ fontSize: "clamp(18px, 2.2vw, 28px)" }}
-            >
-              <span
-                aria-hidden
-                className="absolute -left-1 top-0 -z-[1] h-full"
-                style={{
-                  width: "calc(100% + 8px)",
-                  background: "rgba(255, 245, 100, 0.45)",
-                }}
-              />
+            <HighlightQuote>
               &ldquo;여러분은 어떤 세상에서 살고 싶나요?&rdquo;
-            </blockquote>
+            </HighlightQuote>
           </AnimateOnScroll>
           <AnimateOnScroll delay={0.16}>
             <cite className="mt-3.5 block text-[10px] not-italic tracking-[3px] text-[#AEAEB2]">
@@ -630,7 +620,7 @@ function Stats({
           target={2016}
           format={false}
           label="잠시섬 시작 연도"
-          hoverClass="hover:bg-[#C73322]/15"
+          hoverClass="hover:bg-[#C73322]/25"
           hoverTextClass="group-hover/stat:text-[#C73322]"
           showPlus={false}
         />
@@ -638,7 +628,7 @@ function Stats({
           target={visitors}
           format
           label="누적 방문자"
-          hoverClass="hover:bg-[#217A43]/15"
+          hoverClass="hover:bg-[#217A43]/25"
           hoverTextClass="group-hover/stat:text-[#217A43]"
           showPlus
         />
@@ -646,7 +636,7 @@ function Stats({
           target={residents}
           format
           label="강화유니버스 주민"
-          hoverClass="hover:bg-[#1F55B8]/15"
+          hoverClass="hover:bg-[#1F55B8]/25"
           hoverTextClass="group-hover/stat:text-[#1F55B8]"
           showPlus
           rightBorder={false}
