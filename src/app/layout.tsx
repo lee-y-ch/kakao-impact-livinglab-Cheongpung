@@ -23,7 +23,7 @@ export const viewport: Viewport = {
  * 자체 chrome (sidebar 등) 으로 운영되는 경로 prefix — 글로벌 Navbar/Footer 미노출.
  * `x-pathname` 헤더는 supabase middleware 가 주입한다 (src/lib/supabase/middleware.ts).
  */
-const NO_CHROME_PREFIXES = ["/admin"];
+const NO_CHROME_PREFIXES = ["/admin", "/owner"];
 
 function shouldShowChrome(pathname: string | null): boolean {
   if (!pathname) return true;

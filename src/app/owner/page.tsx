@@ -6,6 +6,8 @@ import { GhWordmark } from "@/components/claude/primitives";
 import { getCurrentActor } from "@/lib/auth/current-actor";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+import { OwnerSidebarNav } from "./OwnerSidebarNav";
+
 export const dynamic = "force-dynamic";
 
 const RECENT_CARD_LIMIT = 12;
@@ -90,8 +92,9 @@ export default async function OwnerHomePage() {
         background: "var(--paper-2)",
         color: "var(--ink)",
         fontFamily: "var(--ui-font)",
-        minHeight: "100vh",
+        height: "100svh",
         display: "flex",
+        overflow: "hidden",
       }}
     >
       {/* Side rail */}
@@ -105,6 +108,7 @@ export default async function OwnerHomePage() {
           flexDirection: "column",
           gap: 4,
           flexShrink: 0,
+          overflowY: "auto",
         }}
       >
         <div style={{ marginBottom: 22 }}>
@@ -170,41 +174,14 @@ export default async function OwnerHomePage() {
           ) : null}
         </div>
 
-        {[
-          { label: "받은 카드", href: "#cards", badge: totalCards },
-          { label: "보낸 편지", href: "#letters", badge: totalLetters },
-          { label: "가게 설정", href: "/owner/settings", badge: null },
-          { label: "공개 페이지", href: "/impact", badge: null },
-        ].map((t, i) => (
-          <Link
-            key={i}
-            href={t.href}
-            style={{
-              padding: "9px 12px",
-              borderRadius: 8,
-              color: "var(--ink-2)",
-              fontSize: 13,
-              fontWeight: 500,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              textDecoration: "none",
-            }}
-          >
-            <span>{t.label}</span>
-            {t.badge != null ? (
-              <span
-                style={{
-                  fontSize: 10,
-                  fontFamily: "var(--mono-font)",
-                  color: "var(--ink-3)",
-                }}
-              >
-                {t.badge}
-              </span>
-            ) : null}
-          </Link>
-        ))}
+        <OwnerSidebarNav
+          items={[
+            { label: "받은 카드", href: "#cards", badge: totalCards },
+            { label: "보낸 편지", href: "#letters", badge: totalLetters },
+            { label: "가게 설정", href: "/owner/settings", badge: null },
+            { label: "공개 페이지", href: "/impact", badge: null },
+          ]}
+        />
 
         <div
           style={{
@@ -301,7 +278,7 @@ export default async function OwnerHomePage() {
           </div>
         </div>
 
-        <div style={{ padding: "28px 40px 40px" }}>
+        <div id="cards" style={{ padding: "28px 40px 40px" }}>
           <div
             style={{
               display: "flex",
@@ -328,7 +305,6 @@ export default async function OwnerHomePage() {
               </div>
             </div>
             <span
-              id="cards"
               style={{
                 fontSize: 11,
                 fontFamily: "var(--mono-font)",
@@ -527,6 +503,61 @@ export default async function OwnerHomePage() {
               })}
             </ul>
           )}
+        </div>
+
+        {/* 보낸 편지 섹션 */}
+        <div id="letters" style={{ padding: "0 40px 48px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              marginBottom: 16,
+            }}
+          >
+            <div>
+              <div
+                className="serif"
+                style={{ fontSize: 18, fontWeight: 700, color: "var(--ink)" }}
+              >
+                보낸 편지
+              </div>
+              <div
+                style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}
+              >
+                손님에게 보낸 편지 내역이에요.
+              </div>
+            </div>
+            <span
+              style={{
+                fontSize: 11,
+                fontFamily: "var(--mono-font)",
+                color: "var(--ink-3)",
+                letterSpacing: "0.06em",
+              }}
+            >
+              총 {totalLetters}통
+            </span>
+          </div>
+          <p
+            style={{
+              border: "1px dashed var(--rule)",
+              padding: "32px 24px",
+              textAlign: "center",
+              fontSize: 13,
+              color: "var(--ink-3)",
+              background: "var(--paper)",
+              borderRadius: 14,
+              fontFamily: "var(--serif-font)",
+              lineHeight: 1.7,
+            }}
+          >
+            {totalLetters > 0
+              ? `지금까지 ${totalLetters}통의 편지를 보냈어요.`
+              : "아직 보낸 편지가 없어요."}
+            <br />
+            카드를 눌러 ✎ 편지 쓰기로 편지를 보내보세요.
+          </p>
         </div>
       </main>
     </div>
