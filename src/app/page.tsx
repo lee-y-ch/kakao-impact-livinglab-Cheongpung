@@ -271,7 +271,10 @@ const PROJECT_CARDS: ProjectCardSpec[] = [
     btnBg: "rgba(80,150,100,0.12)",
     btnColor: "#3A7A55",
     imageStyle: "local",
-    image: { src: "/v2/landing/card-local.jpg", alt: "강화도 차 만들기" },
+    image: {
+      src: "/local/ganghwa/ganghwa-05.jpg",
+      alt: "강화도 로컬 문화 공동 창작",
+    },
     links: {
       more: "https://www.guniverse.net/program/all?page=1",
       join: "https://www.guniverse.net/program/all?page=1",
@@ -288,7 +291,7 @@ const PROJECT_CARDS: ProjectCardSpec[] = [
     btnBg: "rgba(49,130,246,0.14)",
     btnColor: "#2060C8",
     imageStyle: "single",
-    image: { src: "/v2/landing/card-network.jpg", alt: "시부야대학 교류" },
+    image: { src: "/local/shibuya/shibuya-05.jpg", alt: "시부야대학 교류" },
     links: {
       more: "https://jindalrae.kr/contact",
       join: "https://jindalrae.kr/contact",
