@@ -2,7 +2,7 @@
 
 > 이 파일은 카카오임팩트 × 협동조합 청풍 강화도 관계인구 프로젝트 웹앱의 개발 계획서이다.
 > Claude Code가 이 디렉토리에서 작업할 때 자동으로 로드된다.
-> 참고 문서 : `docs/`, 레포 루트의 `[2026] 강화유니버스 프로젝트 개요.pdf` / `[2026] 강화유니버스 프로젝트 세부 - 1. 예시.pdf`, `대표님미팅_정리.pdf`, `단풍_중간발표자료.pdf`
+> 참고 문서 : `docs/roadmap-to-launch.md`, `docs/test-scenarios.md`, `docs/demo-script.md`, `docs/feedback-questions.md`, `docs/admin-onboarding.md`, `docs/v2-redesign-status.md`, 레포 루트의 `[2026] 강화유니버스 프로젝트 개요.pdf` / `[2026] 강화유니버스 프로젝트 세부 - 1. 예시.pdf`
 >
 > **⚠️ 팀 회의 확정 대상** 마크가 붙은 섹션은 잠정 결정이며, 팀 회의 이후 바뀔 수 있다.
 

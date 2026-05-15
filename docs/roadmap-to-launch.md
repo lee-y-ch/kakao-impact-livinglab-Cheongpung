@@ -23,7 +23,7 @@
 - **사장님 흐름** — `/owner`, `/owner/letters/new`, `/owner/settings`, `POST /api/llm/draft` 구현 완료. Gemini 무료 tier 기본, Anthropic 전환 가능.
 - **`/impact`** — 공개 activity 기반 실데이터 노드맵 연결 완료. hover/focus 미리보기 반영.
 - **시연 전 UX polish** — 사장님 코드 보이기/숨기기, 내 도감 상단 카드 링크, 랜딩 현황 카드 hover 색상, 한국어 줄바꿈 개선 반영.
-- **문서** — `docs/test-scenarios.md`, `docs/demo-script.md`, `docs/feedback-questions.md`, `docs/admin-onboarding.md` 작성 완료.
+- **문서** — `docs/test-scenarios.md`, `docs/demo-script.md`, `docs/feedback-questions.md`, `docs/admin-onboarding.md`, `docs/v2-redesign-status.md` 유지. 팀 공유용 임시 문서는 레포에서 정리.
 
 ## 0.2 회의 전 남은 준비
 
