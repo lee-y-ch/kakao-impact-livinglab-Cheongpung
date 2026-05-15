@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 
+import { ChromeVisibility } from "@/components/layout/ChromeVisibility";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 
@@ -48,9 +49,17 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="flex min-h-screen flex-col bg-v2-paper font-sans text-v2-ink antialiased">
-        {showChrome ? <Navbar /> : null}
+        {showChrome ? (
+          <ChromeVisibility>
+            <Navbar />
+          </ChromeVisibility>
+        ) : null}
         <main className="flex-1">{children}</main>
-        {showChrome ? <Footer /> : null}
+        {showChrome ? (
+          <ChromeVisibility>
+            <Footer />
+          </ChromeVisibility>
+        ) : null}
       </body>
     </html>
   );
