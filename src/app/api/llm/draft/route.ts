@@ -97,6 +97,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, draft });
   } catch (err) {
+    console.error("[llm/draft] failed", err);
+
     const message =
       err instanceof Error && err.message.includes("_API_KEY")
         ? "LLM API 키가 설정되지 않았습니다. 직접 작성은 계속할 수 있어요."

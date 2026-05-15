@@ -13,12 +13,12 @@ const DEFAULT_MODEL = "claude-3-5-haiku-latest";
 export async function draftOwnerLetterIntroWithAnthropic(
   input: LetterDraftInput
 ) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY is not configured");
   }
 
-  const model = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  const model = process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODEL;
   const prompt = buildOwnerLetterPrompt(input);
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {

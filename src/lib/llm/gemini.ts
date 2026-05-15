@@ -15,12 +15,15 @@ type GeminiGenerateContentResponse = {
 const DEFAULT_MODEL = "gemini-2.5-flash-lite";
 
 export async function draftOwnerLetterIntroWithGemini(input: LetterDraftInput) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey =
+    process.env.GEMINI_API_KEY?.trim() ||
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
+    process.env.GOOGLE_API_KEY?.trim();
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not configured");
   }
 
-  const model = process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
+  const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
   const prompt = buildOwnerLetterPrompt(input);
   const url = new URL(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`

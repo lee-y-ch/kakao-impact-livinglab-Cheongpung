@@ -3,7 +3,7 @@ import { draftOwnerLetterIntroWithGemini } from "./gemini";
 import type { LetterDraftInput } from "./prompt";
 
 export async function draftOwnerLetterIntro(input: LetterDraftInput) {
-  const provider = process.env.LLM_PROVIDER ?? "gemini";
+  const provider = (process.env.LLM_PROVIDER ?? "gemini").trim().toLowerCase();
 
   if (provider === "anthropic") {
     return draftOwnerLetterIntroWithAnthropic(input);
