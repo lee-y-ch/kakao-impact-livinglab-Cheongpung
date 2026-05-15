@@ -132,7 +132,7 @@ insert into public.projects (id, category_id, slug, title, summary, description,
     '도쿄와 강화의 로컬 커뮤니티가 서로를 탐방하고 교류하는 롱텀 프로젝트',
     '강화유니버스 × 시부야대학. 두 로컬 커뮤니티가 ''환대''를 매개로 서로의 삶과 배움을 주고받는 5년 롱텀 교류. 첫 만남은 2024년 11월, 서로의 동네를 오가며 관계를 천천히 쌓아간다.',
     '2024-11-01', null, true, 'time', '{"start_date": "2024-11-01", "end_date": "2028-12-31"}',
-    'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=1200&h=800&fit=crop'
+    '/local/shibuya/shibuya-04.jpg'
   ),
   (
     'bbbbbbbb-0000-4000-8000-000000000006',
@@ -300,7 +300,7 @@ insert into public.activities (
   -- 위캔드 요가 1회차
   ('aaaaaaaa-0000-4000-8000-000000000001', 'bbbbbbbb-0000-4000-8000-000000000001', 'cccccccc-0000-4000-8000-000000000101', 'dddddddd-0000-4000-8000-000000000004',
    'photo', null, '동막 일출이 손에 닿을 거리. 처음으로 ''아 출근 안 하고 싶다''는 말 입 밖으로 안 나온 아침.',
-   'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&h=800&fit=crop',
+   '/local/ganghwa/ganghwa-01.jpg',
    true, true, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-1'), '2026-04-12 07:30:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000003', 'bbbbbbbb-0000-4000-8000-000000000001', 'cccccccc-0000-4000-8000-000000000101', 'dddddddd-0000-4000-8000-000000000004',
    'memo', null, '바다 근처에서 호흡 다섯 번. 도시에서 못 했던 일.', null,
@@ -312,7 +312,7 @@ insert into public.activities (
   -- 위캔드 요가 2회차 (마니산)
   ('aaaaaaaa-0000-4000-8000-000000000002', 'bbbbbbbb-0000-4000-8000-000000000001', 'cccccccc-0000-4000-8000-000000000102', null,
    'photo', null, '마니산 정상에서 본 강화 풍경. 저 멀리 교동까지 보였어요.',
-   'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&h=800&fit=crop',
+   '/local/ganghwa/ganghwa-02.jpg',
    true, true, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-4'), '2026-04-26 11:20:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000004', 'bbbbbbbb-0000-4000-8000-000000000001', 'cccccccc-0000-4000-8000-000000000102', null,
    'memo', null, '내려오면서 무릎이 후들거렸지만 마음은 가벼움.', null,
@@ -321,7 +321,7 @@ insert into public.activities (
   -- 강화 팜 라이프 1회차 (씨앗 워크숍)
   ('aaaaaaaa-0000-4000-8000-000000000003', 'bbbbbbbb-0000-4000-8000-000000000002', 'cccccccc-0000-4000-8000-000000000201', 'dddddddd-0000-4000-8000-000000000003',
    'photo', null, '제철 씨앗 13종을 손에 들고. 토마토부터 들깨까지.',
-   'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=1200&h=800&fit=crop',
+   '/local/ganghwa/ganghwa-03.jpg',
    true, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-6'), '2026-03-22 10:30:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000006', 'bbbbbbbb-0000-4000-8000-000000000002', 'cccccccc-0000-4000-8000-000000000201', 'dddddddd-0000-4000-8000-000000000003',
    'workshop', '씨앗 분배', '내년에 뭘 키울지 결정하는 데 30분이 걸렸다.', null,
@@ -330,7 +330,7 @@ insert into public.activities (
   -- 강화 팜 라이프 2회차 (김매기)
   ('aaaaaaaa-0000-4000-8000-000000000007', 'bbbbbbbb-0000-4000-8000-000000000002', 'cccccccc-0000-4000-8000-000000000202', 'dddddddd-0000-4000-8000-000000000003',
    'photo', null, '점심에 텃밭 옆에서 먹은 비빔국수. 이게 제일 큰 보상.',
-   'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?w=1200&h=800&fit=crop',
+   '/local/ganghwa/ganghwa-04.jpg',
    true, true, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-8'), '2026-05-30 12:30:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000003', 'bbbbbbbb-0000-4000-8000-000000000002', 'cccccccc-0000-4000-8000-000000000202', null,
    'memo', null, '잡초 뽑다 옆 어른과 한 시간 동안 동네 이야기. 이게 또 진짜 김매기지.', null,
@@ -342,7 +342,7 @@ insert into public.activities (
    true, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-10'), '2026-04-19 06:40:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000001', 'bbbbbbbb-0000-4000-8000-000000000003', 'cccccccc-0000-4000-8000-000000000301', null,
    'photo', null, '아침 갯벌. 발이 푹 빠지는 순간을 녹음으로 남기고 싶었다.',
-   'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=1200&h=800&fit=crop',
+   '/local/ganghwa/ganghwa-06.jpg',
    true, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-11'), '2026-04-19 07:00:00+09'),
 
   -- 윤슬 앨범 2회차 (시장 소리)
@@ -356,7 +356,7 @@ insert into public.activities (
   -- 차완 차 만들기 1회차 (약쑥 시음)
   ('aaaaaaaa-0000-4000-8000-000000000005', 'bbbbbbbb-0000-4000-8000-000000000004', 'cccccccc-0000-4000-8000-000000000401', 'dddddddd-0000-4000-8000-000000000001',
    'photo', null, '약쑥 + 깻잎 베이스 첫 시음. 약쑥이 강했지만, 깻잎이 잘 받쳐주더라.',
-   'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=1200&h=800&fit=crop',
+   '/local/ganghwa/ganghwa-07.jpg',
    true, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-14'), '2026-04-05 15:30:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000002', 'bbbbbbbb-0000-4000-8000-000000000004', 'cccccccc-0000-4000-8000-000000000401', 'dddddddd-0000-4000-8000-000000000001',
    'workshop', '봄 블렌딩 워크숍', '5명이 각자 비율 다르게 우려서 비교. 내 취향은 약쑥 1 : 깻잎 2.', null,
@@ -368,18 +368,18 @@ insert into public.activities (
    true, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-16'), '2024-11-15 19:00:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000002', 'bbbbbbbb-0000-4000-8000-000000000005', 'cccccccc-0000-4000-8000-000000000502', null,
    'photo', null, '시부야대학 캠퍼스 라이프. 일본의 ''로컬 학교''라는 개념이 여기서 쌓여 가는구나.',
-   'https://images.unsplash.com/photo-1533050487297-09b450131914?w=1200&h=800&fit=crop',
+   '/local/shibuya/shibuya-01.jpg',
    true, true, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-17'), '2025-02-22 14:00:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000003', 'bbbbbbbb-0000-4000-8000-000000000005', 'cccccccc-0000-4000-8000-000000000503', 'dddddddd-0000-4000-8000-000000000002',
    'photo', null, '시부야 친구들이 잠시섬 마루에 둘러앉아 강화의 차를 마셨다. 서로 말은 조금 느렸지만, 웃음은 금방 같은 속도가 됐다.',
-   'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=1200&h=800&fit=crop',
+   '/local/shibuya/shibuya-08.jpg',
    true, true, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-18'), '2025-11-08 16:00:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000004', 'bbbbbbbb-0000-4000-8000-000000000005', 'cccccccc-0000-4000-8000-000000000503', null,
    'memo', null, '같이 만든 한일 식탁. 잡채와 오니기리가 한 접시에 올라가 있는 게 정답인지 모르겠지만 맛있었다.', null,
    true, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-19'), '2025-11-08 19:30:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000001', 'bbbbbbbb-0000-4000-8000-000000000005', 'cccccccc-0000-4000-8000-000000000504', null,
    'photo', null, '오랜만에 유유기지에서 시부야대학 이야기를 나눴어요!!',
-   'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&h=800&fit=crop',
+   '/local/shibuya/shibuya-10.jpg',
    true, true, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-20'), '2026-04-12 14:00:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000002', 'bbbbbbbb-0000-4000-8000-000000000005', 'cccccccc-0000-4000-8000-000000000504', null,
    'memo', null, '시부야대학에서 받은 영감으로 제철 요리 워크숍을 진행했어요!', null,
@@ -391,7 +391,7 @@ insert into public.activities (
   -- 가미야마
   ('aaaaaaaa-0000-4000-8000-000000000006', 'bbbbbbbb-0000-4000-8000-000000000006', 'cccccccc-0000-4000-8000-000000000601', null,
    'photo', null, '가미야마. 시골 한복판에 IT 회사가 있는 풍경. 강화에서도 가능할까.',
-   'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=1200&h=800&fit=crop',
+   '/local/ganghwa/ganghwa-08.jpg',
    true, true, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-23'), '2025-11-22 16:30:00+09'),
 
   -- 가게 단순 체크인 / 메모 (프로젝트 / 에피소드 없는 자유 카드)
@@ -400,7 +400,7 @@ insert into public.activities (
    true, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-24'), '2026-04-22 15:30:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000003', null, null, 'dddddddd-0000-4000-8000-000000000001',
    'photo', null, '책방 구석 자리. 시집 한 권 끼고 두 시간 동안 안 일어났다.',
-   'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1200&h=800&fit=crop',
+   '/local/ganghwa/ganghwa-09.jpg',
    true, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-25'), '2026-04-30 16:00:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000005', null, null, 'dddddddd-0000-4000-8000-000000000002',
    'check_in', null, null, null,
@@ -410,14 +410,14 @@ insert into public.activities (
    true, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-27'), '2026-05-02 11:20:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000004', null, null, 'dddddddd-0000-4000-8000-000000000004',
    'photo', null, '초지진 손님방 마당. 바다와 살구나무가 같은 액자에.',
-   'https://images.unsplash.com/photo-1444090542259-0af8fa96557e?w=1200&h=800&fit=crop',
+   '/local/ganghwa/ganghwa-10.jpg',
    true, true, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-28'), '2026-05-08 17:30:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000001', null, null, 'dddddddd-0000-4000-8000-000000000005',
    'check_in', null, null, null,
    true, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-29'), '2026-05-15 09:30:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000001', null, null, 'dddddddd-0000-4000-8000-000000000005',
    'photo', null, '풍물장 5일장. 봄 미나리가 한 단에 천원이라니.',
-   'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&h=800&fit=crop',
+   '/local/ganghwa/ganghwa-11.jpg',
    true, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-30'), '2026-05-15 09:50:00+09'),
 
   -- 비공개 카드 (일부)
@@ -426,7 +426,7 @@ insert into public.activities (
    false, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-31'), '2026-05-23 14:20:00+09'),
   ('aaaaaaaa-0000-4000-8000-000000000007', null, null, 'dddddddd-0000-4000-8000-000000000004',
    'photo', null, '바다 보면서 우는 데 사진 한 장. 비공개.',
-   'https://images.unsplash.com/photo-1530908295418-a12e326966ba?w=1200&h=800&fit=crop',
+   '/local/ganghwa/ganghwa-12.jpg',
    false, false, uuid_generate_v5('00000000-0000-0000-0000-000000000000', 'demo-act-32'), '2026-05-25 19:00:00+09'),
 
   -- 공개 검수 큐 카드 (/admin/review 는 is_public=true AND removed_at IS NULL 전체를 보여줌)
