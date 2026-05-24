@@ -68,6 +68,16 @@ type ArrivalRow = {
   shop: { id: string | null; name: string | null } | null;
 };
 
+type ReactionRow = {
+  activity_id: string;
+  kind: string;
+};
+
+type ArrivalWithReactions = ArrivalRow & {
+  noteCount: number;
+  hiFiveCount: number;
+};
+
 export default async function CrewPage() {
   const actor = await getCurrentActor();
   if (actor.role !== "crew") {
@@ -136,7 +146,38 @@ export default async function CrewPage() {
   ]);
 
   const episodes = (episodesRes.data ?? []) as unknown as EpisodeRow[];
-  const arrivals = (arrivalsRes.data ?? []) as unknown as ArrivalRow[];
+  const arrivalRows = (arrivalsRes.data ?? []) as unknown as ArrivalRow[];
+
+  // 도착 카드별 reaction 카운트 — 크루가 노트/하이파이브 보내면 즉시 반영되도록.
+  const arrivalIds = arrivalRows.map((a) => a.id);
+  const reactionsMap = new Map<
+    string,
+    { noteCount: number; hiFiveCount: number }
+  >();
+  if (arrivalIds.length > 0) {
+    const { data: reactionRowsRaw } = await admin
+      .from("reactions")
+      .select("activity_id, kind")
+      .in("activity_id", arrivalIds);
+    for (const r of (reactionRowsRaw ?? []) as ReactionRow[]) {
+      const entry = reactionsMap.get(r.activity_id) ?? {
+        noteCount: 0,
+        hiFiveCount: 0,
+      };
+      if (r.kind === "note" || r.kind === "letter") entry.noteCount += 1;
+      else if (r.kind === "hi_five") entry.hiFiveCount += 1;
+      reactionsMap.set(r.activity_id, entry);
+    }
+  }
+
+  const arrivals: ArrivalWithReactions[] = arrivalRows.map((a) => {
+    const r = reactionsMap.get(a.id);
+    return {
+      ...a,
+      noteCount: r?.noteCount ?? 0,
+      hiFiveCount: r?.hiFiveCount ?? 0,
+    };
+  });
 
   const summary = [
     {
@@ -325,7 +366,7 @@ function CrewLayout({
   arrivals,
 }: {
   episodes: EpisodeRow[];
-  arrivals: ArrivalRow[];
+  arrivals: ArrivalWithReactions[];
 }) {
   return (
     <div className="mx-auto max-w-[1280px] px-6 pb-20 pt-10 lg:px-[60px]">
@@ -414,7 +455,7 @@ function EpisodeCard({ episode }: { episode: EpisodeRow }) {
   );
 }
 
-function Arrivals({ arrivals }: { arrivals: ArrivalRow[] }) {
+function Arrivals({ arrivals }: { arrivals: ArrivalWithReactions[] }) {
   return (
     <div>
       <AnimateOnScroll>
@@ -446,7 +487,8 @@ function Arrivals({ arrivals }: { arrivals: ArrivalRow[] }) {
   );
 }
 
-function ArrivalCard({ arrival }: { arrival: ArrivalRow }) {
+function ArrivalCard({ arrival }: { arrival: ArrivalWithReactions }) {
+  const hasReactions = arrival.noteCount > 0 || arrival.hiFiveCount > 0;
   return (
     <div className="mb-2 rounded-xl border border-v2-rule bg-white px-[18px] py-4 transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
       <div className="mb-2 flex items-center justify-between">
@@ -475,6 +517,22 @@ function ArrivalCard({ arrival }: { arrival: ArrivalRow }) {
       <p className="mb-2.5 text-[10.5px] text-[#AEAEB2]">
         {arrivalMeta(arrival)}
       </p>
+      {hasReactions ? (
+        <div className="mb-2.5 flex items-center gap-3 text-[10.5px] font-medium text-v2-ink3">
+          {arrival.noteCount > 0 ? (
+            <span className="inline-flex items-center gap-1">
+              <span className="text-[#6BAF8A]">💌</span>
+              <span>노트 {arrival.noteCount}</span>
+            </span>
+          ) : null}
+          {arrival.hiFiveCount > 0 ? (
+            <span className="inline-flex items-center gap-1">
+              <span className="text-[#C4956A]">★</span>
+              <span>하이파이브 {arrival.hiFiveCount}</span>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       <ArrivalReactionActions activityId={arrival.id} />
     </div>
   );
