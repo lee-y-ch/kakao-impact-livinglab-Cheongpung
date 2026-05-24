@@ -1,8 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+import { FeedCardGrid, type FeedCardItem } from "./FeedCardGrid";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,11 @@ export const dynamic = "force-dynamic";
  *
  * 공개 페이지 (auth 가드 없음). 시간 역순 공개 카드만, query param 으로
  * 카테고리·기간 필터. 좋아요/팔로우/댓글/랭킹 금지 (CLAUDE.md 게임 규칙 ④).
+ *
+ * 청풍 피드백 반영:
+ *   - 작성자(닉네임·역할) 카드에 노출
+ *   - 카드 클릭 시 모달 상세 (FeedCardGrid 클라이언트 컴포넌트로 분리)
+ *   - PLACES 가게 등장 순위 섹션 제거 (경쟁 회피)
  */
 
 const FEED_LIMIT = 50;
@@ -24,13 +30,6 @@ const SLUG_TO_LABEL: Record<CategorySlug, CategoryLabel> = {
   network: "네트워크",
   local_culture: "창작",
   tech: "테크",
-};
-
-const CATEGORY_BADGE: Record<CategoryLabel, string> = {
-  라이프: "bg-[rgba(180,110,40,0.1)] text-[#9B6020]",
-  네트워크: "bg-[rgba(107,175,138,0.12)] text-[#3A7A55]",
-  창작: "bg-[rgba(49,130,246,0.1)] text-[#2060C8]",
-  테크: "bg-[rgba(130,90,180,0.1)] text-[#6040A0]",
 };
 
 const CATEGORY_DOT: Record<CategoryLabel, string> = {
@@ -72,6 +71,7 @@ type FeedActivity = {
     category: { slug: string | null } | null;
   } | null;
   shop: { name: string | null } | null;
+  author: { nickname: string | null } | null;
 };
 
 export default async function FeedPage({
@@ -85,8 +85,6 @@ export default async function FeedPage({
   const activePeriod = parsePeriod(searchParams?.period);
   const periodCutoff = periodCutoffIso(activePeriod);
 
-  // 본 조회 — 모든 공개 카드 fetch (필터 후 limit). 카테고리 필터는 JS 단에서 적용
-  // (embed 된 카테고리 슬러그 기반이라 SQL 필터로 깔끔히 표현되지 않음).
   let query = admin
     .from("activities")
     .select(
@@ -97,7 +95,8 @@ export default async function FeedPage({
         project:projects ( title, category:categories ( slug ) )
       ),
       project:projects ( title, category:categories ( slug ) ),
-      shop:shops ( name )
+      shop:shops ( name ),
+      author:user_id ( nickname )
     `
     )
     .eq("is_public", true)
@@ -131,31 +130,28 @@ export default async function FeedPage({
   }
   const totalInPeriod = allInPeriod.length;
 
-  // 자주 등장한 장소 — shop.name 기준 top 5
-  const shopFrequency = new Map<string, number>();
-  for (const a of allInPeriod) {
-    const name = a.shop?.name;
-    if (!name) continue;
-    shopFrequency.set(name, (shopFrequency.get(name) ?? 0) + 1);
-  }
-  const topShops = [...shopFrequency.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-  const maxShopCount = topShops[0]?.[1] ?? 1;
+  const cardItems: FeedCardItem[] = visible.map((a) => ({
+    id: a.id,
+    body: a.body,
+    photoUrl: a.photo_url,
+    createdAt: a.created_at,
+    categoryLabel: labelOf(a),
+    projectLine: projectLine(a),
+    place: feedPlace(a),
+    authorNickname: a.author?.nickname?.trim() || "강화 여행자",
+    // 카드 작성자는 카드 발급 권한상 항상 참여자(participant)임.
+    // 청풍 피드백 — "크루/사장님/게스트 누구 중에 쓴지 모르겠다" 의문 해소를 위해 명시.
+    authorRoleLabel: "참여자",
+  }));
 
   return (
     <>
       <FeedLayout
-        cards={visible}
+        cards={cardItems}
         totalInPeriod={totalInPeriod}
         categoryCounts={categoryCounts}
         activeCategory={activeCategory}
         activePeriod={activePeriod}
-        topShops={topShops.map(([name, count]) => ({
-          name,
-          count,
-          pct: Math.round((count / Math.max(1, maxShopCount)) * 100),
-        }))}
       />
       <NoticeStrip />
     </>
@@ -195,16 +191,6 @@ function labelOf(a: FeedActivity): CategoryLabel | null {
   return SLUG_TO_LABEL[slug as CategorySlug];
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function feedNo(id: string): string {
-  return `No.${id.slice(0, 4).toUpperCase()}`;
-}
-
 function projectLine(a: FeedActivity): string {
   const projectTitle = a.episode?.project?.title ?? a.project?.title ?? "";
   const seq = a.episode?.seq;
@@ -237,14 +223,12 @@ function FeedLayout({
   categoryCounts,
   activeCategory,
   activePeriod,
-  topShops,
 }: {
-  cards: FeedActivity[];
+  cards: FeedCardItem[];
   totalInPeriod: number;
   categoryCounts: Record<CategoryLabel, number>;
   activeCategory: CategoryLabel | null;
   activePeriod: Period;
-  topShops: { name: string; count: number; pct: number }[];
 }) {
   return (
     <div className="mx-auto max-w-[1280px] px-6 pb-20 pt-[100px] lg:px-[60px]">
@@ -254,7 +238,6 @@ function FeedLayout({
           categoryCounts={categoryCounts}
           activeCategory={activeCategory}
           activePeriod={activePeriod}
-          topShops={topShops}
         />
         <Main
           cards={cards}
@@ -271,13 +254,11 @@ function Sidebar({
   categoryCounts,
   activeCategory,
   activePeriod,
-  topShops,
 }: {
   totalInPeriod: number;
   categoryCounts: Record<CategoryLabel, number>;
   activeCategory: CategoryLabel | null;
   activePeriod: Period;
-  topShops: { name: string; count: number; pct: number }[];
 }) {
   const allLabels: CategoryLabel[] = ["라이프", "네트워크", "창작", "테크"];
 
@@ -349,36 +330,6 @@ function Sidebar({
           </ul>
         </SidebarBlock>
       </AnimateOnScroll>
-
-      <AnimateOnScroll delay={0.14}>
-        <SidebarBlock label="PLACES">
-          {topShops.length === 0 ? (
-            <p className="text-[12px] font-light leading-[1.6] text-[#AEAEB2]">
-              아직 등장한 가게가 없어요.
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-1.5">
-              {topShops.map((p) => (
-                <li
-                  key={p.name}
-                  className="grid grid-cols-[1fr_auto] items-center gap-2 py-1.5 text-[12.5px] text-v2-ink3"
-                >
-                  <span className="truncate">{p.name}</span>
-                  <span className="text-[11px] font-medium tabular-nums text-v2-ink">
-                    {p.count}장
-                  </span>
-                  <div className="col-span-2 h-2.5 overflow-hidden rounded-full bg-v2-rule">
-                    <div
-                      className="h-full min-w-[12px] rounded-full"
-                      style={{ width: `${p.pct}%`, background: "#6BAF8A" }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </SidebarBlock>
-      </AnimateOnScroll>
     </aside>
   );
 }
@@ -405,7 +356,7 @@ function Main({
   activeCategory,
   activePeriod,
 }: {
-  cards: FeedActivity[];
+  cards: FeedCardItem[];
   activeCategory: CategoryLabel | null;
   activePeriod: Period;
 }) {
@@ -467,13 +418,7 @@ function Main({
           activePeriod={activePeriod}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          {cards.map((card, i) => (
-            <AnimateOnScroll key={card.id} delay={((i % 3) + 1) * 0.07}>
-              <FeedCardView card={card} />
-            </AnimateOnScroll>
-          ))}
-        </div>
+        <FeedCardGrid cards={cards} />
       )}
 
       {cards.length === FEED_LIMIT ? (
@@ -488,53 +433,6 @@ function Main({
 
 function Dot() {
   return <span className="h-[3px] w-[3px] rounded-full bg-[#D0D0D0]" />;
-}
-
-function FeedCardView({ card }: { card: FeedActivity }) {
-  const label = labelOf(card);
-  const badge = label ? CATEGORY_BADGE[label] : "bg-[#EDECEA] text-[#888]";
-
-  return (
-    <div className="group overflow-hidden rounded-[14px] border border-black/[0.06] bg-white transition-all duration-[220ms] hover:-translate-y-1 hover:shadow-[0_14px_36px_rgba(0,0,0,0.09)]">
-      <div className="flex items-center justify-between border-b border-[#F4F4F2] px-4 pb-2.5 pt-3">
-        <span className="text-[10px] font-semibold tracking-[1.5px] text-[#AEAEB2]">
-          {feedNo(card.id)}
-        </span>
-        <span
-          className={`rounded px-2 py-[3px] text-[9.5px] font-semibold tracking-[0.5px] ${badge}`}
-        >
-          {label ?? "미분류"}
-        </span>
-      </div>
-      {card.photo_url ? (
-        <div className="relative h-[150px] w-full overflow-hidden border-b border-[#F4F4F2] bg-[#F5F4F1]">
-          <Image
-            src={card.photo_url}
-            alt={card.body || projectLine(card)}
-            fill
-            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 280px"
-            className="object-cover transition-transform duration-[450ms] group-hover:scale-[1.03]"
-          />
-        </div>
-      ) : null}
-      <div className="px-4 pb-3 pt-3.5">
-        <p className="mb-2 text-[10.5px] font-normal text-[#AEAEB2]">
-          {projectLine(card)}
-        </p>
-        <p className="mb-3.5 line-clamp-3 text-[14px] leading-[1.7] text-v2-ink">
-          {card.body || "(메모 없음)"}
-        </p>
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-light text-[#AEAEB2]">
-            {feedPlace(card)}
-          </span>
-          <span className="text-[11px] font-light text-[#AEAEB2]">
-            {formatDate(card.created_at)}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function EmptyState({

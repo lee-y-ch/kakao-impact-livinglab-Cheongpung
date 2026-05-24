@@ -75,6 +75,14 @@ type CardRow = {
   shop: { name: string | null } | null;
 };
 
+type EncouragementNote = {
+  id: string;
+  body: string | null;
+  author_role: string;
+  author_label: string | null;
+  sent_at: string;
+};
+
 export default async function ProjectDetailPage({
   params,
 }: {
@@ -174,17 +182,50 @@ export default async function ProjectDetailPage({
   const inProgressEpisode =
     episodes.find((e) => e.status === "in_progress") ?? null;
 
-  // 사장님 편지 — 이 프로젝트의 카드들에 달린 letter reaction count
+  // 이 프로젝트 카드들에 달린 모든 reaction — letter / note / hi_five 집계.
+  // 청풍 피드백: 크루가 노트 보내면 프로젝트 진행 화면에서도 보이게.
   let lettersCount = 0;
+  let hiFiveCount = 0;
+  let recentNotes: EncouragementNote[] = [];
   if (allCardsForStats.length > 0) {
     const ids = allCardsForStats.map((a) => a.id);
-    const { count } = await admin
+    const { data: reactionRows } = await admin
       .from("reactions")
-      .select("id", { count: "exact", head: true })
+      .select("id, kind, body, author_role, author_label, sent_at")
       .in("activity_id", ids)
-      .eq("kind", "letter")
-      .eq("author_role", "owner");
-    lettersCount = count ?? 0;
+      .order("sent_at", { ascending: false });
+
+    type ReactionRow = {
+      id: string;
+      kind: string;
+      body: string | null;
+      author_role: string;
+      author_label: string | null;
+      sent_at: string;
+    };
+
+    const allReactions = (reactionRows ?? []) as ReactionRow[];
+    for (const r of allReactions) {
+      if (r.kind === "letter" && r.author_role === "owner") lettersCount += 1;
+      else if (r.kind === "hi_five") hiFiveCount += 1;
+    }
+
+    // 받은 격려 섹션 — 크루/관리자 노트 + 사장님 편지(짧은 미리보기) 최근 6건.
+    // 카드 작성자 외 응원 행위만 노출 (참여자 본인 reaction 은 미지원).
+    recentNotes = allReactions
+      .filter(
+        (r) =>
+          (r.kind === "note" || r.kind === "letter") &&
+          (r.body?.trim().length ?? 0) > 0
+      )
+      .slice(0, 6)
+      .map((r) => ({
+        id: r.id,
+        body: r.body,
+        author_role: r.author_role,
+        author_label: r.author_label,
+        sent_at: r.sent_at,
+      }));
   }
 
   const progress = calculateProgress({
@@ -233,6 +274,7 @@ export default async function ProjectDetailPage({
           runningDays={runningDays}
         />
       ) : null}
+      <EncouragementSection notes={recentNotes} hiFiveCount={hiFiveCount} />
       <ProjectCards
         cards={directCards}
         categoryLabel={categoryLabel}
@@ -644,6 +686,106 @@ function ActiveStat({ num, label }: { num: number; label: string }) {
       <p className="text-[11.5px] font-medium text-[#888]">{label}</p>
     </div>
   );
+}
+
+function EncouragementSection({
+  notes,
+  hiFiveCount,
+}: {
+  notes: EncouragementNote[];
+  hiFiveCount: number;
+}) {
+  if (notes.length === 0 && hiFiveCount === 0) return null;
+
+  return (
+    <div className="mx-auto max-w-[1280px] px-6 pt-14 lg:px-[60px]">
+      <AnimateOnScroll>
+        <div className="mb-6 flex items-end justify-between">
+          <div>
+            <p className="mb-3 text-[10.5px] font-semibold uppercase tracking-[3.5px] text-[#6BAF8A]">
+              ENCOURAGEMENT · 받은 격려
+            </p>
+            <h2
+              className="font-bold tracking-[-0.8px] text-v2-ink"
+              style={{ fontSize: "clamp(20px, 2.5vw, 28px)" }}
+            >
+              크루·사장님이 남긴 응원
+            </h2>
+          </div>
+          {hiFiveCount > 0 ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-v2-rule bg-white px-4 py-1.5 text-[12.5px] font-medium text-v2-ink">
+              <span className="text-[#C4956A]">★</span>
+              하이파이브 {hiFiveCount}
+            </span>
+          ) : null}
+        </div>
+      </AnimateOnScroll>
+
+      {notes.length === 0 ? (
+        <div className="rounded-[14px] border border-dashed border-v2-rule bg-white/60 px-6 py-8 text-center">
+          <p className="text-[12.5px] font-light text-v2-ink3">
+            아직 글로 남긴 응원은 없어요. 하이파이브 {hiFiveCount}개가
+            도착했어요.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {notes.map((n, i) => (
+            <AnimateOnScroll key={n.id} delay={(i + 1) * 0.06}>
+              <EncouragementCard note={n} />
+            </AnimateOnScroll>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EncouragementCard({ note }: { note: EncouragementNote }) {
+  const roleBadge = roleBadgeFor(note.author_role);
+  return (
+    <div className="flex h-full flex-col rounded-[14px] border border-v2-rule bg-white p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <span
+          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold tracking-[0.5px]"
+          style={{ background: roleBadge.bg, color: roleBadge.color }}
+        >
+          {roleBadge.label}
+        </span>
+        <span className="text-[10.5px] font-light text-[#AEAEB2]">
+          {shortDate(note.sent_at)}
+        </span>
+      </div>
+      <p className="mb-3 line-clamp-4 text-[13.5px] leading-[1.7] text-v2-ink">
+        {note.body}
+      </p>
+      <p className="mt-auto text-[11px] font-light text-[#AEAEB2]">
+        — {note.author_label ?? roleBadge.label}
+      </p>
+    </div>
+  );
+}
+
+function roleBadgeFor(role: string): {
+  label: string;
+  bg: string;
+  color: string;
+} {
+  if (role === "owner")
+    return {
+      label: "사장님 편지",
+      bg: "rgba(196,149,106,0.14)",
+      color: "#9B6020",
+    };
+  if (role === "crew")
+    return {
+      label: "크루 노트",
+      bg: "rgba(107,175,138,0.14)",
+      color: "#3A7A55",
+    };
+  if (role === "admin")
+    return { label: "청풍 노트", bg: "rgba(49,130,246,0.1)", color: "#2060C8" };
+  return { label: "응원", bg: "#EDECEA", color: "#666" };
 }
 
 function ProjectCards({
