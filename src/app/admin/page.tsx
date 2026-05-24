@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AdminShell } from "@/components/admin/AdminShell";
 import { AnimateOnScroll } from "@/components/v2/AnimateOnScroll";
 import { getCurrentActor } from "@/lib/auth/current-actor";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -13,11 +14,8 @@ export const dynamic = "force-dynamic";
  * v2 redesign — `/admin` 운영 홈.
  * 시안: design-v2-reference/강화유니버스_관리자.html.
  *
- * 시안 markup·디자인 토큰을 유지하되, 데이터를 service role 로 집계해
- * 알림·검수 큐·에피소드·운영 지표 4개 영역을 실데이터로 채운다.
- *
- * Navbar/Footer 는 root layout 에서 /admin* 경로일 때 비활성화된다 —
- * 이 페이지가 자체 sidebar 셸을 그리기 때문.
+ * sidebar + topbar 셸은 src/components/admin/AdminShell.tsx 로 분리됨.
+ * /admin/projects, /admin/shops 등 서브페이지도 같은 셸을 공유한다.
  */
 
 const REVIEW_QUEUE_LIMIT = 6;
@@ -160,45 +158,43 @@ export default async function AdminPage() {
   const episodeRows = (episodeRowsRaw ?? []) as unknown as EpisodeRow[];
 
   return (
-    <div className="flex min-h-screen bg-[#F0F0EC]">
-      <Sidebar reviewBadge={publicCount} reportedBadge={reportedCount} />
-      <div className="ml-0 flex flex-1 flex-col lg:ml-[220px]">
-        <Topbar />
-        <div className="flex-1 px-6 pb-16 pt-8 lg:px-10">
-          <AnimateOnScroll>
-            <div className="mb-7">
-              <h1 className="mb-1 text-[22px] font-bold tracking-[-0.5px] text-v2-ink">
-                오늘 처리할 것들
-              </h1>
-              <p className="text-[12.5px] font-light text-[#AEAEB2]">
-                {summarySubtext({
-                  oldestReviewDays,
-                  reportedCount,
-                  publicCount,
-                })}
-              </p>
-            </div>
-          </AnimateOnScroll>
-
-          <AlertGrid
-            publicCount={publicCount}
-            reportedCount={reportedCount}
-            oldestReviewDays={oldestReviewDays}
-            shopsThisMonth={shopsThisMonth}
-          />
-
-          <TwoColumn rows={reviewRows} episodes={episodeRows} />
-
-          <MetricsGrid
-            publicCount={publicCount}
-            totalCards={totalCards}
-            shopsCount={shopsCount}
-            shopsThisMonth={shopsThisMonth}
-            episodeInProgress={episodeInProgress}
-          />
+    <AdminShell
+      active="home"
+      reviewBadge={publicCount}
+      reportedBadge={reportedCount}
+    >
+      <AnimateOnScroll>
+        <div className="mb-7">
+          <h1 className="mb-1 text-[22px] font-bold tracking-[-0.5px] text-v2-ink">
+            오늘 처리할 것들
+          </h1>
+          <p className="text-[12.5px] font-light text-[#AEAEB2]">
+            {summarySubtext({
+              oldestReviewDays,
+              reportedCount,
+              publicCount,
+            })}
+          </p>
         </div>
-      </div>
-    </div>
+      </AnimateOnScroll>
+
+      <AlertGrid
+        publicCount={publicCount}
+        reportedCount={reportedCount}
+        oldestReviewDays={oldestReviewDays}
+        shopsThisMonth={shopsThisMonth}
+      />
+
+      <TwoColumn rows={reviewRows} episodes={episodeRows} />
+
+      <MetricsGrid
+        publicCount={publicCount}
+        totalCards={totalCards}
+        shopsCount={shopsCount}
+        shopsThisMonth={shopsThisMonth}
+        episodeInProgress={episodeInProgress}
+      />
+    </AdminShell>
   );
 }
 
@@ -216,11 +212,6 @@ function daysSince(iso: string): number {
   if (Number.isNaN(created)) return 0;
   const diff = Date.now() - created;
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
-}
-
-function todayKr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function shortDate(iso: string): string {
@@ -276,113 +267,6 @@ function summarySubtext({
         : `가장 오래된 검수 · ${oldestReviewDays}일 전`;
   const reportedText = reportedCount > 0 ? ` · 신고 ${reportedCount}건` : "";
   return `${oldestText}${reportedText}`;
-}
-
-// ── Sidebar ────────────────────────────────────────────────────
-
-function Sidebar({
-  reviewBadge,
-  reportedBadge,
-}: {
-  reviewBadge: number;
-  reportedBadge: number;
-}) {
-  const items: {
-    icon: string;
-    label: string;
-    href: string;
-    active?: boolean;
-    badge?: number;
-    urgent?: boolean;
-  }[] = [
-    { icon: "◉", label: "운영 홈", href: "/admin", active: true },
-    { icon: "⊞", label: "프로젝트·에피소드", href: "/admin/projects" },
-    { icon: "⚑", label: "가게·QR", href: "/admin/shops" },
-    {
-      icon: "✓",
-      label: "공개 검수 큐",
-      href: "/admin/review",
-      badge: reviewBadge,
-    },
-    {
-      icon: "!",
-      label: "신고 대응",
-      href: "/admin/reports",
-      badge: reportedBadge,
-      urgent: reportedBadge > 0,
-    },
-  ];
-
-  return (
-    <aside className="fixed bottom-0 left-0 top-0 z-50 hidden w-[220px] flex-shrink-0 flex-col bg-v2-ink lg:flex">
-      <div className="border-b border-white/[0.07] px-6 pb-5 pt-7">
-        <p className="text-[15px] font-bold text-white/85">강화유니버스</p>
-        <p className="mt-0.5 text-[10px] tracking-[1px] text-white/25">
-          ADMIN CONSOLE
-        </p>
-      </div>
-      <nav className="flex-1 py-4">
-        {items.map((it) => (
-          <Link
-            key={it.label}
-            href={it.href}
-            className={`relative flex items-center gap-2.5 px-6 py-2.5 text-[13px] transition-colors ${
-              it.active
-                ? "bg-white/[0.08] text-white"
-                : "text-white/45 hover:bg-white/[0.05] hover:text-white/80"
-            }`}
-          >
-            {it.active && (
-              <span className="absolute bottom-1.5 left-0 top-1.5 w-[3px] rounded-r bg-[#6BAF8A]" />
-            )}
-            <span>{it.icon}</span>
-            <span>{it.label}</span>
-            {it.badge && it.badge > 0 ? (
-              <span
-                className={`ml-auto min-w-[18px] rounded-full px-[7px] py-px text-center text-[10px] font-bold text-white ${
-                  it.urgent ? "bg-[#E05555]" : "bg-[#C4956A]"
-                }`}
-              >
-                {it.badge}
-              </span>
-            ) : null}
-          </Link>
-        ))}
-      </nav>
-      <div className="border-t border-white/[0.07] px-6 py-5 text-[11px] text-white/20">
-        운영자 콘솔
-        <br />
-        Supabase Auth
-      </div>
-    </aside>
-  );
-}
-
-// ── Topbar ─────────────────────────────────────────────────────
-
-function Topbar() {
-  return (
-    <div className="sticky top-0 z-40 flex items-center justify-between border-b border-v2-rule bg-[#F8F8F6] px-6 py-4 lg:px-10">
-      <p className="text-[13px] text-[#AEAEB2]">
-        DASHBOARD ·{" "}
-        <strong className="font-semibold text-v2-ink">{todayKr()}</strong>
-      </p>
-      <div className="flex gap-2">
-        <Link
-          href="/impact"
-          className="rounded-lg border border-v2-rule bg-white px-[18px] py-2 text-[12.5px] font-medium text-v2-ink transition-colors hover:bg-[#EDECEA]"
-        >
-          임팩트 페이지 보기
-        </Link>
-        <Link
-          href="/admin/projects"
-          className="rounded-lg bg-[#6BAF8A] px-[18px] py-2 text-[12.5px] font-medium text-white transition-colors hover:bg-[#5A9B78]"
-        >
-          + 새 프로젝트
-        </Link>
-      </div>
-    </div>
-  );
 }
 
 // ── Alert grid ────────────────────────────────────────────────

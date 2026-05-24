@@ -2,11 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import {
-  LegacyContainer,
-  LegacyHeader,
-  LegacyPage,
-} from "@/components/legacy-v2/PageChrome";
+import { AdminPageHeader, AdminShell } from "@/components/admin/AdminShell";
 import { getCurrentActor } from "@/lib/auth/current-actor";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -62,146 +58,154 @@ export default async function AdminReviewPage({ searchParams }: SearchProps) {
     query = query.not("removed_at", "is", null);
   }
 
-  const { data: rows, error } = await query;
-
-  const [publicCountRes, removedCountRes] = await Promise.all([
-    admin
-      .from("activities")
-      .select("id", { count: "exact", head: true })
-      .eq("is_public", true)
-      .is("removed_at", null),
-    admin
-      .from("activities")
-      .select("id", { count: "exact", head: true })
-      .not("removed_at", "is", null),
-  ]);
+  const [{ data: rows, error }, publicCountRes, removedCountRes, reportedRes] =
+    await Promise.all([
+      query,
+      admin
+        .from("activities")
+        .select("id", { count: "exact", head: true })
+        .eq("is_public", true)
+        .is("removed_at", null),
+      admin
+        .from("activities")
+        .select("id", { count: "exact", head: true })
+        .not("removed_at", "is", null),
+      admin
+        .from("activities")
+        .select("id", { count: "exact", head: true })
+        .not("reported_at", "is", null)
+        .is("removed_at", null),
+    ]);
 
   const publicCount = publicCountRes.count ?? 0;
   const removedCount = removedCountRes.count ?? 0;
+  const reportedCount = reportedRes.count ?? 0;
 
   return (
-    <LegacyPage>
-      <LegacyContainer className="max-w-[1120px]">
-        <LegacyHeader
-          eyebrow="Admin Review"
-          title="공개 검수 큐"
-          description="공개로 노출 중인 카드를 훑어보고 필요하면 비공개로 바꾸거나 공개 영역에서 삭제 처리합니다. 신고 대응은 별도 화면에서 관리합니다."
-          backHref="/admin"
-          backLabel="← 운영 홈"
+    <AdminShell
+      active="review"
+      reviewBadge={publicCount}
+      reportedBadge={reportedCount}
+      topbarTitle="공개 검수 큐"
+    >
+      <AdminPageHeader
+        eyebrow="Admin Review"
+        title="공개 검수 큐"
+        description="공개로 노출 중인 카드를 훑어보고 필요하면 비공개로 바꾸거나 공개 영역에서 삭제 처리합니다. 신고 대응은 별도 화면에서 관리합니다."
+        backHref="/admin"
+        backLabel="← 운영 홈"
+      />
+
+      <nav className="mt-2 flex flex-wrap gap-2 text-sm">
+        <FilterTab
+          href="/admin/review"
+          label="공개 중"
+          count={publicCount}
+          active={filter === "public"}
         />
+        <FilterTab
+          href="/admin/review?filter=removed"
+          label="삭제 처리된 카드"
+          count={removedCount}
+          active={filter === "removed"}
+        />
+      </nav>
 
-        <nav className="mt-2 flex flex-wrap gap-2 text-sm">
-          <FilterTab
-            href="/admin/review"
-            label="공개 중"
-            count={publicCount}
-            active={filter === "public"}
-          />
-          <FilterTab
-            href="/admin/review?filter=removed"
-            label="삭제 처리된 카드"
-            count={removedCount}
-            active={filter === "removed"}
-          />
-        </nav>
+      {error ? (
+        <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          카드를 불러오지 못했어요: {error.message}
+        </p>
+      ) : !rows || rows.length === 0 ? (
+        <p className="mt-6 rounded-2xl border border-dashed border-v2-rule bg-white/60 px-6 py-10 text-center text-sm text-v2-ink3">
+          {filter === "public"
+            ? "지금 공개된 카드가 없어요."
+            : "가려진 카드가 없어요."}
+        </p>
+      ) : (
+        <ul className="mt-6 flex flex-col gap-3">
+          {rows.map((r) => {
+            const shopName = (r.shop as { name: string } | null)?.name ?? null;
+            const episodeTitle =
+              (r.episode as { title: string } | null)?.title ?? null;
+            const projectTitle =
+              (r.project as { title: string } | null)?.title ?? null;
+            const authorName =
+              (r.author as { nickname: string | null } | null)?.nickname ??
+              "(이름 없음)";
+            const contextLabel =
+              shopName ?? episodeTitle ?? projectTitle ?? "강화 어딘가";
 
-        {error ? (
-          <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-            카드를 불러오지 못했어요: {error.message}
-          </p>
-        ) : !rows || rows.length === 0 ? (
-          <p className="v2-legacy-empty mt-6">
-            {filter === "public"
-              ? "지금 공개된 카드가 없어요."
-              : "가려진 카드가 없어요."}
-          </p>
-        ) : (
-          <ul className="mt-6 flex flex-col gap-3">
-            {rows.map((r) => {
-              const shopName =
-                (r.shop as { name: string } | null)?.name ?? null;
-              const episodeTitle =
-                (r.episode as { title: string } | null)?.title ?? null;
-              const projectTitle =
-                (r.project as { title: string } | null)?.title ?? null;
-              const authorName =
-                (r.author as { nickname: string | null } | null)?.nickname ??
-                "(이름 없음)";
-              const contextLabel =
-                shopName ?? episodeTitle ?? projectTitle ?? "강화 어딘가";
-
-              return (
-                <li
-                  key={r.id as string}
-                  className="v2-legacy-panel flex flex-col gap-4 p-4 sm:flex-row"
-                >
-                  <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-muted">
-                    {r.photo_url ? (
-                      <Image
-                        src={r.photo_url as string}
-                        alt={(r.body as string | null) ?? contextLabel}
-                        fill
-                        sizes="112px"
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-muted-foreground">
-                        (사진 없음)
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex min-w-0 flex-1 flex-col gap-2">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className="v2-legacy-pill">{r.type as string}</span>
-                      <span>{contextLabel}</span>
-                      <span>·</span>
-                      <span>{authorName}</span>
-                      <span>·</span>
-                      <time dateTime={r.created_at as string}>
-                        {new Date(r.created_at as string).toLocaleString(
-                          "ko-KR"
-                        )}
-                      </time>
-                      {r.reported_at ? (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                          신고됨
-                        </span>
-                      ) : null}
-                      {!r.face_consent ? (
-                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
-                          초상권 미동의
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <p className="line-clamp-3 whitespace-pre-wrap text-sm text-foreground/90">
-                      {(r.body as string | null) ??
-                        (r.title as string | null) ??
-                        "(본문 없음)"}
-                    </p>
-                  </div>
-
-                  <div className="flex shrink-0 flex-col items-end justify-between gap-3">
-                    <ReviewRowActions
-                      activityId={r.id as string}
-                      removed={Boolean(r.removed_at)}
+            return (
+              <li
+                key={r.id as string}
+                className="flex flex-col gap-4 rounded-2xl border border-v2-rule bg-white p-4 sm:flex-row"
+              >
+                <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-muted">
+                  {r.photo_url ? (
+                    <Image
+                      src={r.photo_url as string}
+                      alt={(r.body as string | null) ?? contextLabel}
+                      fill
+                      sizes="112px"
+                      className="object-cover"
                     />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-muted-foreground">
+                      (사진 없음)
+                    </div>
+                  )}
+                </div>
 
-        {rows && rows.length === PAGE_SIZE ? (
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            최근 {PAGE_SIZE} 건만 표시합니다. 더 많은 이력은 Phase 7 이후에
-            도입합니다.
-          </p>
-        ) : null}
-      </LegacyContainer>
-    </LegacyPage>
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center rounded-full border border-v2-rule bg-[#F5F4F1] px-2 py-0.5 text-[11px] font-medium text-v2-ink3">
+                      {r.type as string}
+                    </span>
+                    <span>{contextLabel}</span>
+                    <span>·</span>
+                    <span>{authorName}</span>
+                    <span>·</span>
+                    <time dateTime={r.created_at as string}>
+                      {new Date(r.created_at as string).toLocaleString("ko-KR")}
+                    </time>
+                    {r.reported_at ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                        신고됨
+                      </span>
+                    ) : null}
+                    {!r.face_consent ? (
+                      <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
+                        초상권 미동의
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <p className="line-clamp-3 whitespace-pre-wrap text-sm text-foreground/90">
+                    {(r.body as string | null) ??
+                      (r.title as string | null) ??
+                      "(본문 없음)"}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 flex-col items-end justify-between gap-3">
+                  <ReviewRowActions
+                    activityId={r.id as string}
+                    removed={Boolean(r.removed_at)}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {rows && rows.length === PAGE_SIZE ? (
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          최근 {PAGE_SIZE} 건만 표시합니다. 더 많은 이력은 Phase 7 이후에
+          도입합니다.
+        </p>
+      ) : null}
+    </AdminShell>
   );
 }
 
@@ -223,16 +227,14 @@ function FilterTab({
         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition " +
         (active
           ? "border-v2-ink bg-v2-ink text-white"
-          : "border-[var(--rule)] bg-white/70 text-v2-ink3 hover:bg-[var(--paper-2)]")
+          : "border-v2-rule bg-white/70 text-v2-ink3 hover:bg-[#EDECEA]")
       }
     >
       <span>{label}</span>
       <span
         className={
           "rounded-full px-1.5 py-0.5 text-[10px] " +
-          (active
-            ? "bg-white/15 text-white"
-            : "bg-[var(--paper-2)] text-v2-ink2")
+          (active ? "bg-white/15 text-white" : "bg-[#EDECEA] text-v2-ink3")
         }
       >
         {count}

@@ -66,10 +66,12 @@ export async function GET(request: NextRequest) {
       ? (identityData["provider_id"] as string)
       : (identity?.id ?? null);
   const nickname =
-    (identityData["user_name_name"] as string | undefined) ??
-    (identityData["name"] as string | undefined) ??
     (identityData["nickname"] as string | undefined) ??
+    (identityData["preferred_username"] as string | undefined) ??
+    (identityData["name"] as string | undefined) ??
+    (identityData["user_name"] as string | undefined) ??
     (user.user_metadata?.nickname as string | undefined) ??
+    (user.user_metadata?.preferred_username as string | undefined) ??
     (user.user_metadata?.name as string | undefined) ??
     "강화 여행자";
   const profileImageUrl =

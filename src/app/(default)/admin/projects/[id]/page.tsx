@@ -1,12 +1,11 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import {
-  LegacyContainer,
-  LegacyHeader,
-  LegacyPage,
-  LegacyPanel,
-} from "@/components/legacy-v2/PageChrome";
+  AdminPageHeader,
+  AdminPanel,
+  AdminShell,
+} from "@/components/admin/AdminShell";
+import { fetchAdminSidebarBadges } from "@/lib/admin/badges";
 import { getCurrentActor } from "@/lib/auth/current-actor";
 import { UuidSchema } from "@/lib/schemas/common";
 import type { EpisodeStatus } from "@/lib/schemas/episode";
@@ -33,7 +32,7 @@ export default async function AdminProjectEditPage({ params }: Props) {
 
   const admin = createAdminClient();
 
-  const [categoriesRes, projectRes, episodesRes] = await Promise.all([
+  const [categoriesRes, projectRes, episodesRes, badges] = await Promise.all([
     admin
       .from("categories")
       .select("id, slug, name")
@@ -53,6 +52,7 @@ export default async function AdminProjectEditPage({ params }: Props) {
       .eq("project_id", idCheck.data)
       .order("seq", { ascending: true, nullsFirst: false })
       .order("session_date", { ascending: true, nullsFirst: false }),
+    fetchAdminSidebarBadges(),
   ]);
 
   if (!projectRes.data) notFound();
@@ -89,33 +89,36 @@ export default async function AdminProjectEditPage({ params }: Props) {
   };
 
   return (
-    <LegacyPage>
-      <LegacyContainer className="max-w-[960px]">
-        <LegacyHeader
-          eyebrow="Admin Project Detail"
-          title="프로젝트 편집"
-          description="수정한 값은 저장 즉시 공개 화면과 운영 화면에 반영됩니다."
-          backHref="/admin/projects"
-          backLabel="← 프로젝트 목록"
-        />
+    <AdminShell
+      active="projects"
+      reviewBadge={badges.reviewBadge}
+      reportedBadge={badges.reportedBadge}
+      topbarTitle={initial.title}
+    >
+      <AdminPageHeader
+        eyebrow="Admin Project Detail"
+        title="프로젝트 편집"
+        description="수정한 값은 저장 즉시 공개 화면과 운영 화면에 반영됩니다."
+        backHref="/admin/projects"
+        backLabel="← 프로젝트 목록"
+      />
 
-        <LegacyPanel>
-          <ProjectForm categories={categories} initial={initial} />
-        </LegacyPanel>
+      <AdminPanel>
+        <ProjectForm categories={categories} initial={initial} />
+      </AdminPanel>
 
-        <section className="mt-10 flex flex-col gap-3">
-          <header className="flex flex-col gap-1">
-            <h2 className="text-base font-semibold text-v2-ink">
-              에피소드(회차)
-            </h2>
-            <p className="text-xs text-v2-ink3">
-              회차는 크루가 현장에서 상태를 업데이트하고, 관리자는 기본 정보와
-              공개 여부를 조정합니다.
-            </p>
-          </header>
-          <EpisodeSection projectId={initial.id} episodes={episodes} />
-        </section>
-      </LegacyContainer>
-    </LegacyPage>
+      <section className="mt-10 flex flex-col gap-3">
+        <header className="flex flex-col gap-1">
+          <h2 className="text-base font-semibold text-v2-ink">
+            에피소드(회차)
+          </h2>
+          <p className="text-xs text-v2-ink3">
+            회차는 크루가 현장에서 상태를 업데이트하고, 관리자는 기본 정보와
+            공개 여부를 조정합니다.
+          </p>
+        </header>
+        <EpisodeSection projectId={initial.id} episodes={episodes} />
+      </section>
+    </AdminShell>
   );
 }

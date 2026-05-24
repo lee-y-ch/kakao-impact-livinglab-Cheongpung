@@ -269,7 +269,7 @@ function PageHeader() {
               이어 주세요
             </h1>
             <p className="text-[13px] font-light text-white/40">
-              크루 워크스페이스 · 임팩트 페이지 + 아카이브 등록
+              크루 워크스페이스 · 에피소드 상태 업데이트와 응원을 남겨주세요
             </p>
           </div>
         </AnimateOnScroll>
@@ -282,10 +282,10 @@ function PageHeader() {
               임팩트 보기
             </Link>
             <Link
-              href="/admin/projects"
+              href="/projects"
               className="rounded-[10px] bg-[#6BAF8A] px-5 py-2.5 text-[12.5px] font-medium text-white transition-opacity hover:opacity-85"
             >
-              + 아카이브 등록
+              프로젝트 둘러보기
             </Link>
           </div>
         </AnimateOnScroll>
@@ -487,7 +487,7 @@ function CrewFooterStrip() {
       style={{ background: "#1A1A1A" }}
     >
       <span className="text-[11.5px] text-white/30">
-        공용 계정 · Phase 3 · crew@chungpung
+        크루 워크스페이스 · 청풍 공용 계정
       </span>
       <span className="text-[11.5px] text-white/20">
         © 2026 Ganghwa Universe
