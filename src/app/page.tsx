@@ -26,12 +26,35 @@ export const dynamic = "force-dynamic";
  *
  * 자산은 public/v2/landing/ 에 ASCII 이름으로 정리. Footer 는 root layout 글로벌 사용.
  */
+type HeroContent = {
+  eyebrow: string;
+  title: string;
+  accent: string;
+  subtitle: string;
+  imageUrl: string;
+};
+
+const HERO_DEFAULT: HeroContent = {
+  eyebrow: "Ganghwa Universe · 2026",
+  title: "환대로\n만들어가는 세계",
+  accent: "세계",
+  subtitle: "우리가 살고 싶은 세계를\n강화에서 함께 실험해요.",
+  imageUrl: "/v2/landing/hero-bg.png",
+};
+
 export default async function HomePage() {
   const admin = createAdminClient();
 
-  const [pageViewsRes, usersRes] = await Promise.all([
+  const [pageViewsRes, usersRes, heroRes] = await Promise.all([
     admin.from("page_views").select("id", { count: "exact", head: true }),
     admin.from("users").select("id", { count: "exact", head: true }),
+    admin
+      .from("site_settings")
+      .select(
+        "hero_eyebrow, hero_title, hero_accent, hero_subtitle, hero_image_url"
+      )
+      .eq("key", "hero")
+      .maybeSingle(),
   ]);
 
   const stats = {
@@ -39,9 +62,19 @@ export default async function HomePage() {
     residents: usersRes.count ?? 0,
   };
 
+  // site_settings 미적용(마이그레이션 전)이거나 행이 없으면 hardcoded 기본값 fallback.
+  const heroRow = heroRes.data;
+  const hero: HeroContent = {
+    eyebrow: heroRow?.hero_eyebrow ?? HERO_DEFAULT.eyebrow,
+    title: heroRow?.hero_title ?? HERO_DEFAULT.title,
+    accent: heroRow?.hero_accent ?? HERO_DEFAULT.accent,
+    subtitle: heroRow?.hero_subtitle ?? HERO_DEFAULT.subtitle,
+    imageUrl: heroRow?.hero_image_url ?? HERO_DEFAULT.imageUrl,
+  };
+
   return (
     <>
-      <Hero />
+      <Hero hero={hero} />
       <IntroStrip />
       <Jamsiseom />
       <ProjectsGrid />
@@ -55,14 +88,14 @@ export default async function HomePage() {
 
 /* ─────────────────────────── 1. Hero ─────────────────────────── */
 
-function Hero() {
+function Hero({ hero }: { hero: HeroContent }) {
   return (
     <section
       id="hero"
       className="relative flex min-h-[680px] items-center bg-cover bg-center bg-no-repeat"
       style={{
         height: "100vh",
-        backgroundImage: "url('/v2/landing/hero-bg.png')",
+        backgroundImage: `url('${hero.imageUrl}')`,
       }}
     >
       <div
@@ -71,25 +104,25 @@ function Hero() {
         aria-hidden
       />
       <div className="relative z-[2] mx-auto w-full max-w-[1200px] px-6 lg:px-[60px]">
-        <p className="mb-7 text-[11px] font-semibold uppercase tracking-[4px] text-white/70">
-          Ganghwa Universe &nbsp;·&nbsp; 2026
-        </p>
+        {hero.eyebrow ? (
+          <p className="mb-7 text-[11px] font-semibold uppercase tracking-[4px] text-white/70">
+            {hero.eyebrow}
+          </p>
+        ) : null}
         <h1
-          className="mb-6 font-bold leading-[1.1] tracking-[-2px] text-white"
+          className="mb-6 whitespace-pre-line font-bold leading-[1.1] tracking-[-2px] text-white"
           style={{ fontSize: "clamp(44px, 6.5vw, 80px)" }}
         >
-          환대로
-          <br />
-          만들어가는 <span style={{ color: "#2ECC8E" }}>세계</span>
+          {renderTitleWithAccent(hero.title, hero.accent)}
         </h1>
-        <p
-          className="mb-12 max-w-[420px] font-light leading-[1.75] text-white/80"
-          style={{ fontSize: "clamp(15px, 1.8vw, 19px)" }}
-        >
-          우리가 살고 싶은 세계를
-          <br />
-          강화에서 함께 실험해요.
-        </p>
+        {hero.subtitle ? (
+          <p
+            className="mb-12 max-w-[420px] whitespace-pre-line font-light leading-[1.75] text-white/80"
+            style={{ fontSize: "clamp(15px, 1.8vw, 19px)" }}
+          >
+            {hero.subtitle}
+          </p>
+        ) : null}
         <Link
           href="#jamsiseom"
           className="inline-flex items-center gap-1.5 rounded-full bg-v2-brand px-8 py-3.5 text-[14px] font-medium tracking-[0.2px] text-white transition-all hover:scale-[1.02] hover:bg-v2-brandDeep active:scale-[0.98]"
@@ -109,6 +142,23 @@ function Hero() {
       </div>
     </section>
   );
+}
+
+/**
+ * 제목 안에서 accent 단어를 초록색으로 강조.
+ * accent 가 비었거나 title 에 없으면 원문 그대로 (whitespace-pre-line 로 \n 처리).
+ */
+function renderTitleWithAccent(title: string, accent: string) {
+  if (!accent || !title.includes(accent)) return title;
+  const parts = title.split(accent);
+  return parts.map((part, i) => (
+    <span key={i}>
+      {part}
+      {i < parts.length - 1 ? (
+        <span style={{ color: "#2ECC8E" }}>{accent}</span>
+      ) : null}
+    </span>
+  ));
 }
 
 /* ─────────────────────────── 2. Intro Strip ─────────────────────────── */
