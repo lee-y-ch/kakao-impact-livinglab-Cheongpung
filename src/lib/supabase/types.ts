@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      site_settings: {
+        Row: {
+          id: string
+          key: string
+          hero_eyebrow: string | null
+          hero_title: string | null
+          hero_accent: string | null
+          hero_subtitle: string | null
+          hero_image_url: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          key: string
+          hero_eyebrow?: string | null
+          hero_title?: string | null
+          hero_accent?: string | null
+          hero_subtitle?: string | null
+          hero_image_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          key?: string
+          hero_eyebrow?: string | null
+          hero_title?: string | null
+          hero_accent?: string | null
+          hero_subtitle?: string | null
+          hero_image_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       activities: {
         Row: {
           body: string | null

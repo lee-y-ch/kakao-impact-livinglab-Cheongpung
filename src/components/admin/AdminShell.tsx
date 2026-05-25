@@ -20,7 +20,8 @@ export type AdminSidebarKey =
   | "projects"
   | "shops"
   | "review"
-  | "reports";
+  | "reports"
+  | "site";
 
 export function AdminShell({
   active,
@@ -92,6 +93,7 @@ function Sidebar({
       badge: reportedBadge,
       urgent: reportedBadge > 0,
     },
+    { key: "site", icon: "✦", label: "사이트 설정", href: "/admin/site" },
   ];
 
   return (

@@ -4,6 +4,7 @@
  *
  * 버킷:
  *   activity-photos  — 참여자 카드 사진. public read. 업로드 5MB 제한.
+ *   site-assets      — 메인 hero 등 사이트 자산. public read. 업로드 10MB 제한.
  *
  * 사용법:
  *   node --env-file=.env.local scripts/bootstrap-storage.mjs
@@ -33,6 +34,12 @@ const BUCKETS = [
     id: "activity-photos",
     public: true,
     file_size_limit: 5 * 1024 * 1024,
+    allowed_mime_types: ["image/jpeg", "image/png", "image/webp"],
+  },
+  {
+    id: "site-assets",
+    public: true,
+    file_size_limit: 10 * 1024 * 1024,
     allowed_mime_types: ["image/jpeg", "image/png", "image/webp"],
   },
 ];
