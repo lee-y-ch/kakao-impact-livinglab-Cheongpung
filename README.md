@@ -1,10 +1,16 @@
-# 🏛️ 카카오 임팩트 리빙랩 - 청풍
+# 강화유니버스
 
-> 카카오 임팩트 리빙랩 깃헙입니다.
+> **오늘도 강화도가 조금씩 더 강화됩니다.**
+>
+> 카카오임팩트 × 협동조합 청풍의 강화도 관계인구 프로젝트 웹앱.
+> 참여자·크루·사장님의 환대 행위가 누적되어 강화도의 서사가 되는 **관계 대시보드**.
+
+**🌐 배포**: <https://ganghwa-universe.vercel.app>
+**📄 최종 발표 자료**: [`청풍_성과공유회.pdf`](./청풍_성과공유회.pdf)
 
 ---
 
-## 👥 팀원 소개
+## 👥 팀
 
 | 이름   | 역할        |
 | :----- | :---------- |
@@ -15,167 +21,210 @@
 
 ---
 
-## 📂 폴더 안내
+## 이 프로젝트가 푸는 문제
 
-- **docs/**: 회의록, 시장조사 등 모든 문서 자료
-- **assets/**: 발표 자료, 사진, 로고 등 이미지 파일
-- **prototyping/**: 서비스 설계 및 피그마 링크
-- **src/**: 웹앱 개발 소스 코드 (Next.js 14 App Router)
-- **public/**: PWA 매니페스트, 앱 아이콘 등 정적 자원
+강화도에서 관계인구를 늘리는 방법을 찾는 협동조합 청풍과 함께, 사용자 인터뷰에서 반복적으로 들린 한 문장을 출발점으로 삼았다.
+
+> _"강화에서의 경험은 즐거웠어요. 텃밭을 가꾸고, 차를 함께 만들고, 취향이 맞는 사람들을 만날 수 있었어요. 그런데 여행이 끝나면 강화에서 텃밭이 어디까지 확장되는지, 내가 다녀온 곳에 무슨 일이 일어나는지 알 수 있는 통로가 없었어요. 관계가 거기서 멈춰버려요."_
+
+### 현재 구조의 한계
+
+1. 강화도 여행이 **신청 → 참가 → 종료** 로 끝나는 일회성 구조
+2. 강화에서 진행되는 프로그램의 진행 상황을 외부에서 파악하기 어려움
+3. 강화를 경험한 사람이 다시 강화에 닿을 통로(관계인구를 잇는 매개)가 없음
+
+### 우리가 만든 구조
+
+1. 사장님의 답장 편지와 크루의 하이파이브가 여행 이후에도 도착해, **관계가 계속 살아있다**.
+2. 크루가 에피소드를 직접 마킹하면 임팩트 대시보드에 **실시간으로 반영**되어 누구나 확인할 수 있다.
+3. **카드 한 장**이 도감에 쌓이고, 노드맵에 기록되며, 강화가 성장하는 모습을 계속 확인할 수 있는 접점이 된다.
 
 ---
 
-## 🔗 주요 링크
+## 두 개의 화면, 하나의 데이터
+
+| 화면       | 누구를 위한 것                                                                |
+| ---------- | ----------------------------------------------------------------------------- |
+| **도감**   | 떠난 뒤에도 강화에 남긴 카드를 확인. 사장님의 답신·크루의 하이파이브가 도착   |
+| **임팩트** | 강화에서 진행한 프로그램과 강화가 어떻게 자라고 있는지 보는 **공개 대시보드** |
+
+카드 한 장이 참여자의 도감과 강화도의 노드맵에 동시에 쌓이고, 사장님의 답장이 다시 참여자의 도감으로 돌아온다. 참여자·크루·사장님 각자의 역할이 **관계의 순환 구조**를 만든다.
+
+> 의도적으로 포인트·랭킹·레벨업·경쟁 기능을 제거했다. 카드 한 장이 흔적으로 남고, 그것이 누군가의 답장으로 돌아오는 흐름 자체가 가치다.
 
 ---
 
-# 강화유니버스 대시보드
+## 세 명의 주인공
 
-> **오늘도 강화도가 조금씩 더 강화됩니다.**
->
-> 카카오임팩트 × 협동조합 청풍 강화도 관계인구 프로젝트의 웹앱.
-> 참여자·크루·사장님의 환대 행위가 누적되어 강화도의 서사가 되는 **관계 대시보드**.
+| 역할       | 누구                      | 어디서                  | 어떻게                                                                                      |
+| ---------- | ------------------------- | ----------------------- | ------------------------------------------------------------------------------------------- |
+| **참여자** | 강화에 잠시 머무는 사람   | `/entry`, `/collection` | QR을 찍어 사진+메모로 카드 한 장을 남긴다. 카카오로 로그인.                                 |
+| **크루**   | 강화를 운영/기획하는 사람 | `/crew`, `/admin`       | 에피소드를 계획·과정·완성으로 마킹해 임팩트 카테고리 진척도를 움직인다. 공용 코드로 로그인. |
+| **사장님** | 강화에서 살아가는 사람    | `/owner`                | 우리 가게에 남겨진 카드를 보고, LLM 초안을 다듬어 답장을 보낸다. 가게 코드로 로그인.        |
 
-## 이 프로젝트에 대해
+공개 임팩트 화면(`/impact`)은 **로그인 없이 누구나** 4개 카테고리 진척도·노드맵·최근 카드를 함께 볼 수 있다.
 
-- **두 주인공, 하나의 데이터**
-  - 참여자 뷰 : 내가 강화에 쌓은 행위의 기록 (도감 + 누적)
-  - 청풍 뷰 : 강화도가 얼마나 강화됐는가의 지도 (관리자 대시보드, 노드맵)
-  - 같은 `activities` 데이터를 서로 다른 쿼리·렌더링으로 조회한다.
-- **4개 카테고리** (청풍 정의) : 환대의 공유지 / 네트워크 / 세계 / 정책
-- **장기 프로젝트 단위** : 시부야대학 교류처럼 다년간 여러 회차(에피소드)로 이어지는 프로젝트를 1급 시민으로 모델링.
-- **PWA, 네이티브 아님** : 이을랩 로컬유니버스 앱과의 역할 분리.
+---
 
-더 자세한 기획은 `docs/` 와 `CLAUDE.md` 를 참고.
+## 4개 카테고리
+
+청풍이 정의한 2026 프로젝트 분류. 각 카테고리 안에 **장기 프로젝트**가 있고, 프로젝트는 여러 해에 걸쳐 **여러 회차(에피소드)** 로 이어진다.
+
+| 카테고리     | 성격       | 예시 프로젝트                                   |
+| ------------ | ---------- | ----------------------------------------------- |
+| **라이프**   | 클럽형     | 위캔드 요가, 강화 팜 라이프                     |
+| **네트워크** | 관계형     | 시부야대학 교류, 가미야마 교류 등 롱텀 네트워크 |
+| **창작**     | 아카이브형 | 윤슬 앨범, 강화도 차, 마을 사진관               |
+| **테크**     | 인프라형   | 로컬 유니버스 앱, 지역 문제 해결 AI             |
+
+---
 
 ## 기술 스택
 
-| 영역            | 선택                                        |
-| --------------- | ------------------------------------------- |
-| 프레임워크      | Next.js 14 (App Router) + TypeScript        |
-| 스타일          | Tailwind CSS + shadcn/ui                    |
-| DB/Storage/Auth | Supabase (Postgres + Storage + Auth)        |
-| 참여자 로그인   | Supabase Auth + 카카오 OAuth Provider       |
-| 사장님 로그인   | 가게 코드 (bcrypt) + httpOnly 쿠키          |
-| 관리자 로그인   | Supabase Auth + `app_metadata.role='admin'` |
-| LLM             | Anthropic Claude (Haiku 4.5)                |
-| 호스팅          | Vercel                                      |
-| PWA             | `public/manifest.json`                      |
+| 영역                    | 선택                                             |
+| ----------------------- | ------------------------------------------------ |
+| 프레임워크              | Next.js 14 (App Router) + TypeScript             |
+| UI                      | Tailwind CSS + shadcn/ui                         |
+| DB / Storage / Auth     | Supabase (Postgres + Storage + Auth + RLS)       |
+| 참여자 인증             | Supabase Auth + 카카오 OAuth                     |
+| 사장님 인증             | 가게 코드 (bcrypt) + httpOnly 쿠키 + 실패 잠금   |
+| 크루 인증               | 공용 코드 + httpOnly 쿠키                        |
+| 관리자 인증             | Supabase Auth + `app_metadata.role='admin'`      |
+| LLM (편지 첫 문장 제안) | Google Gemini (기본), Anthropic Claude 전환 가능 |
+| 노드맵                  | React Flow                                       |
+| 호스팅                  | Vercel                                           |
 
-## 디렉토리 (`src/`)
+### 주요 설계 결정
 
-```
-/src
-  /app              App Router (route groups: traveler / public / crew / owner / admin)
-  /components
-    /ui             shadcn/ui 컴포넌트 (직접 소유)
-  /lib
-    /supabase       client / server / middleware / types
-  /db
-    /migrations     SQL 마이그레이션
-/public
-  manifest.json     PWA manifest
-  /icons            앱 아이콘 (192, 512)
-```
+- **단일 `current-actor` 인증 레이어** — 참여자/크루/사장님/관리자 4 역할을 한 곳에서 해석.
+- **`activities` 테이블에 unique 제약 없음** + `idempotency_key` — 반복 참여 허용, 기술적 중복만 차단.
+- **`activities.is_public` 기본값 false** — 공개는 opt-in.
+- **모든 도메인 테이블 RLS 활성화** — 보안은 처음부터 DB 레벨에서.
+- **개인 점수 UI 없음** — `contribution_points`는 가게·프로젝트·카테고리·플랫폼 단위 집계만.
 
-## 환경 변수
+---
 
-`.env.local.example` 을 `.env.local` 로 복사해서 채운다.
+## 디렉토리
 
 ```
+src/
+  app/                      App Router
+    (default)/              메인 셸 (공개 페이지, 참여자, 사장님)
+    admin/                  관리자 콘솔
+    crew/                   크루 워크스페이스
+    api/                    Route handlers (activities, reactions, auth, llm, admin)
+    auth/callback/          카카오 OAuth 콜백
+  components/               UI 컴포넌트 (도감/임팩트/사장님/관리자)
+  lib/
+    auth/                   current-actor, owner, crew, admin, audit
+    supabase/               client / server / admin / middleware / types
+    schemas/                Zod 도메인 스키마
+    llm/                    Gemini / Anthropic 어댑터
+    progress/               카테고리 진척도 계산
+  db/
+    migrations/             001~004 SQL
+    seed_demo.sql           데모 데이터
+
+public/
+  manifest.json             PWA manifest
+  icons/                    192 / 512
+  local/                    리사이즈된 데모 사진
+
+assets/                     청풍이 제공한 원본 기획 자료
+```
+
+---
+
+## 로컬 개발
+
+### 환경 변수
+
+`.env.local.example` 을 복사해서 채운다.
+
+```bash
 cp .env.local.example .env.local
 ```
 
 필요한 키:
 
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase 프로젝트
-- `SUPABASE_SERVICE_ROLE_KEY` — 서버 전용 (RLS 우회, 관리자 API/시드)
-- `LLM_PROVIDER`, `GEMINI_API_KEY` — LLM 편지 첫 문장 제안
-- `ANTHROPIC_API_KEY` — Anthropic 전환 시 선택
-- `CREW_ACCESS_CODE` — 크루 공용 코드 (Phase 3)
-- `NEXT_PUBLIC_SITE_URL` — 로컬 `http://localhost:3001`, 배포 시 실제 도메인
+| 키                                     | 용도                                         |
+| -------------------------------------- | -------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Supabase 프로젝트 URL                        |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`        | Supabase anon 키 (클라이언트)                |
+| `SUPABASE_SERVICE_ROLE_KEY`            | Supabase 서비스 롤 키 (서버 전용, RLS 우회)  |
+| `LLM_PROVIDER`                         | `gemini` (기본) 또는 `anthropic`             |
+| `GEMINI_API_KEY`, `GEMINI_MODEL`       | Gemini API 키와 모델                         |
+| `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | Anthropic 전환 시                            |
+| `CREW_ACCESS_CODE`                     | 크루 공용 코드                               |
+| `NEXT_PUBLIC_SITE_URL`                 | 로컬 `http://localhost:3001`, 배포 시 도메인 |
 
-> 관리자 계정은 환경변수가 아니라 Supabase Auth 사용자에 `app_metadata.role='admin'` 을 부여하는 방식입니다. 절차는 `.env.local.example` 의 관리자 섹션 주석 참고.
+### 실행
 
-## 로컬 개발
-
-```
+```bash
 npm install
-npm run dev           # http://localhost:3001
+npm run dev          # http://localhost:3001
 npm run typecheck
 npm run lint
 npm run build
 ```
 
-## Supabase 셋업
+### Supabase 셋업
 
 1. [supabase.com](https://supabase.com) 에서 프로젝트 생성
-2. **Settings → API** 에서 URL, anon, service role 키를 `.env.local` 에 복사
-3. **SQL Editor** 에서 `src/db/migrations/001_initial.sql` 전체 실행
-4. **Authentication → Providers → Kakao** 활성화, 아래 카카오 셋업의 REST API 키/시크릿 등록
-5. (Phase 1 말미) 다음 명령으로 실제 스키마 타입 생성해서 `src/lib/supabase/types.ts` 를 덮어씀
+2. **Settings → API** 에서 URL / anon / service role 키를 `.env.local` 에 복사
+3. **SQL Editor** 에서 `src/db/migrations/` 의 SQL 파일을 순서대로 실행 (001 → 004)
+4. (선택) `src/db/seed_demo.sql` 로 데모 데이터 삽입
+5. **Authentication → Providers → Kakao** 활성화 (아래 카카오 OAuth 셋업 참고)
 
-```
-npx supabase gen types typescript --project-id <PROJECT_REF> --schema public > src/lib/supabase/types.ts
-```
+### 카카오 OAuth 셋업
 
-## 카카오 OAuth 셋업
-
-1. [developers.kakao.com](https://developers.kakao.com) 에서 내 애플리케이션 생성
-2. **앱 키 → REST API 키** 확인
-3. **보안 → Client Secret** 생성
-4. **카카오 로그인 → 활성화 ON**, **Redirect URI** 에 다음 등록
+1. [developers.kakao.com](https://developers.kakao.com) 에서 애플리케이션 생성
+2. **앱 키 → REST API 키**, **보안 → Client Secret** 확인
+3. **카카오 로그인** 활성화, **Redirect URI** 에 등록:
    ```
    https://<SUPABASE-PROJECT-REF>.supabase.co/auth/v1/callback
    ```
-5. **동의 항목** : 닉네임, 프로필 사진 (필수 최소 범위)
-6. Supabase 대시보드 → **Authentication → Providers → Kakao** 에 REST API 키와 Client Secret을 입력하고 활성화
+4. **동의 항목**: 닉네임, 프로필 사진 (필수 최소 범위)
+5. Supabase 대시보드 → **Authentication → Providers → Kakao** 에 REST API 키와 Client Secret 입력
 
-앱 서버는 카카오 REST API key/secret을 직접 읽지 않는다. Vercel env에는 등록하지 않고 Supabase Auth Provider에만 등록한다.
+> 카카오 키는 Vercel 환경 변수가 아니라 Supabase Auth Provider 에만 등록한다.
+
+---
 
 ## Vercel 배포
 
 1. GitHub 레포 연결
 2. **Environment Variables** 에 `.env.local` 과 동일한 키를 프로덕션 환경에 등록
-3. 빌드 커맨드 기본값(`next build`), 루트 디렉토리 `/`
-4. `NEXT_PUBLIC_SITE_URL` 을 배포 도메인으로 교체
-5. 배포 후 카카오 디벨로퍼스 / Supabase Auth 의 Redirect URI 를 프로덕션 도메인용으로 추가 등록
+3. `NEXT_PUBLIC_SITE_URL` 을 배포 도메인으로 교체
+4. 배포 후 카카오 / Supabase Auth 의 Redirect URI 에 프로덕션 도메인 추가
+
+---
 
 ## 데이터 모델 요약
 
 ```
-categories (4종)
-  └─ projects (장기, 여러 해에 걸침)
-        ├─ project_hosts (청풍, 외부 파트너)
-        └─ episodes (회차/세션)
-              ├─ episode_archives (후기·사진·기록)
-              └─ activities (참여자 행위 = 카드 1장)
-                    └─ artifacts (결과물)
+categories (라이프·네트워크·창작·테크)
+  └─ projects (장기, 진척도 기준 progress_type)
+        ├─ project_hosts (청풍 + 외부 파트너)
+        └─ episodes (회차, status: 예정·진행·완료)
+              ├─ episode_archives
+              └─ activities ← 카드 1장 (idempotency_key, face_consent)
+                    └─ artifacts
 
-shops                 (독립 엔티티, activities 로 프로젝트에 느슨 연결)
-reactions             (응원/편지/하이파이브)
+shops                 (독립, activities 로 느슨 연결)
+shop_owners           (가게 코드 + 실패 잠금)
+reactions             (편지 / 하이파이브 / 노트, visibility, author_role)
 users                 (카카오 로그인)
-contribution_points   (누적 지표 — "오늘도 강화도가..." 카운터 백엔드)
-contribution_log      (누적 원장)
-page_views            (익명 조회 로그)
+contribution_points   (집계 단위: shop / project / category / platform)
+auth_events           (로그인 감사 로그)
 ```
 
-중요한 설계 결정:
+---
 
-- `activities` 에 **unique 제약 없음** — 같은 에피소드를 여러 번 참여하면 카드가 여러 장 쌓인다.
-- `activities.is_public` **기본값 false** — opt-in 공개 원칙.
-- 모든 도메인 테이블 **RLS 활성화** — 보안은 처음부터.
-
-## 개발 단계 (Phase 0~8)
-
-Phase 별 상세는 `CLAUDE.md` 참고. 각 Phase 끝마다 배포 가능한 상태를 유지한다.
-
-- **Phase 0** — 셋업 (Next.js, Tailwind, Supabase, 카카오, Vercel) ← 현재
-- **Phase 1** — DB 스키마 + 기본 인증
-- **Phase 2** — 행위 기록 (카드 발급)
-- **Phase 3** — 도감 (참여자 뷰)
-- **Phase 4** — 사장님/크루 응원·편지
-- **Phase 5** — 노드맵 대시보드 (청풍 뷰)
-- **Phase 6** — 공개 둘러보기
-- **Phase 7** — 관리자 (프로젝트/에피소드/QR/가게)
-- **Phase 8** — 폴리시 + 데모 준비
+> ## 여행이 끝나도 강화는 기억해요.
+>
+> 참여자의 카드 한 장이 사장님의 답장으로 돌아오고,
+> 크루의 손에서 프로그램의 진척이 정직하게 드러나요.
+> 강화도는 조금씩 더 강화돼요.
+>
+> _환대로 만들어가는 섬, 강화_
