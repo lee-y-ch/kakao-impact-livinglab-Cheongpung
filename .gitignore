@@ -57,3 +57,11 @@ logs
 
 # 발표 자료 (직접 배포)
 *.pptx
+
+# 내부 작업 문서 (로컬에서만 참고)
+/CLAUDE.md
+/AGENTS.md
+/docs/
+
+# 원본 기획 PDF (로컬에서만 참고, 외부 배포 X)
+/assets/*.pdf
